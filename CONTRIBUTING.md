@@ -5,7 +5,8 @@ Thank you for your interest in contributing to Heripo Research Radar! This guide
 ## Two Ways to Contribute
 
 1. **Direct contributions**: Bug fixes, feature improvements, adding new crawling targets
-2. **Fork for your own newsletter**: Use this project as a template for your domain-specific newsletter (see README.md "⚠️ Fork하여 나만의 뉴스레터 만들기")
+2. **Fork for your own newsletter**: Use this project as a template for your domain-specific newsletter (see README.md "
+   ⚠️ Forking for Your Domain")
 
 Both approaches are welcome!
 
