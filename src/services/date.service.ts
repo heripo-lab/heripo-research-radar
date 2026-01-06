@@ -1,4 +1,7 @@
-import type { DateService as CoreDateService, IsoDateString } from '@llm-newsletter-kit/core';
+import type {
+  DateService as CoreDateService,
+  IsoDateString,
+} from '@llm-newsletter-kit/core';
 
 /**
  * Date service implementation

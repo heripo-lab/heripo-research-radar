@@ -1,9 +1,9 @@
+import type { OpenAIProvider } from '@ai-sdk/openai';
 import type {
-  AnalysisProvider as CoreAnalysisProvider,
   ArticleForUpdateByAnalysis,
+  AnalysisProvider as CoreAnalysisProvider,
   UnscoredArticle,
 } from '@llm-newsletter-kit/core';
-import type { OpenAIProvider } from '@ai-sdk/openai';
 
 import type { ArticleRepository, TagRepository } from '../types/dependencies';
 
@@ -39,69 +39,70 @@ export class AnalysisProvider implements CoreAnalysisProvider {
     this.determineScoreOptions = {
       model: this.openai('gpt-5.1'),
       minimumImportanceScoreRules: [
-      // Korean Archaeological Society news: minimum score 6
-      {
-        targetUrl: 'https://www.kras.or.kr/?r=kras&m=bbs&bid=notice',
-        minScore: 6,
-      },
-      {
-        targetUrl: 'https://www.kras.or.kr/?r=kras&m=bbs&bid=sympo',
-        minScore: 6,
-      },
-      {
-        targetUrl: 'https://www.kras.or.kr/?c=61/101/105',
-        minScore: 6,
-      },
-      {
-        targetUrl: 'https://www.kaah.kr/notice',
-        minScore: 6,
-      },
-      {
-        targetUrl: 'https://www.kaah.kr/news',
-        minScore: 6,
-      },
-      {
-        targetUrl: 'https://www.kaah.kr/mass',
-        minScore: 6,
-      },
-      {
-        targetUrl: 'https://www.kaah.kr/assnews',
-        minScore: 6,
-      },
-      {
-        targetUrl: 'https://www.kaah.kr/ralnews',
-        minScore: 6,
-      },
-      {
-        targetUrl: 'https://www.kaah.kr/notice',
-        minScore: 6,
-      },
-      {
-        targetUrl: 'https://www.kaah.kr/placeopen',
-        minScore: 6,
-      },
-      {
-        targetUrl: 'https://www.kaah.kr/bussopen',
-        minScore: 6,
-      },
-      {
-        targetUrl: 'https://www.kaah.kr/ipcopen',
-        minScore: 6,
-      },
-      // Excavation report news: minimum score 2
-      {
-        targetUrl: 'https://www.e-minwon.go.kr/ge/ee/getListEcexmPrmsnAply.do',
-        minScore: 2,
-      },
-      {
-        targetUrl: 'https://www.e-minwon.go.kr/ge/ee/getListEcexmRptp.do',
-        minScore: 2,
-      },
-      {
-        targetUrl: 'https://www.e-minwon.go.kr/ge/ee/getListLinkGrndsRls.do',
-        minScore: 2,
-      },
-    ],
+        // Korean Archaeological Society news: minimum score 6
+        {
+          targetUrl: 'https://www.kras.or.kr/?r=kras&m=bbs&bid=notice',
+          minScore: 6,
+        },
+        {
+          targetUrl: 'https://www.kras.or.kr/?r=kras&m=bbs&bid=sympo',
+          minScore: 6,
+        },
+        {
+          targetUrl: 'https://www.kras.or.kr/?c=61/101/105',
+          minScore: 6,
+        },
+        {
+          targetUrl: 'https://www.kaah.kr/notice',
+          minScore: 6,
+        },
+        {
+          targetUrl: 'https://www.kaah.kr/news',
+          minScore: 6,
+        },
+        {
+          targetUrl: 'https://www.kaah.kr/mass',
+          minScore: 6,
+        },
+        {
+          targetUrl: 'https://www.kaah.kr/assnews',
+          minScore: 6,
+        },
+        {
+          targetUrl: 'https://www.kaah.kr/ralnews',
+          minScore: 6,
+        },
+        {
+          targetUrl: 'https://www.kaah.kr/notice',
+          minScore: 6,
+        },
+        {
+          targetUrl: 'https://www.kaah.kr/placeopen',
+          minScore: 6,
+        },
+        {
+          targetUrl: 'https://www.kaah.kr/bussopen',
+          minScore: 6,
+        },
+        {
+          targetUrl: 'https://www.kaah.kr/ipcopen',
+          minScore: 6,
+        },
+        // Excavation report news: minimum score 2
+        {
+          targetUrl:
+            'https://www.e-minwon.go.kr/ge/ee/getListEcexmPrmsnAply.do',
+          minScore: 2,
+        },
+        {
+          targetUrl: 'https://www.e-minwon.go.kr/ge/ee/getListEcexmRptp.do',
+          minScore: 2,
+        },
+        {
+          targetUrl: 'https://www.e-minwon.go.kr/ge/ee/getListLinkGrndsRls.do',
+          minScore: 2,
+        },
+      ],
     };
   }
 

@@ -1,3 +1,4 @@
+import type { OpenAIProvider } from '@ai-sdk/openai';
 import type {
   ArticleForGenerateContent,
   ContentGenerateProvider as CoreContentGenerateProvider,
@@ -5,7 +6,6 @@ import type {
   Newsletter,
   UrlString,
 } from '@llm-newsletter-kit/core';
-import type { OpenAIProvider } from '@ai-sdk/openai';
 
 import type {
   ArticleRepository,
@@ -14,11 +14,7 @@ import type {
 
 import { createNewsletterHtmlTemplate } from '~/templates/newsletter-html';
 
-import {
-  crawlingTargetGroups,
-  llmConfig,
-  newsletterConfig,
-} from '../config';
+import { crawlingTargetGroups, llmConfig, newsletterConfig } from '../config';
 
 /**
  * Content generation provider implementation
