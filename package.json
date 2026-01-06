@@ -46,7 +46,7 @@
     "turndown": "^7.2.2"
   },
   "peerDependencies": {
-    "@llm-newsletter-kit/core": "^1.0.0"
+    "@llm-newsletter-kit/core": "~1.1.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.2",
