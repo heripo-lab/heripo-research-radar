@@ -152,6 +152,21 @@ npm run typecheck          # TypeScript 타입 체크
 npm run format             # Prettier로 코드 포맷
 ```
 
+### 크롤러 디버거
+
+개발 중 크롤링 파서를 테스트하기 위한 웹 기반 도구입니다. 의존성 최소화를 위해 Express.js + 바닐라 HTML/CSS/JS로 구현했습니다.
+
+```bash
+npm run dev:crawler        # http://localhost:3333 에서 시작
+```
+
+**기능**:
+- `parseList()`, `parseDetail()` 파서를 웹 UI에서 테스트
+- 디버깅용 원본 HTML 소스 보기
+- 파싱 결과를 JSON으로 복사
+- 5분 응답 캐시 (skip/clear 옵션)
+- fetch 및 parse 작업 타이밍 정보
+
 ## 🤝 기여하기
 
 이 프로젝트는 두 가지 방식으로 활용할 수 있습니다:

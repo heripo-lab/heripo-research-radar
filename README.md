@@ -152,6 +152,21 @@ npm run typecheck          # TypeScript type-check
 npm run format             # Prettier formatting
 ```
 
+### Crawler Debugger
+
+A web-based tool for testing crawling parsers during development. Built with Express.js and vanilla HTML/CSS/JS to minimize dependencies.
+
+```bash
+npm run dev:crawler        # Start at http://localhost:3333
+```
+
+**Features**:
+- Test `parseList()` and `parseDetail()` parsers via web UI
+- View raw HTML source for debugging
+- Copy parsed results as JSON
+- 5-minute response cache (with skip/clear options)
+- Timing info for fetch and parse operations
+
 ## 🤝 Contributing
 
 You can use this project in two ways:

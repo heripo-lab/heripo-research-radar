@@ -36,7 +36,8 @@
     "lint:fix": "eslint --fix ./src",
     "lint:ci": "eslint --quiet ./src",
     "typecheck": "tsc --noEmit",
-    "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,css,md,mdx}\""
+    "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,css,md,mdx}\"",
+    "dev:crawler": "tsx watch dev-tools/crawler-debugger/server.ts"
   },
   "author": "kimhongyeon",
   "license": "Apache-2.0",
@@ -52,15 +53,18 @@
     "@eslint/js": "^9.39.2",
     "@llm-newsletter-kit/core": "^1.1.0",
     "@trivago/prettier-plugin-sort-imports": "^6.0.1",
+    "@types/express": "^5.0.6",
     "@types/node": "^25.0.3",
     "@types/turndown": "^5.0.6",
     "eslint": "^9.39.2",
     "eslint-plugin-unused-imports": "^4.3.0",
+    "express": "^5.2.1",
     "prettier": "^3.7.4",
     "rimraf": "^6.1.2",
     "rollup": "^4.55.1",
     "rollup-plugin-dts": "^6.3.0",
     "rollup-plugin-typescript2": "^0.36.0",
+    "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.52.0"
   },

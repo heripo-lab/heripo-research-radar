@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Crawler Debugger</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Crawler Debugger</h1>
+      <p class="subtitle">Test and debug crawling parsers</p>
+    </header>
+
+    <!-- Target Selection -->
+    <section class="card">
+      <h2>Target Selection</h2>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="groupSelect">Group</label>
+          <select id="groupSelect">
+            <option value="">Select a group...</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="targetSelect">Target</label>
+          <select id="targetSelect" disabled>
+            <option value="">Select a target...</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="customUrl">Custom URL (optional)</label>
+        <input type="text" id="customUrl" placeholder="Override target URL...">
+      </div>
+      <div class="form-row">
+        <label class="checkbox-label">
+          <input type="checkbox" id="skipCache">
+          Skip cache
+        </label>
+        <button id="clearCacheBtn" class="btn btn-secondary">Clear Cache</button>
+      </div>
+    </section>
+
+    <!-- List Parsing -->
+    <section class="card">
+      <h2>List Parsing</h2>
+      <div class="button-row">
+        <button id="parseListBtn" class="btn btn-primary" disabled>Parse List</button>
+        <button id="copyListJsonBtn" class="btn btn-secondary" disabled>Copy JSON</button>
+        <button id="viewListHtmlBtn" class="btn btn-secondary" disabled>View HTML</button>
+      </div>
+      <div id="listTiming" class="timing"></div>
+      <div id="listError" class="error" hidden></div>
+      <div id="listResultContainer" hidden>
+        <table id="listTable">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Title</th>
+              <th>Date</th>
+              <th>URL</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Detail Parsing -->
+    <section class="card" id="detailSection" hidden>
+      <h2>Detail Parsing</h2>
+      <div id="detailUrl" class="detail-url"></div>
+      <div id="detailTiming" class="timing"></div>
+      <div id="detailError" class="error" hidden></div>
+      <div id="detailResultContainer" hidden>
+        <div class="button-row">
+          <button id="copyDetailJsonBtn" class="btn btn-secondary">Copy JSON</button>
+          <button id="viewDetailHtmlBtn" class="btn btn-secondary">View HTML</button>
+        </div>
+        <div class="detail-content">
+          <div class="detail-field">
+            <label>Detail Content (Markdown)</label>
+            <div id="detailContent" class="field-value content-field"></div>
+          </div>
+          <div class="detail-flags">
+            <div class="flag-item">
+              <span class="flag-label">Has Attached File</span>
+              <span id="detailHasFile" class="flag-value"></span>
+            </div>
+            <div class="flag-item">
+              <span class="flag-label">Has Attached Image</span>
+              <span id="detailHasImage" class="flag-value"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- HTML Modal -->
+  <div id="htmlModal" class="modal" hidden>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>HTML Source</h3>
+        <button id="closeModalBtn" class="btn-close">&times;</button>
+      </div>
+      <pre id="htmlContent"></pre>
+    </div>
+  </div>
+
+  <script>
+    // State
+    let targets = [];
+    let listResult = null;
+    let detailResult = null;
+
+    // DOM Elements
+    const groupSelect = document.getElementById('groupSelect');
+    const targetSelect = document.getElementById('targetSelect');
+    const customUrl = document.getElementById('customUrl');
+    const skipCache = document.getElementById('skipCache');
+    const clearCacheBtn = document.getElementById('clearCacheBtn');
+    const parseListBtn = document.getElementById('parseListBtn');
+    const copyListJsonBtn = document.getElementById('copyListJsonBtn');
+    const viewListHtmlBtn = document.getElementById('viewListHtmlBtn');
+    const listTiming = document.getElementById('listTiming');
+    const listError = document.getElementById('listError');
+    const listResultContainer = document.getElementById('listResultContainer');
+    const listTableBody = document.querySelector('#listTable tbody');
+    const detailSection = document.getElementById('detailSection');
+    const detailUrl = document.getElementById('detailUrl');
+    const detailTiming = document.getElementById('detailTiming');
+    const detailError = document.getElementById('detailError');
+    const detailResultContainer = document.getElementById('detailResultContainer');
+    const copyDetailJsonBtn = document.getElementById('copyDetailJsonBtn');
+    const viewDetailHtmlBtn = document.getElementById('viewDetailHtmlBtn');
+    const htmlModal = document.getElementById('htmlModal');
+    const htmlContent = document.getElementById('htmlContent');
+    const closeModalBtn = document.getElementById('closeModalBtn');
+
+    // Initialize
+    async function init() {
+      try {
+        const response = await fetch('/api/targets');
+        targets = await response.json();
+        populateGroups();
+      } catch (error) {
+        console.error('Failed to load targets:', error);
+        showError(listError, 'Failed to load targets: ' + error.message);
+      }
+    }
+
+    function populateGroups() {
+      groupSelect.innerHTML = '<option value="">Select a group...</option>';
+      targets.forEach(group => {
+        const option = document.createElement('option');
+        option.value = group.id;
+        option.textContent = `${group.name} (${group.targets.length})`;
+        groupSelect.appendChild(option);
+      });
+    }
+
+    function populateTargets(groupId) {
+      const group = targets.find(g => g.id === groupId);
+      targetSelect.innerHTML = '<option value="">Select a target...</option>';
+      targetSelect.disabled = !group;
+
+      if (group) {
+        group.targets.forEach(target => {
+          const option = document.createElement('option');
+          option.value = target.id;
+          option.textContent = target.name;
+          option.dataset.url = target.url;
+          targetSelect.appendChild(option);
+        });
+      }
+
+      customUrl.value = '';
+      parseListBtn.disabled = true;
+    }
+
+    function showError(element, message) {
+      element.textContent = message;
+      element.hidden = false;
+    }
+
+    function hideError(element) {
+      element.hidden = true;
+    }
+
+    function showTiming(element, timing, cached) {
+      const cacheLabel = cached ? ' (cached)' : '';
+      element.innerHTML = `
+        <span>Fetch: ${timing.fetch}ms${cacheLabel}</span>
+        <span>Parse: ${timing.parse}ms</span>
+        <span>Total: ${timing.total}ms</span>
+      `;
+    }
+
+    async function parseList() {
+      const groupId = groupSelect.value;
+      const targetId = targetSelect.value;
+
+      if (!groupId || !targetId) return;
+
+      hideError(listError);
+      listResultContainer.hidden = true;
+      parseListBtn.disabled = true;
+      parseListBtn.textContent = 'Parsing...';
+
+      try {
+        const response = await fetch('/api/parse-list', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            groupId,
+            targetId,
+            customUrl: customUrl.value || undefined,
+            skipCache: skipCache.checked,
+          }),
+        });
+
+        listResult = await response.json();
+
+        if (!listResult.success) {
+          throw new Error(listResult.error);
+        }
+
+        showTiming(listTiming, listResult.timing, listResult.cached);
+        renderListTable(listResult.items);
+        listResultContainer.hidden = false;
+        copyListJsonBtn.disabled = false;
+        viewListHtmlBtn.disabled = false;
+      } catch (error) {
+        showError(listError, error.message);
+      } finally {
+        parseListBtn.disabled = false;
+        parseListBtn.textContent = 'Parse List';
+      }
+    }
+
+    function renderListTable(items) {
+      listTableBody.innerHTML = '';
+
+      if (!items || items.length === 0) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = '<td colspan="5" class="empty">No items found</td>';
+        listTableBody.appendChild(tr);
+        return;
+      }
+
+      items.forEach((item, index) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${index + 1}</td>
+          <td class="title-cell">${escapeHtml(item.title || '-')}</td>
+          <td>${escapeHtml(item.date || '-')}</td>
+          <td class="url-cell">
+            <a href="${escapeHtml(item.detailUrl)}" target="_blank" title="${escapeHtml(item.detailUrl)}">
+              ${truncateUrl(item.detailUrl)}
+            </a>
+          </td>
+          <td>
+            <button class="btn btn-small" onclick="parseDetail('${escapeHtml(item.detailUrl)}')">
+              Parse Detail
+            </button>
+          </td>
+        `;
+        listTableBody.appendChild(tr);
+      });
+    }
+
+    async function parseDetail(detailUrlValue) {
+      const groupId = groupSelect.value;
+      const targetId = targetSelect.value;
+
+      if (!groupId || !targetId || !detailUrlValue) return;
+
+      detailSection.hidden = false;
+      detailUrl.textContent = detailUrlValue;
+      hideError(detailError);
+      detailResultContainer.hidden = true;
+      detailTiming.innerHTML = '<span>Parsing...</span>';
+
+      try {
+        const response = await fetch('/api/parse-detail', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            groupId,
+            targetId,
+            detailUrl: detailUrlValue,
+            skipCache: skipCache.checked,
+          }),
+        });
+
+        detailResult = await response.json();
+
+        if (!detailResult.success) {
+          throw new Error(detailResult.error);
+        }
+
+        showTiming(detailTiming, detailResult.timing, detailResult.cached);
+        renderDetailResult(detailResult.article);
+        detailResultContainer.hidden = false;
+      } catch (error) {
+        showError(detailError, error.message);
+        detailTiming.innerHTML = '';
+      }
+    }
+
+    function renderDetailResult(article) {
+      document.getElementById('detailContent').textContent = article.detailContent || '-';
+
+      const hasFileEl = document.getElementById('detailHasFile');
+      hasFileEl.textContent = article.hasAttachedFile ? 'Yes' : 'No';
+      hasFileEl.className = 'flag-value ' + (article.hasAttachedFile ? 'flag-yes' : 'flag-no');
+
+      const hasImageEl = document.getElementById('detailHasImage');
+      hasImageEl.textContent = article.hasAttachedImage ? 'Yes' : 'No';
+      hasImageEl.className = 'flag-value ' + (article.hasAttachedImage ? 'flag-yes' : 'flag-no');
+    }
+
+    function copyToClipboard(data) {
+      navigator.clipboard.writeText(JSON.stringify(data, null, 2))
+        .then(() => alert('Copied to clipboard!'))
+        .catch(err => alert('Failed to copy: ' + err.message));
+    }
+
+    function showHtmlModal(html) {
+      htmlContent.textContent = html;
+      htmlModal.hidden = false;
+    }
+
+    async function clearCache() {
+      try {
+        await fetch('/api/clear-cache', { method: 'POST' });
+        alert('Cache cleared!');
+      } catch (error) {
+        alert('Failed to clear cache: ' + error.message);
+      }
+    }
+
+    // Utility functions
+    function escapeHtml(str) {
+      if (!str) return '';
+      return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function truncateUrl(url) {
+      if (!url) return '-';
+      if (url.length > 60) {
+        return url.substring(0, 57) + '...';
+      }
+      return url;
+    }
+
+    // Event Listeners
+    groupSelect.addEventListener('change', () => {
+      populateTargets(groupSelect.value);
+      detailSection.hidden = true;
+    });
+
+    targetSelect.addEventListener('change', () => {
+      parseListBtn.disabled = !targetSelect.value;
+      if (targetSelect.selectedOptions[0]?.dataset?.url) {
+        customUrl.placeholder = targetSelect.selectedOptions[0].dataset.url;
+      }
+      detailSection.hidden = true;
+    });
+
+    parseListBtn.addEventListener('click', parseList);
+    copyListJsonBtn.addEventListener('click', () => copyToClipboard(listResult?.items));
+    viewListHtmlBtn.addEventListener('click', () => showHtmlModal(listResult?.html));
+    copyDetailJsonBtn.addEventListener('click', () => copyToClipboard(detailResult?.article));
+    viewDetailHtmlBtn.addEventListener('click', () => showHtmlModal(detailResult?.html));
+    clearCacheBtn.addEventListener('click', clearCache);
+    closeModalBtn.addEventListener('click', () => htmlModal.hidden = true);
+
+    htmlModal.addEventListener('click', (e) => {
+      if (e.target === htmlModal) {
+        htmlModal.hidden = true;
+      }
+    });
+
+    // Initialize on load
+    init();
+  </script>
+</body>
+</html>
