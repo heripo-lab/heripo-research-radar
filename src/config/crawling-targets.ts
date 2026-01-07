@@ -55,6 +55,11 @@ import {
   parseNrichPortalDetail,
   parseNrichPortalList,
 } from '~/parsers/nrich.parser';
+import {
+  extractNttSeq,
+  parseYngogoDetail,
+  parseYngogoList,
+} from '~/parsers/yngogo.parser';
 
 export const crawlingTargetGroups: CrawlingTargetGroup[] = [
   {
@@ -287,6 +292,51 @@ export const crawlingTargetGroups: CrawlingTargetGroup[] = [
         parseDetail: parseHsasDetail,
       },
       {
+        id: '영남고고학회_공지사항',
+        name: '영남고고학회 공지사항',
+        url: 'http://www.yngogo.or.kr/subList/32000001120',
+        parseList: (html) =>
+          parseYngogoList(html, '32000001120', '32000001157', '32000001711'),
+        parseDetail: (html) =>
+          parseYngogoDetail(
+            html,
+            '32000001120',
+            '32000001157',
+            extractNttSeq(html),
+            '32000001711',
+          ),
+      },
+      {
+        id: '영남고고학회_학계소식',
+        name: '영남고고학회 학계소식',
+        url: 'http://www.yngogo.or.kr/subList/32000001133',
+        parseList: (html) =>
+          parseYngogoList(html, '32000001133', '32000001161', '32000001715'),
+        parseDetail: (html) =>
+          parseYngogoDetail(
+            html,
+            '32000001133',
+            '32000001161',
+            extractNttSeq(html),
+            '32000001715',
+          ),
+      },
+      {
+        id: '영남고고학회_현장소식',
+        name: '영남고고학회 현장소식',
+        url: 'http://www.yngogo.or.kr/subList/32000001135',
+        parseList: (html) =>
+          parseYngogoList(html, '32000001135', '32000001163', '32000001717'),
+        parseDetail: (html) =>
+          parseYngogoDetail(
+            html,
+            '32000001135',
+            '32000001163',
+            extractNttSeq(html),
+            '32000001717',
+          ),
+      },
+      {
         id: '국립중앙박물관_알림',
         name: '국립중앙박물관 알림',
         url: 'https://www.museum.go.kr/MUSEUM/contents/M0701010000.do?catCustomType=united&catId=128',
@@ -472,6 +522,21 @@ export const crawlingTargetGroups: CrawlingTargetGroup[] = [
         url: 'https://www.kaah.kr/reqopen',
         parseList: parseKaahList,
         parseDetail: parseKaahDetail,
+      },
+      {
+        id: '영남고고학회_채용공고',
+        name: '영남고고학회 채용공고',
+        url: 'http://www.yngogo.or.kr/subList/32000001136',
+        parseList: (html) =>
+          parseYngogoList(html, '32000001136', '32000001164', '32000001718'),
+        parseDetail: (html) =>
+          parseYngogoDetail(
+            html,
+            '32000001136',
+            '32000001164',
+            extractNttSeq(html),
+            '32000001718',
+          ),
       },
       {
         id: '국립중앙박물관_채용안내',
