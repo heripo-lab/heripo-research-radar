@@ -23,7 +23,7 @@ An AI-powered newsletter service for Korean cultural heritage. Built on [`@llm-n
 **Technical highlights**:
 - Type-safe TypeScript with strict interfaces
 - Provider pattern for swapping components (Crawling/Analysis/Content/Email)
-- 62 crawling targets across heritage agencies, museums, academic societies
+- 66 crawling targets across heritage agencies, museums, academic societies
 - LLM-driven analysis (GPT-5 models)
 - Built-in retries, chain options, preview emails
 
@@ -131,7 +131,7 @@ Uses the **Provider-Service pattern** from `@llm-newsletter-kit/core`. See [core
 
 **Config** (`src/config/`): Brand, language, LLM settings
 
-**Targets** (`src/config/crawling-targets.ts`): 62 sources (News 49, Business 4, Employment 9)
+**Targets** (`src/config/crawling-targets.ts`): 66 sources (News 52, Business 4, Employment 10)
 
 **Parsers** (`src/parsers/`): Custom extractors per organization
 

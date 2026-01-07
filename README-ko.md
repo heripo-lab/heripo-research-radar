@@ -23,7 +23,7 @@
 **기술적 특징**:
 - 엄격한 타입 시스템의 TypeScript
 - 교체 가능한 Provider 패턴 (Crawling/Analysis/Content/Email)
-- 문화유산 기관, 박물관, 학회 등 62개 크롤링 타겟
+- 문화유산 기관, 박물관, 학회 등 66개 크롤링 타겟
 - LLM 기반 분석 (GPT-5 모델)
 - 재시도, 체인 옵션, 미리보기 이메일 내장
 
@@ -131,7 +131,7 @@ const newsletterId = await generateNewsletter({
 
 **설정** (`src/config/`): 브랜드명, 언어, LLM 설정 (재시도, temperature)
 
-**타겟** (`src/config/crawling-targets.ts`): 62개 소스 (뉴스 49, 입찰 4, 채용 9)
+**타겟** (`src/config/crawling-targets.ts`): 66개 소스 (뉴스 52, 입찰 4, 채용 10)
 
 **파서** (`src/parsers/`): 기관별 커스텀 추출기 (khs.parser.ts, museum.parser.ts 등)
 
