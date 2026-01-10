@@ -1,19 +1,19 @@
-# Heripo Research Radar
+# heripo Research Radar
 
 English | [한국어](./README-ko.md)
 
-[![CI](https://github.com/kimhongyeon/heripo-research-radar/actions/workflows/ci.yml/badge.svg)](https://github.com/kimhongyeon/heripo-research-radar/actions/workflows/ci.yml)
+[![CI](https://github.com/heripo-lab/heripo-research-radar/actions/workflows/ci.yml/badge.svg)](https://github.com/heripo-lab/heripo-research-radar/actions/workflows/ci.yml)
 [
 ![npm version](https://img.shields.io/npm/v/%40heripo%2Fresearch-radar?logo=npm&color=cb0000)
 ](https://www.npmjs.com/package/@heripo/research-radar)
-![license](https://img.shields.io/github/license/kimhongyeon/heripo-research-radar)
+![license](https://img.shields.io/github/license/heripo-lab/heripo-research-radar)
 ![node](https://img.shields.io/badge/node-%3E%3D22-brightgreen)
 
 [Code of Conduct](./CODE_OF_CONDUCT.md) • [Security Policy](./SECURITY.md) • [Contributing](./CONTRIBUTING.md)
 
 ## What is this?
 
-An AI-powered newsletter service for Korean cultural heritage. Built on [`@llm-newsletter-kit/core`](https://github.com/kimhongyeon/llm-newsletter-kit-core), it's both a production service ([live at heripo.com](https://heripo.com/research-radar/subscribe)) and a reference implementation showing how to build automated newsletters with LLMs.
+An AI-powered newsletter service for Korean cultural heritage. Built on [`@llm-newsletter-kit/core`](https://github.com/heripo-lab/llm-newsletter-kit-core), it's both a production service ([live at heripo.com](https://heripo.com/research-radar/subscribe)) and a reference implementation showing how to build automated newsletters with LLMs.
 
 **Production metrics**:
 - **Cost**: $0.2-1 USD per issue
@@ -27,7 +27,7 @@ An AI-powered newsletter service for Korean cultural heritage. Built on [`@llm-n
 - LLM-driven analysis (GPT-5 models)
 - Built-in retries, chain options, preview emails
 
-**Links**: [Live service](https://heripo.com/research-radar/subscribe) • [Newsletter example](https://heripo.com/research-radar-newsletter-example.html) • [Core engine](https://github.com/kimhongyeon/llm-newsletter-kit-core)
+**Links**: [Live service](https://heripo.com/research-radar/subscribe) • [Newsletter example](https://heripo.com/research-radar-newsletter-example.html) • [Core engine](https://github.com/heripo-lab/llm-newsletter-kit-core)
 
 ## Background
 
@@ -54,11 +54,11 @@ We recommend adding this notice to your newsletter template footer or service do
 For academic publications:
 
 ```bibtex
-@software{llm_newsletter_kit,
+@software{heripo research radar,
   author = {Kim, Hongyeon},
-  title = {LLM Newsletter Kit: AI-Powered Newsletter Automation Framework},
+  title = {heripo research radar},
   year = {2025},
-  url = {https://github.com/kimhongyeon/heripo-research-radar},
+  url = {https://github.com/heripo-lab/heripo-research-radar},
   note = {Apache License 2.0}
 }
 ```
@@ -125,7 +125,7 @@ const newsletterId = await generateNewsletter({
 3. **Generation**: Create newsletter from top-scoring articles
 4. **Save**: Store and optionally send preview email
 
-Uses the **Provider-Service pattern** from `@llm-newsletter-kit/core`. See [core docs](https://github.com/kimhongyeon/llm-newsletter-kit-core#architecture--flow) for flow diagrams.
+Uses the **Provider-Service pattern** from `@llm-newsletter-kit/core`. See [core docs](https://github.com/heripo-lab/llm-newsletter-kit-core#architecture--flow) for flow diagrams.
 
 ## Components
 
@@ -227,5 +227,5 @@ Code-based automation delivers **superior output quality** through advanced AI t
 
 ## Related Projects
 
-- [`@llm-newsletter-kit/core`](https://github.com/kimhongyeon/llm-newsletter-kit-core) — Domain-agnostic newsletter engine
+- [`@llm-newsletter-kit/core`](https://github.com/heripo-lab/llm-newsletter-kit-core) — Domain-agnostic newsletter engine
 - [Archaeological Informatization Using LLMs](https://poc.heripo.com) — Academic research (Korean)

@@ -70,10 +70,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/kimhongyeon/heripo-research-radar"
+    "url": "https://github.com/heripo-lab/heripo-research-radar"
   },
   "bugs": {
-    "url": "https://github.com/kimhongyeon/heripo-research-radar/issues"
+    "url": "https://github.com/heripo-lab/heripo-research-radar/issues"
   },
   "homepage": "https://heripo.com",
   "keywords": [

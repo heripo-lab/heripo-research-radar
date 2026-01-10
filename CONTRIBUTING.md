@@ -103,7 +103,7 @@ All repository interfaces are defined in `src/types/dependencies.ts`. Implement 
 ## Fork & Pull Request Workflow
 
 ### 1. Fork the Repository
-Click "Fork" button on GitHub: https://github.com/kimhongyeon/heripo-research-radar
+Click "Fork" button on GitHub: https://github.com/heripo-lab/heripo-research-radar
 
 ### 2. Clone Your Fork
 ```bash
@@ -113,7 +113,7 @@ cd heripo-research-radar
 
 ### 3. Add Upstream Remote
 ```bash
-git remote add upstream https://github.com/kimhongyeon/heripo-research-radar.git
+git remote add upstream https://github.com/heripo-lab/heripo-research-radar.git
 git remote -v  # Verify: origin (your fork), upstream (original repo)
 ```
 
@@ -156,7 +156,7 @@ git push origin feat/add-new-crawling-target
 ### 8. Create Pull Request
 1. Go to your fork on GitHub: `https://github.com/YOUR_USERNAME/heripo-research-radar`
 2. Click "Compare & pull request" button
-3. Base repository: `kimhongyeon/heripo-research-radar` base: `main`
+3. Base repository: `heripo-lab/heripo-research-radar` base: `main`
 4. Head repository: `YOUR_USERNAME/heripo-research-radar` compare: `feat/add-new-crawling-target`
 5. Fill in PR template:
    - What: Describe the change (e.g., "Added crawler for National Museum")
@@ -214,5 +214,5 @@ Include reproduction steps, expected/actual results, and logs/screenshots to hel
 
 ## Related Projects
 
-- **Core engine**: [`@llm-newsletter-kit/core`](https://github.com/kimhongyeon/llm-newsletter-kit-core) - Domain-agnostic newsletter generation engine
+- **Core engine**: [`@llm-newsletter-kit/core`](https://github.com/heripo-lab/llm-newsletter-kit-core) - Domain-agnostic newsletter generation engine
 - **Live service**: [Heripo Research Radar](https://heripo.com/research-radar/subscribe)
