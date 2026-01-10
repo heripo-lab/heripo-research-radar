@@ -458,7 +458,7 @@ export const createNewsletterHtmlTemplate = (
             <p style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.7; color: #444444; margin: 0 0 18px 0;">이 뉴스레터는 heripo의 선공개 버전으로 플랫폼의 일부 기능 중 하나입니다.</p>
             <p style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.7; color: #444444; margin: 0 0 18px 0;">2026년 중 플랫폼 출시를 목표로 개발 중이며, 핵심 로직 또한 오픈소스 프로젝트로 공개할 예정입니다.</p>
             <p style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.7; color: #444444; margin: 0 0 18px 0;">플랫폼 프로토타입 출시 시 구독자분들께 우선 안내해 드리겠습니다.</p>
-            <p style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.7; color: #444444; margin: 0 0 18px 0;">뉴스레터 소스 추가를 원하시거나 기타 궁금한 점이 있다면 <a href="https://github.com/kimhongyeon/heripo-research-radar/issues" target="_blank">GitHub 이슈</a>를 통해 요청해 주세요.</p>
+            <p style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.7; color: #444444; margin: 0 0 18px 0;">뉴스레터 소스 추가를 원하시거나 기타 궁금한 점이 있다면 <a href="https://github.com/heripo-lab/heripo-research-radar/issues" target="_blank">GitHub 이슈</a>를 통해 요청해 주세요.</p>
             <hr style="border: 0; border-top: 2px solid #D2691E; margin: 32px 0;">
             <h2 style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 24px; font-weight: bold; line-height: 1.3; color: #D2691E; margin: 0 0 16px 0; letter-spacing: -0.2px; border-left: 5px solid #D2691E; padding-left: 12px; background: none;">⚠️ 중요 안내</h2>
             <p style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.7; color: #444444; margin: 0 0 18px 0;">본 뉴스레터는 국가유산청 공지사항, 관련 기관 입찰 정보 등 특정 웹 게시판의 모든 신규 소식을 빠짐없이 수집하여 제공합니다. 수집된 모든 정보는 정확한 크롤링 로직에 기반하므로 원본과 일치하여 신뢰할 수 있습니다.</p>
@@ -472,8 +472,8 @@ export const createNewsletterHtmlTemplate = (
             <p style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.7; color: #444444; margin: 0 0 10px 0;" class="footer-text">이 메일은 heripo.com에서 리서치 레이더를 구독하신 분들에게 발송됩니다.<br>
               더 이상 이메일을 받고 싶지 않으시면 <a href="{{{RESEND_UNSUBSCRIBE_URL}}}" target="_blank" style="-webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; font-weight: bold; transition: color 0.2s; color: #888888; text-decoration: underline;" class="footer-link">여기에서 수신 거부</a>하세요.</p>
             <p style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 14px; line-height: 1.5; color: #999999; margin: 0;" class="footer-text">
-              Powered by <a href="https://github.com/kimhongyeon/llm-newsletter-kit-core" target="_blank" style="-webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; transition: color 0.2s; color: #999999; text-decoration: underline;" class="footer-link">LLM Newsletter Kit</a> ·
-              <a href="https://github.com/kimhongyeon/heripo-research-radar" target="_blank" style="-webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; transition: color 0.2s; color: #999999; text-decoration: underline;" class="footer-link">View Source</a>
+              Powered by <a href="https://github.com/heripo-lab/llm-newsletter-kit-core" target="_blank" style="-webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; transition: color 0.2s; color: #999999; text-decoration: underline;" class="footer-link">LLM Newsletter Kit</a> ·
+              <a href="https://github.com/heripo-lab/heripo-research-radar" target="_blank" style="-webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; transition: color 0.2s; color: #999999; text-decoration: underline;" class="footer-link">View Source</a>
             </p>
           </td>
         </tr>

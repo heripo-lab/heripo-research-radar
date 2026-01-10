@@ -1,19 +1,19 @@
-# 헤리포 리서치 레이더 (Heripo Research Radar)
+# 헤리포 리서치 레이더 (heripo Research Radar)
 
 [English](./README.md) | 한국어
 
-[![CI](https://github.com/kimhongyeon/heripo-research-radar/actions/workflows/ci.yml/badge.svg)](https://github.com/kimhongyeon/heripo-research-radar/actions/workflows/ci.yml)
+[![CI](https://github.com/heripo-lab/heripo-research-radar/actions/workflows/ci.yml/badge.svg)](https://github.com/heripo-lab/heripo-research-radar/actions/workflows/ci.yml)
 [
 ![npm version](https://img.shields.io/npm/v/%40heripo%2Fresearch-radar?logo=npm&color=cb0000)
 ](https://www.npmjs.com/package/@heripo/research-radar)
-![license](https://img.shields.io/github/license/kimhongyeon/heripo-research-radar)
+![license](https://img.shields.io/github/license/heripo-lab/heripo-research-radar)
 ![node](https://img.shields.io/badge/node-%3E%3D22-brightgreen)
 
 [행동 강령](./CODE_OF_CONDUCT.md) • [보안 정책](./SECURITY.md) • [기여 가이드](./CONTRIBUTING.md)
 
 ## 이게 뭔가요?
 
-한국 문화유산 분야를 위한 AI 기반 뉴스레터 서비스입니다. [`@llm-newsletter-kit/core`](https://github.com/kimhongyeon/llm-newsletter-kit-core)를 기반으로 만들어진 **실제 운영 서비스**([heripo.com](https://heripo.com/research-radar/subscribe))이자, LLM으로 자동화된 뉴스레터를 만드는 방법을 보여주는 **참조 구현**입니다.
+한국 문화유산 분야를 위한 AI 기반 뉴스레터 서비스입니다. [`@llm-newsletter-kit/core`](https://github.com/heripo-lab/llm-newsletter-kit-core)를 기반으로 만들어진 **실제 운영 서비스**([heripo.com](https://heripo.com/research-radar/subscribe))이자, LLM으로 자동화된 뉴스레터를 만드는 방법을 보여주는 **참조 구현**입니다.
 
 **운영 메트릭**:
 - **비용**: 발행당 $0.2-1
@@ -27,7 +27,7 @@
 - LLM 기반 분석 (GPT-5 모델)
 - 재시도, 체인 옵션, 미리보기 이메일 내장
 
-**링크**: [라이브 서비스](https://heripo.com/research-radar/subscribe) • [뉴스레터 예시](https://heripo.com/research-radar-newsletter-example.html) • [Core 엔진](https://github.com/kimhongyeon/llm-newsletter-kit-core)
+**링크**: [라이브 서비스](https://heripo.com/research-radar/subscribe) • [뉴스레터 예시](https://heripo.com/research-radar-newsletter-example.html) • [Core 엔진](https://github.com/heripo-lab/llm-newsletter-kit-core)
 
 ## 배경
 
@@ -54,11 +54,11 @@ Powered by LLM Newsletter Kit
 학술 논문에서 인용하시는 경우:
 
 ```bibtex
-@software{llm_newsletter_kit,
+@software{heripo research radar,
   author = {Kim, Hongyeon},
-  title = {LLM Newsletter Kit: AI-Powered Newsletter Automation Framework},
+  title = {heripo research radar},
   year = {2025},
-  url = {https://github.com/kimhongyeon/heripo-research-radar},
+  url = {https://github.com/heripo-lab/heripo-research-radar},
   note = {Apache License 2.0}
 }
 ```
@@ -125,7 +125,7 @@ const newsletterId = await generateNewsletter({
 3. **생성**: 고득점 기사로 뉴스레터 작성
 4. **저장**: 뉴스레터 저장 및 미리보기 전송 (선택)
 
-`@llm-newsletter-kit/core`의 **Provider-Service 패턴**을 사용합니다. 자세한 흐름 다이어그램은 [core 문서](https://github.com/kimhongyeon/llm-newsletter-kit-core#architecture--flow)를 참고하세요.
+`@llm-newsletter-kit/core`의 **Provider-Service 패턴**을 사용합니다. 자세한 흐름 다이어그램은 [core 문서](https://github.com/heripo-lab/llm-newsletter-kit-core#architecture--flow)를 참고하세요.
 
 ## 구성 요소
 
@@ -227,5 +227,5 @@ OpenAI 대신 Anthropic/Gemini/Ollama를 사용하려면:
 
 ## 관련 프로젝트
 
-- [`@llm-newsletter-kit/core`](https://github.com/kimhongyeon/llm-newsletter-kit-core) — 도메인 독립적인 뉴스레터 엔진
+- [`@llm-newsletter-kit/core`](https://github.com/heripo-lab/llm-newsletter-kit-core) — 도메인 독립적인 뉴스레터 엔진
 - [대형 언어 모델(LLM)을 활용한 고고학 정보화 연구](https://poc.heripo.com) — 학술 연구
