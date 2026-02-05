@@ -54,23 +54,24 @@ export const parseNrichMajorEventList = (
   const $ = cheerio.load(html);
   const posts: ParsedTargetListItem[] = [];
 
-  $('ul.event-list li a').each((index, element) => {
-    const uniqId = getUniqIdFromNrichMajorEvent($(element));
+  $('ul.list-body li').each((index, element) => {
+    const linkElement = $(element).find('a[onclick]').first();
+    const uniqId = getUniqIdFromNrichMajorEvent(linkElement);
     const detailUrl = `https://www.nrich.go.kr/kor/majorView.do?menuIdx=286&bbs_idx=${uniqId}`;
 
-    const title = $(element)
-      .find('strong')
-      .clone()
-      .children('span')
-      .remove()
-      .end()
-      .text()
-      .trim();
+    const title = $(element).find('.info-tit strong.tit').text().trim();
 
-    const dateSplit = getDate(
-      $(element).find('span.date').text().replaceAll('행사기간 : ', '').trim(),
-    ).split(' ~ ');
+    let dateText = '';
+    $(element)
+      .find('.info-detail .detail-box')
+      .each((i, box) => {
+        const boxTitle = $(box).find('span.tit').text().trim();
+        if (boxTitle === '행사기간') {
+          dateText = $(box).find('span.cont').text().trim();
+        }
+      });
 
+    const dateSplit = getDate(dateText).split(' ~ ');
     const startDate = dateSplit[0];
     const endDate = dateSplit[1];
     const hasEndDate = startDate !== endDate;
@@ -182,9 +183,7 @@ export const parseNrichMajorEventDetail = (
 ): ParsedTargetDetail => {
   const $ = cheerio.load(html);
 
-  const trList = $('table.table-view tbody tr');
-
-  const content = trList.eq(4).find('td');
+  const content = $('.view-content');
 
   return {
     detailContent: new TurndownService().turndown(content.html() ?? ''),
