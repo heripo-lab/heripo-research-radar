@@ -95,13 +95,8 @@ export const parseNrichJournalList = (html: string): ParsedTargetListItem[] => {
   const posts: ParsedTargetListItem[] = [];
   const baseUrl = 'https://www.nrich.go.kr';
 
-  $('table.table-list tbody tr').each((index, element) => {
-    const columns = $(element).find('td');
-    if (columns.length === 0) {
-      return;
-    }
-
-    const titleElement = columns.eq(1).find('a');
+  $('ul.list-body li').each((index, element) => {
+    const titleElement = $(element).find('.col2 a.cont-link');
     const relativeHref = titleElement.attr('href');
 
     if (!relativeHref) {
@@ -110,11 +105,10 @@ export const parseNrichJournalList = (html: string): ParsedTargetListItem[] => {
 
     const fullUrl = new URL(`${relativeHref}`, baseUrl);
     const detailUrl = fullUrl.href;
-    const uniqId = fullUrl.searchParams.get('bbs_idx') ?? undefined;
+    const uniqId = fullUrl.searchParams.get('idx') ?? undefined;
 
-    const title =
-      titleElement.attr('title')?.trim() ?? titleElement.text()?.trim() ?? '';
-    const date = getDate(columns.eq(2).text().trim());
+    const title = titleElement.text()?.trim() ?? '';
+    const date = getDate($(element).find('.col3 .cont-txt').text().trim());
 
     posts.push({
       uniqId,
@@ -198,17 +192,12 @@ export const parseNrichJournalDetail = (html: string): ParsedTargetDetail => {
 
   const articles: string[] = [];
 
-  // 테이블의 각 행을 순회하면서 논문 정보 추출
-  $('table.table-list tbody tr').each((index, element) => {
-    const columns = $(element).find('td');
-    if (columns.length === 0) {
-      return;
-    }
-
-    const number = columns.eq(0).text().trim();
-    const titleElement = columns.eq(1).find('a');
+  // 리스트의 각 항목을 순회하면서 논문 정보 추출
+  $('ul.list-body li').each((index, element) => {
+    const number = $(element).find('.col1 .cont-txt').text().trim();
+    const titleElement = $(element).find('.col2 a.cont-link');
     const title = titleElement.text().trim();
-    const author = columns.eq(2).text().trim();
+    const author = $(element).find('.col3 .cont-txt').text().trim();
 
     if (title && author) {
       articles.push(`${number}. **${title}**\n   저자: ${author}`);
