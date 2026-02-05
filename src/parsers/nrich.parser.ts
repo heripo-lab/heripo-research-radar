@@ -15,13 +15,12 @@ export const parseNrichNoticeList = (html: string): ParsedTargetListItem[] => {
   const posts: ParsedTargetListItem[] = [];
   const baseUrl = 'https://www.nrich.go.kr';
 
-  $('table.table-list tbody tr').each((index, element) => {
-    const columns = $(element).find('td');
-    if (columns.length === 0) {
+  $('ul.list-body li').each((index, element) => {
+    if ($(element).hasClass('bg-notice')) {
       return;
     }
 
-    const titleElement = columns.eq(1).find('a');
+    const titleElement = $(element).find('.col2 a.cont-link');
     const relativeHref = titleElement.attr('href');
 
     if (!relativeHref) {
@@ -32,17 +31,18 @@ export const parseNrichNoticeList = (html: string): ParsedTargetListItem[] => {
     const detailUrl = fullUrl.href;
     const uniqId = fullUrl.searchParams.get('bbs_idx') ?? undefined;
 
-    const title =
-      titleElement.attr('title')?.trim() ?? titleElement.text()?.trim() ?? '';
-    const date = getDate(columns.eq(3).text().trim());
+    const title = titleElement.text()?.trim() ?? '';
+    const date = getDate($(element).find('.col5 .cont-txt').text().trim());
 
-    posts.push({
-      uniqId,
-      title,
-      date,
-      detailUrl: cleanUrl(detailUrl),
-      dateType: DateType.REGISTERED,
-    });
+    if (posts.length < 10) {
+      posts.push({
+        uniqId,
+        title,
+        date,
+        detailUrl: cleanUrl(detailUrl),
+        dateType: DateType.REGISTERED,
+      });
+    }
   });
 
   return posts;
@@ -168,13 +168,11 @@ export const parseNrichPortalList = (html: string): ParsedTargetListItem[] => {
 export const parseNrichNoticeDetail = (html: string): ParsedTargetDetail => {
   const $ = cheerio.load(html);
 
-  const trList = $('table.table-view tbody tr');
-
-  const content = trList.eq(3).find('td');
+  const content = $('.view-content .info-txt');
 
   return {
     detailContent: new TurndownService().turndown(content.html() ?? ''),
-    hasAttachedFile: trList.length > 4,
+    hasAttachedFile: $('.board-file').length > 0,
     hasAttachedImage: content.find('img').length > 0,
   };
 };
