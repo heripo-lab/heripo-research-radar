@@ -42,6 +42,7 @@
   "author": "kimhongyeon",
   "license": "Apache-2.0",
   "dependencies": {
+    "@ai-sdk/google": "^3.0.22",
     "@ai-sdk/openai": "^3.0.25",
     "cheerio": "^1.2.0",
     "turndown": "^7.2.2"

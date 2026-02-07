@@ -1,4 +1,4 @@
-import type { OpenAIProvider } from '@ai-sdk/openai';
+import type { GoogleGenerativeAIProvider } from '@ai-sdk/google';
 import type {
   ArticleForGenerateContent,
   ContentGenerateProvider as CoreContentGenerateProvider,
@@ -18,21 +18,21 @@ import { crawlingTargetGroups, llmConfig, newsletterConfig } from '../config';
 
 /**
  * Content generation provider implementation
- * - LLM-based newsletter content generation
+ * - LLM-based newsletter content generation (Google Generative AI)
  * - HTML template provisioning
  * - Newsletter persistence
  */
 export class ContentGenerateProvider implements CoreContentGenerateProvider {
   private _issueOrder: number | null = null;
 
-  model: ReturnType<OpenAIProvider>;
+  model: ReturnType<GoogleGenerativeAIProvider>;
 
   constructor(
-    private readonly openai: OpenAIProvider,
+    private readonly google: GoogleGenerativeAIProvider,
     private readonly articleRepository: ArticleRepository,
     private readonly newsletterRepository: NewsletterRepository,
   ) {
-    this.model = this.openai('gpt-5.1');
+    this.model = this.google('gemini-3-pro-preview');
   }
 
   /** LLM temperature setting for content generation */
