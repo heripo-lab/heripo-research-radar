@@ -37,7 +37,8 @@
     "lint:ci": "eslint --quiet ./src",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,css,md,mdx}\"",
-    "dev:crawler": "tsx watch dev-tools/crawler-debugger/server.ts"
+    "dev:crawler": "tsx watch dev-tools/crawler-debugger/server.ts",
+    "dev:newsletter-preview": "tsx watch dev-tools/newsletter-preview/server.ts"
   },
   "author": "kimhongyeon",
   "license": "Apache-2.0",

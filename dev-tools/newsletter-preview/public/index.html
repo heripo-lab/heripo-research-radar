@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Newsletter Preview</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Newsletter Preview</h1>
+      <p class="subtitle">Preview the newsletter template with sample content</p>
+    </header>
+
+    <!-- Controls -->
+    <section class="card">
+      <div class="controls-row">
+        <div class="control-group">
+          <label>Viewport</label>
+          <div class="btn-group" id="viewportGroup">
+            <button class="btn btn-group-item active" data-width="1024">Desktop</button>
+            <button class="btn btn-group-item" data-width="768">Tablet</button>
+            <button class="btn btn-group-item" data-width="375">Mobile</button>
+          </div>
+        </div>
+        <div class="control-group">
+          <label>Template</label>
+          <div class="btn-group" id="templateGroup">
+            <button class="btn btn-group-item active" data-template="default">Default</button>
+            <button class="btn btn-group-item" data-template="kras">KRAS</button>
+          </div>
+        </div>
+        <div class="control-group">
+          <label>Theme</label>
+          <div class="btn-group" id="themeGroup">
+            <button class="btn btn-group-item active" data-theme="light">Light</button>
+            <button class="btn btn-group-item" data-theme="dark">Dark</button>
+          </div>
+        </div>
+        <div class="control-actions">
+          <button id="viewSourceBtn" class="btn btn-secondary">View Source</button>
+          <button id="refreshBtn" class="btn btn-primary">Refresh</button>
+        </div>
+      </div>
+      <div class="controls-row options-row">
+        <label class="checkbox-label">
+          <input type="checkbox" id="krasNewsCheck">
+          krasNewsMarkdown
+        </label>
+        <label class="checkbox-label">
+          <input type="checkbox" id="heripolabNewsCheck">
+          heripolabNewsMarkdown
+        </label>
+      </div>
+    </section>
+
+    <!-- Preview -->
+    <section class="preview-container">
+      <iframe id="previewFrame" class="preview-frame"></iframe>
+    </section>
+  </div>
+
+  <!-- HTML Source Modal -->
+  <div id="htmlModal" class="modal" hidden>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>HTML Source</h3>
+        <button id="closeModalBtn" class="btn-close">&times;</button>
+      </div>
+      <pre id="htmlContent"></pre>
+    </div>
+  </div>
+
+  <script>
+    // State
+    let currentHtml = '';
+    let viewportWidth = 1024;
+    let theme = 'light';
+    let template = 'default';
+
+    // DOM Elements
+    const previewFrame = document.getElementById('previewFrame');
+    const viewSourceBtn = document.getElementById('viewSourceBtn');
+    const refreshBtn = document.getElementById('refreshBtn');
+    const htmlModal = document.getElementById('htmlModal');
+    const htmlContent = document.getElementById('htmlContent');
+    const closeModalBtn = document.getElementById('closeModalBtn');
+    const viewportBtns = document.querySelectorAll('#viewportGroup .btn-group-item');
+    const templateBtns = document.querySelectorAll('#templateGroup .btn-group-item');
+    const themeBtns = document.querySelectorAll('#themeGroup .btn-group-item');
+    const krasNewsCheck = document.getElementById('krasNewsCheck');
+    const heripolabNewsCheck = document.getElementById('heripolabNewsCheck');
+
+    async function loadPreview() {
+      try {
+        const query = new URLSearchParams();
+        if (template === 'kras') query.set('kras', 'true');
+        if (krasNewsCheck.checked) query.set('krasNews', 'true');
+        if (heripolabNewsCheck.checked) query.set('heripolabNews', 'true');
+        const qs = query.toString();
+        const response = await fetch('/api/preview' + (qs ? '?' + qs : ''));
+        currentHtml = await response.text();
+        renderPreview();
+      } catch (error) {
+        console.error('Failed to load preview:', error);
+      }
+    }
+
+    function extractDarkBlock(html) {
+      // Find @media (prefers-color-scheme: dark) { ... } with brace counting
+      const marker = '@media (prefers-color-scheme: dark)';
+      const idx = html.indexOf(marker);
+      if (idx === -1) return { before: html, darkInner: '', after: '' };
+
+      // Find the opening brace
+      const openBrace = html.indexOf('{', idx + marker.length);
+      if (openBrace === -1) return { before: html, darkInner: '', after: '' };
+
+      // Count braces to find matching close
+      let depth = 1;
+      let i = openBrace + 1;
+      while (i < html.length && depth > 0) {
+        if (html[i] === '{') depth++;
+        else if (html[i] === '}') depth--;
+        i++;
+      }
+
+      return {
+        before: html.slice(0, idx),
+        darkInner: html.slice(openBrace + 1, i - 1),
+        after: html.slice(i),
+      };
+    }
+
+    function applyTheme(html) {
+      const { before, darkInner, after } = extractDarkBlock(html);
+
+      if (theme === 'light') {
+        // Strip dark media query + force light color-scheme on html & meta
+        let result = before + after;
+        result = result.replace(
+          'style="color-scheme: light dark; supported-color-schemes: light dark;"',
+          'style="color-scheme: light !important;"',
+        );
+        result = result.replace(
+          '<meta name="color-scheme" content="light dark">',
+          '<meta name="color-scheme" content="light">',
+        );
+        return result;
+      } else {
+        // Apply dark styles unconditionally + force dark color-scheme
+        let result = before + darkInner + after;
+        result = result.replace(
+          'style="color-scheme: light dark; supported-color-schemes: light dark;"',
+          'style="color-scheme: dark !important;"',
+        );
+        result = result.replace(
+          '<meta name="color-scheme" content="light dark">',
+          '<meta name="color-scheme" content="dark">',
+        );
+        return result;
+      }
+    }
+
+    function renderPreview() {
+      const html = applyTheme(currentHtml);
+
+      const doc = previewFrame.contentDocument || previewFrame.contentWindow.document;
+      doc.open();
+      doc.write(html);
+      doc.close();
+      previewFrame.style.width = viewportWidth + 'px';
+    }
+
+    function setViewport(width) {
+      viewportWidth = width;
+      viewportBtns.forEach(btn => {
+        btn.classList.toggle('active', Number(btn.dataset.width) === width);
+      });
+      previewFrame.style.width = width + 'px';
+    }
+
+    function setTemplate(newTemplate) {
+      template = newTemplate;
+      templateBtns.forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.template === newTemplate);
+      });
+      loadPreview();
+    }
+
+    function setTheme(newTheme) {
+      theme = newTheme;
+      themeBtns.forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.theme === newTheme);
+      });
+      renderPreview();
+    }
+
+    // Event Listeners
+    viewportBtns.forEach(btn => {
+      btn.addEventListener('click', () => setViewport(Number(btn.dataset.width)));
+    });
+
+    templateBtns.forEach(btn => {
+      btn.addEventListener('click', () => setTemplate(btn.dataset.template));
+    });
+
+    themeBtns.forEach(btn => {
+      btn.addEventListener('click', () => setTheme(btn.dataset.theme));
+    });
+
+    krasNewsCheck.addEventListener('change', loadPreview);
+    heripolabNewsCheck.addEventListener('change', loadPreview);
+
+    viewSourceBtn.addEventListener('click', () => {
+      htmlContent.textContent = currentHtml;
+      htmlModal.hidden = false;
+    });
+
+    refreshBtn.addEventListener('click', loadPreview);
+
+    closeModalBtn.addEventListener('click', () => htmlModal.hidden = true);
+
+    htmlModal.addEventListener('click', (e) => {
+      if (e.target === htmlModal) {
+        htmlModal.hidden = true;
+      }
+    });
+
+    // Initialize
+    loadPreview();
+  </script>
+</body>
+</html>
