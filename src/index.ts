@@ -9,6 +9,7 @@ export {
 export type {
   ArticleRepository,
   NewsletterRepository,
+  NewsletterTemplateOptions,
   TagRepository,
   TaskRepository,
 } from './types/dependencies';

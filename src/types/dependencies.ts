@@ -83,6 +83,32 @@ export interface TagRepository {
 }
 
 /**
+ * Template customization options for newsletter HTML generation
+ *
+ * These options allow customizing the newsletter template with additional
+ * content sections and variant-specific rendering.
+ */
+export interface NewsletterTemplateOptions {
+  /**
+   * When true, renders the newsletter in KRAS (Korean Archaeological Society) variant.
+   * This flag controls template-level branching for KRAS-specific layout and content.
+   */
+  isKrasNewsletter?: boolean;
+
+  /**
+   * Markdown content for KRAS news section.
+   * Converted to HTML and injected into the newsletter template.
+   */
+  krasNewsMarkdown?: string;
+
+  /**
+   * Markdown content for heripo lab news section.
+   * Converted to HTML and injected into the newsletter template.
+   */
+  heripolabNewsMarkdown?: string;
+}
+
+/**
  * Repository interface for newsletter management
  */
 export interface NewsletterRepository {

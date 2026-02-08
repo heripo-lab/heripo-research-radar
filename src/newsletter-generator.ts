@@ -16,6 +16,7 @@ import type {
 import type {
   ArticleRepository,
   NewsletterRepository,
+  NewsletterTemplateOptions,
   TagRepository,
   TaskRepository,
 } from './types/dependencies';
@@ -80,6 +81,9 @@ export interface NewsletterGeneratorDependencies {
    * @example "2025-02-12"
    */
   publishDate?: string;
+
+  /** Newsletter template customization options (optional) */
+  templateOptions?: NewsletterTemplateOptions;
 }
 
 /**
@@ -135,6 +139,7 @@ function createNewsletterGenerator(
     google,
     dependencies.articleRepository,
     dependencies.newsletterRepository,
+    dependencies.templateOptions,
   );
 
   return new GenerateNewsletter({
