@@ -15,12 +15,34 @@ export class DateService implements CoreDateService {
   /**
    * @param publishDate - Optional ISO date string (YYYY-MM-DD) to use instead of current date.
    *                       When provided, the newsletter will use this date as its publication date.
+   * @throws {Error} If publishDate is not in YYYY-MM-DD format or is not a real calendar date.
    */
   constructor(publishDate?: string) {
-    // When publishDate is provided, create date at KST midnight to avoid timezone shifts
-    this.targetDate = publishDate
-      ? new Date(publishDate + 'T00:00:00+09:00')
-      : new Date();
+    if (publishDate !== undefined) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(publishDate)) {
+        throw new Error(
+          `Invalid publishDate format: "${publishDate}". Expected YYYY-MM-DD (e.g., "2025-02-12").`,
+        );
+      }
+
+      const date = new Date(publishDate + 'T00:00:00+09:00');
+
+      // Round-trip check: format back to YYYY-MM-DD in KST and compare.
+      // Catches invalid dates like "2025-02-30" that JS silently normalizes to "2025-03-02".
+      const roundTrip = date.toLocaleDateString('en-CA', {
+        timeZone: 'Asia/Seoul',
+      });
+
+      if (roundTrip !== publishDate) {
+        throw new Error(
+          `Invalid publishDate: "${publishDate}" is not a real calendar date.`,
+        );
+      }
+
+      this.targetDate = date;
+    } else {
+      this.targetDate = new Date();
+    }
   }
 
   /**
