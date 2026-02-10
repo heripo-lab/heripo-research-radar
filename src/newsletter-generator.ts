@@ -72,6 +72,14 @@ export interface NewsletterGeneratorDependencies {
 
   /** Preview email configuration (optional) */
   previewNewsletter?: PreviewNewsletterOptions;
+
+  /**
+   * Publication date override in ISO format (optional).
+   * When provided, this date is used as the newsletter's publication date instead of the current date.
+   * Useful for generating a newsletter today but publishing it on a future date.
+   * @example "2025-02-12"
+   */
+  publishDate?: string;
 }
 
 /**
@@ -111,7 +119,7 @@ function createNewsletterGenerator(
     apiKey: dependencies.googleGenerativeAIApiKey,
   });
 
-  const dateService = new DateService();
+  const dateService = new DateService(dependencies.publishDate);
 
   const taskService = new TaskService(dependencies.taskRepository);
 
