@@ -97,13 +97,18 @@ interface BaseNewsletterTemplateOptions {
    * Converted to HTML and injected into the newsletter template.
    */
   heripolabNewsMarkdown?: string;
+
+  /**
+   * Display date string for the newsletter header (e.g. "2026년 2월 12일").
+   * Injected from DateService.getDisplayDateString() at generation time.
+   */
+  displayDate?: string;
 }
 
 /**
  * Template options for the default (heripo) newsletter variant.
  */
-interface DefaultNewsletterTemplateOptions
-  extends BaseNewsletterTemplateOptions {
+interface DefaultNewsletterTemplateOptions extends BaseNewsletterTemplateOptions {
   isKrasNewsletter?: false;
 }
 

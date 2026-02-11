@@ -4,6 +4,17 @@
  * These helpers extract identical HTML blocks to avoid duplication
  * while keeping template-specific styling separate.
  */
+import DOMPurify from 'dompurify';
+import { JSDOM } from 'jsdom';
+
+const purify = DOMPurify(new JSDOM('').window);
+
+/**
+ * Sanitize user-supplied strings for safe HTML insertion.
+ * Strips all HTML tags, leaving only plain text.
+ */
+export const sanitizeText = (str: string): string =>
+  purify.sanitize(str, { ALLOWED_TAGS: [] });
 
 /**
  * Heripo light/dark logo block.

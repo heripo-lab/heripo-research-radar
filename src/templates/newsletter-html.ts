@@ -453,7 +453,7 @@ export const createNewsletterHtmlTemplate = (
                   한국고고학회 뉴스레터
                 </td>
                 <td align="left" valign="baseline" class="header-dark-text" style="text-align: left; padding: 0 0 14px 0; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 24px; color: #333333; white-space: nowrap; border: none; width: 1px;" width="1">
-                  2026년 2월 6일
+                  ${options?.displayDate ?? ''}
                 </td>
               </tr>
             </table>            

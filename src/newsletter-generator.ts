@@ -13,6 +13,7 @@ import type {
   Newsletter,
 } from '@llm-newsletter-kit/core';
 
+import type { ContentOptions } from './config';
 import type {
   ArticleRepository,
   NewsletterRepository,
@@ -24,8 +25,6 @@ import type {
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { createOpenAI } from '@ai-sdk/openai';
 import { GenerateNewsletter } from '@llm-newsletter-kit/core';
-
-import type { ContentOptions } from './config';
 
 import { contentOptions, llmConfig, newsletterConfig } from './config';
 import { AnalysisProvider } from './providers/analysis.provider';
@@ -137,8 +136,14 @@ function createNewsletterGenerator(
     dependencies.tagRepository,
   );
 
-  // Build dynamic contentOptions and brandName based on KRAS mode
-  const templateOptions = dependencies.templateOptions;
+  // Inject display date from DateService into template options
+  const templateOptions: NewsletterTemplateOptions | undefined =
+    dependencies.templateOptions
+      ? {
+          ...dependencies.templateOptions,
+          displayDate: dateService.getDisplayDateString(),
+        }
+      : undefined;
   let resolvedContentOptions: ContentOptions = { ...contentOptions };
   let resolvedBrandName = newsletterConfig.brandName;
 

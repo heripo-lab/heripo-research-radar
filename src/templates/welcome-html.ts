@@ -7,6 +7,7 @@ import {
   krasHeaderHtml,
   platformIntroHtml,
   poweredByFooterHtml,
+  sanitizeText,
 } from './shared';
 
 /**
@@ -38,11 +39,12 @@ export function generateWelcomeHTML(
 ): string {
   const isKras = options?.isKrasNewsletter ?? false;
   const siteUrl = options?.siteUrl ?? 'https://heripo.com';
+  const safeName = sanitizeText(name);
   const unsubscribeUrl = isKras
     ? '{{{RESEND_UNSUBSCRIBE_URL}}}'
     : `${siteUrl}/research-radar/unsubscribe?id=${id}`;
 
-  return juice(createWelcomeHtmlRaw(name, isKras, siteUrl, unsubscribeUrl));
+  return juice(createWelcomeHtmlRaw(safeName, isKras, siteUrl, unsubscribeUrl));
 }
 
 function createWelcomeHtmlRaw(
@@ -241,9 +243,13 @@ ${headerHtml}
             <p style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.7; color: #444444; margin: 0 0 18px 0;"><strong style="color: #D2691E; font-weight: bold;">"이런 기능이 있다면 좋겠다"</strong> 혹은 <strong style="color: #D2691E; font-weight: bold;">"이런 점은 불편하다"</strong>와 같은 의견을 언제든 보내주세요.</p>
 
             <p style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.7; color: #444444; margin: 0 0 18px 0;">여러분의 피드백 하나하나가 ${feedbackText}의 다음 발걸음을 결정합니다.</p>
-${isKras ? `
+${
+  isKras
+    ? `
             <p style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.7; color: #444444; margin: 0 0 18px 0;"><strong><a href="https://github.com/heripo-lab" target="_blank">heripo lab</a></strong>은 한국고고학회와 함께 뉴스레터 발행 및 고고학의 디지털 전환을 추진하고 있습니다. 앞으로도 연구 현장에 실질적으로 도움이 되는 정보와 기술을 제공해 드리겠습니다.</p>
-` : ''}
+`
+    : ''
+}
             <hr style="border: 0; border-top: 1px solid #e5e7eb; margin: 28px 0 20px;">
 
             <h2 style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 24px; font-weight: bold; line-height: 1.3; color: #D2691E; margin: 0 0 15px 0; letter-spacing: -0.2px; border-left: 5px solid #D2691E; padding-left: 12px; background: #fff7f2;">🔍 heripo(헤리포) 플랫폼 소개</h2>
