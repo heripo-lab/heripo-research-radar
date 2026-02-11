@@ -25,7 +25,9 @@ import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { createOpenAI } from '@ai-sdk/openai';
 import { GenerateNewsletter } from '@llm-newsletter-kit/core';
 
-import { contentOptions, llmConfig } from './config';
+import type { ContentOptions } from './config';
+
+import { contentOptions, llmConfig, newsletterConfig } from './config';
 import { AnalysisProvider } from './providers/analysis.provider';
 import { ContentGenerateProvider } from './providers/content-generate.provider';
 import { CrawlingProvider } from './providers/crawling.provider';
@@ -135,15 +137,31 @@ function createNewsletterGenerator(
     dependencies.tagRepository,
   );
 
+  // Build dynamic contentOptions and brandName based on KRAS mode
+  const templateOptions = dependencies.templateOptions;
+  let resolvedContentOptions: ContentOptions = { ...contentOptions };
+  let resolvedBrandName = newsletterConfig.brandName;
+
+  if (templateOptions?.isKrasNewsletter) {
+    resolvedContentOptions = {
+      ...resolvedContentOptions,
+      expertField: ['고고학 우선적 문화유산'],
+      freeFormIntro: true,
+      titleContext: templateOptions.titleContext || undefined,
+    };
+    resolvedBrandName = '한국고고학회 뉴스레터';
+  }
+
   const contentGenerateProvider = new ContentGenerateProvider(
     google,
     dependencies.articleRepository,
     dependencies.newsletterRepository,
-    dependencies.templateOptions,
+    templateOptions,
+    resolvedBrandName,
   );
 
   return new GenerateNewsletter({
-    contentOptions,
+    contentOptions: resolvedContentOptions,
     dateService,
     taskService,
     crawlingProvider,

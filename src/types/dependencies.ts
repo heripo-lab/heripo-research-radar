@@ -83,18 +83,9 @@ export interface TagRepository {
 }
 
 /**
- * Template customization options for newsletter HTML generation
- *
- * These options allow customizing the newsletter template with additional
- * content sections and variant-specific rendering.
+ * Base template options shared by all newsletter variants.
  */
-export interface NewsletterTemplateOptions {
-  /**
-   * When true, renders the newsletter in KRAS (Korean Archaeological Society) variant.
-   * This flag controls template-level branching for KRAS-specific layout and content.
-   */
-  isKrasNewsletter?: boolean;
-
+interface BaseNewsletterTemplateOptions {
   /**
    * Markdown content for KRAS news section.
    * Converted to HTML and injected into the newsletter template.
@@ -107,6 +98,43 @@ export interface NewsletterTemplateOptions {
    */
   heripolabNewsMarkdown?: string;
 }
+
+/**
+ * Template options for the default (heripo) newsletter variant.
+ */
+interface DefaultNewsletterTemplateOptions
+  extends BaseNewsletterTemplateOptions {
+  isKrasNewsletter?: false;
+}
+
+/**
+ * Template options for the KRAS (Korean Archaeological Society) newsletter variant.
+ *
+ * When isKrasNewsletter is true, additional KRAS-specific options become available:
+ * - titleContext: Context string to prioritize in newsletter title generation
+ */
+interface KrasNewsletterTemplateOptions extends BaseNewsletterTemplateOptions {
+  isKrasNewsletter: true;
+
+  /**
+   * Context string to prioritize when generating the newsletter title.
+   * Only available in KRAS mode. When provided, the LLM will consider this value
+   * as the top priority along with the generated newsletter content for title creation.
+   * An empty string is treated as undefined (no context).
+   */
+  titleContext?: string;
+}
+
+/**
+ * Template customization options for newsletter HTML generation.
+ *
+ * Uses a discriminated union on `isKrasNewsletter`:
+ * - When `isKrasNewsletter` is `true`: KRAS-specific options (titleContext) are available.
+ * - When `isKrasNewsletter` is `false` or omitted: Only base options are available.
+ */
+export type NewsletterTemplateOptions =
+  | DefaultNewsletterTemplateOptions
+  | KrasNewsletterTemplateOptions;
 
 /**
  * Repository interface for newsletter management

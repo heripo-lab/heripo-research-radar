@@ -1,7 +1,26 @@
+import type { GenerateNewsletterConfig } from '@llm-newsletter-kit/core';
+
+/**
+ * Content options type extracted from core GenerateNewsletterConfig
+ */
+export type ContentOptions = GenerateNewsletterConfig<any>['contentOptions'];
+
+/**
+ * Newsletter brand configuration type
+ */
+export interface NewsletterConfig {
+  brandName: string;
+  subscribePageUrl: string;
+  publicationCriteria: {
+    minimumArticleCountForIssue: number;
+    priorityArticleScoreThreshold: number;
+  };
+}
+
 /**
  * Newsletter content configuration
  */
-export const contentOptions = {
+export const contentOptions: ContentOptions = {
   outputLanguage: '한국어',
   expertField: ['문화유산'],
 };
@@ -9,7 +28,7 @@ export const contentOptions = {
 /**
  * Newsletter brand configuration
  */
-export const newsletterConfig = {
+export const newsletterConfig: NewsletterConfig = {
   brandName: '문화유산 리서치 레이더',
   subscribePageUrl: 'https://heripo.com/research-radar/subscribe',
   publicationCriteria: {
