@@ -137,6 +137,20 @@ export type NewsletterTemplateOptions =
   | KrasNewsletterTemplateOptions;
 
 /**
+ * Options for generating the welcome email HTML.
+ *
+ * When `isKrasNewsletter` is `true`, KRAS-specific branding and content are applied.
+ * When `isKrasNewsletter` is `false` or omitted, standard heripo branding is used.
+ */
+export interface WelcomeTemplateOptions {
+  /** When true, apply KRAS (Korean Archaeological Society) branding */
+  isKrasNewsletter?: boolean;
+
+  /** Site base URL for constructing links (default: 'https://heripo.com') */
+  siteUrl?: string;
+}
+
+/**
  * Repository interface for newsletter management
  */
 export interface NewsletterRepository {

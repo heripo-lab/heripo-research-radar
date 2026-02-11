@@ -38,7 +38,8 @@
     "typecheck": "tsc --noEmit",
     "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,css,md,mdx}\"",
     "dev:crawler": "tsx watch dev-tools/crawler-debugger/server.ts",
-    "dev:newsletter-preview": "tsx watch dev-tools/newsletter-preview/server.ts"
+    "dev:newsletter-preview": "tsx watch dev-tools/newsletter-preview/server.ts",
+    "dev:welcome-preview": "tsx watch dev-tools/welcome-preview/server.ts"
   },
   "author": "kimhongyeon",
   "license": "Apache-2.0",
@@ -47,6 +48,7 @@
     "@ai-sdk/openai": "^3.0.26",
     "cheerio": "^1.2.0",
     "jsdom": "^28.0.0",
+    "juice": "^11.1.1",
     "safe-markdown2html": "^1.0.0",
     "turndown": "^7.2.2"
   },
@@ -64,7 +66,6 @@
     "eslint": "^9.39.2",
     "eslint-plugin-unused-imports": "^4.3.0",
     "express": "^5.2.1",
-    "juice": "^11.1.1",
     "prettier": "^3.8.1",
     "rimraf": "^6.1.2",
     "rollup": "^4.57.1",

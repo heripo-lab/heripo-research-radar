@@ -12,7 +12,11 @@ export type {
   NewsletterTemplateOptions,
   TagRepository,
   TaskRepository,
+  WelcomeTemplateOptions,
 } from './types/dependencies';
+
+// Welcome email template export
+export { generateWelcomeHTML } from './templates/welcome-html';
 
 // Services export
 export { DateService } from './services/date.service';
