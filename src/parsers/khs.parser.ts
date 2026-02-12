@@ -120,6 +120,38 @@ export const parseKhsLawList = (html: string): ParsedTargetListItem[] => {
   return posts;
 };
 
+export const parseKhsTenderList = (html: string): ParsedTargetListItem[] => {
+  const $ = cheerio.load(html);
+  const posts: ParsedTargetListItem[] = [];
+  const baseUrl = 'https://www.khs.go.kr';
+
+  $('table.b_list tbody tr').each((index, element) => {
+    const columns = $(element).find('td');
+    if (columns.length === 0) return;
+
+    const titleElement = columns.eq(1).find('a.b_tit');
+    const relativeHref = titleElement.attr('href');
+    if (!relativeHref) return;
+
+    const fullUrl = new URL(relativeHref, baseUrl);
+    const detailUrl = fullUrl.href;
+    const uniqId = fullUrl.searchParams.get('id') ?? undefined;
+
+    const title = titleElement.text().trim();
+    const date = getDate(columns.eq(4).text().trim());
+
+    posts.push({
+      uniqId,
+      title,
+      date,
+      detailUrl: cleanUrl(detailUrl),
+      dateType: DateType.REGISTERED,
+    });
+  });
+
+  return posts;
+};
+
 export const parseKhsDetail = async (html: string) => {
   const $ = cheerio.load(html);
 

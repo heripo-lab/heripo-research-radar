@@ -37,6 +37,7 @@ import {
   parseKhsGalleryList,
   parseKhsLawList,
   parseKhsList,
+  parseKhsTenderList,
 } from '~/parsers/khs.parser';
 import { parseKrasDetail, parseKrasList } from '~/parsers/kras.parser';
 import {
@@ -478,7 +479,7 @@ export function createCrawlingTargetGroups(
         id: '국가유산청_입찰정보',
         name: '국가유산청 입찰정보',
         url: 'https://www.khs.go.kr/tenderBbz/selectTenderBbzList.do?mn=NS_01_05',
-        parseList: parseKhsList,
+        parseList: parseKhsTenderList,
         parseDetail: parseKhsDetail,
       },
       {
