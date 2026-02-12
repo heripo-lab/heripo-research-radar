@@ -85,6 +85,9 @@ export interface NewsletterGeneratorDependencies {
 
   /** Newsletter template customization options (optional) */
   templateOptions?: NewsletterTemplateOptions;
+
+  /** Custom fetch function for crawling (e.g., proxy-based fetch). Optional. */
+  customFetch?: typeof fetch;
 }
 
 /**
@@ -128,7 +131,10 @@ function createNewsletterGenerator(
 
   const taskService = new TaskService(dependencies.taskRepository);
 
-  const crawlingProvider = new CrawlingProvider(dependencies.articleRepository);
+  const crawlingProvider = new CrawlingProvider(
+    dependencies.articleRepository,
+    dependencies.customFetch,
+  );
 
   const analysisProvider = new AnalysisProvider(
     openai,

@@ -8,7 +8,7 @@ import type {
 
 import type { ArticleRepository } from '../types/dependencies';
 
-import { crawlingTargetGroups } from '~/config';
+import { createCrawlingTargetGroups } from '~/config';
 
 /**
  * Crawling provider implementation
@@ -20,10 +20,19 @@ export class CrawlingProvider implements CoreCrawlingProvider {
   /** Maximum number of concurrent crawling operations */
   maxConcurrency = 5;
 
-  constructor(private readonly articleRepository: ArticleRepository) {}
+  /** Optional custom fetch function (e.g., proxy-based fetch) */
+  customFetch?: typeof fetch;
 
   /** Crawling target groups configuration */
-  crawlingTargetGroups: CrawlingTargetGroup[] = crawlingTargetGroups;
+  crawlingTargetGroups: CrawlingTargetGroup[];
+
+  constructor(
+    private readonly articleRepository: ArticleRepository,
+    customFetch?: typeof fetch,
+  ) {
+    this.customFetch = customFetch;
+    this.crawlingTargetGroups = createCrawlingTargetGroups(customFetch);
+  }
 
   /**
    * Fetch existing articles by URLs to avoid duplicate crawling

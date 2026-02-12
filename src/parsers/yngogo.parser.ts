@@ -51,9 +51,10 @@ export const parseYngogoList = async (
   menuSeq: string,
   bbsSeq: string,
   sitecntntsSeq: string,
+  customFetch?: typeof fetch,
 ): Promise<ParsedTargetListItem[]> => {
   // Fetch from internal API (CSR workaround)
-  const response = await fetch(LIST_API_URL, {
+  const response = await (customFetch ?? fetch)(LIST_API_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
@@ -114,9 +115,10 @@ export const parseYngogoDetail = async (
   bbsSeq: string,
   nttSeq: string,
   sitecntntsSeq: string,
+  customFetch?: typeof fetch,
 ): Promise<ParsedTargetDetail> => {
   // Fetch from internal API (CSR workaround)
-  const response = await fetch(DETAIL_API_URL, {
+  const response = await (customFetch ?? fetch)(DETAIL_API_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',

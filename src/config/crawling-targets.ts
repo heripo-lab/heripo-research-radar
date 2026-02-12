@@ -61,7 +61,10 @@ import {
   parseYngogoList,
 } from '~/parsers/yngogo.parser';
 
-export const crawlingTargetGroups: CrawlingTargetGroup[] = [
+export function createCrawlingTargetGroups(
+  customFetch?: typeof fetch,
+): CrawlingTargetGroup[] {
+  return [
   {
     id: 'news',
     name: 'News',
@@ -296,7 +299,7 @@ export const crawlingTargetGroups: CrawlingTargetGroup[] = [
         name: '영남고고학회 공지사항',
         url: 'http://www.yngogo.or.kr/subList/32000001120',
         parseList: (html) =>
-          parseYngogoList(html, '32000001120', '32000001157', '32000001711'),
+          parseYngogoList(html, '32000001120', '32000001157', '32000001711', customFetch),
         parseDetail: (html) =>
           parseYngogoDetail(
             html,
@@ -304,6 +307,7 @@ export const crawlingTargetGroups: CrawlingTargetGroup[] = [
             '32000001157',
             extractNttSeq(html),
             '32000001711',
+            customFetch,
           ),
       },
       {
@@ -311,7 +315,7 @@ export const crawlingTargetGroups: CrawlingTargetGroup[] = [
         name: '영남고고학회 학계소식',
         url: 'http://www.yngogo.or.kr/subList/32000001133',
         parseList: (html) =>
-          parseYngogoList(html, '32000001133', '32000001161', '32000001715'),
+          parseYngogoList(html, '32000001133', '32000001161', '32000001715', customFetch),
         parseDetail: (html) =>
           parseYngogoDetail(
             html,
@@ -319,6 +323,7 @@ export const crawlingTargetGroups: CrawlingTargetGroup[] = [
             '32000001161',
             extractNttSeq(html),
             '32000001715',
+            customFetch,
           ),
       },
       {
@@ -326,7 +331,7 @@ export const crawlingTargetGroups: CrawlingTargetGroup[] = [
         name: '영남고고학회 현장소식',
         url: 'http://www.yngogo.or.kr/subList/32000001135',
         parseList: (html) =>
-          parseYngogoList(html, '32000001135', '32000001163', '32000001717'),
+          parseYngogoList(html, '32000001135', '32000001163', '32000001717', customFetch),
         parseDetail: (html) =>
           parseYngogoDetail(
             html,
@@ -334,6 +339,7 @@ export const crawlingTargetGroups: CrawlingTargetGroup[] = [
             '32000001163',
             extractNttSeq(html),
             '32000001717',
+            customFetch,
           ),
       },
       {
@@ -528,7 +534,7 @@ export const crawlingTargetGroups: CrawlingTargetGroup[] = [
         name: '영남고고학회 채용공고',
         url: 'http://www.yngogo.or.kr/subList/32000001136',
         parseList: (html) =>
-          parseYngogoList(html, '32000001136', '32000001164', '32000001718'),
+          parseYngogoList(html, '32000001136', '32000001164', '32000001718', customFetch),
         parseDetail: (html) =>
           parseYngogoDetail(
             html,
@@ -536,6 +542,7 @@ export const crawlingTargetGroups: CrawlingTargetGroup[] = [
             '32000001164',
             extractNttSeq(html),
             '32000001718',
+            customFetch,
           ),
       },
       {
@@ -584,4 +591,5 @@ export const crawlingTargetGroups: CrawlingTargetGroup[] = [
       // },
     ],
   },
-];
+  ];
+}

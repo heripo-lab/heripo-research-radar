@@ -51,4 +51,4 @@ export const llmConfig = {
 /**
  * Crawling target configuration
  */
-export { crawlingTargetGroups } from './crawling-targets';
+export { createCrawlingTargetGroups } from './crawling-targets';

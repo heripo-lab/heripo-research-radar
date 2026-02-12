@@ -1,8 +1,19 @@
 import express from 'express';
 import path from 'path';
+import { ProxyAgent } from 'undici';
 import { fileURLToPath } from 'url';
 
-import { crawlingTargetGroups } from '../../src/config/crawling-targets';
+import { createCrawlingTargetGroups } from '../../src/config/crawling-targets';
+
+// Create proxy fetch if PROXY_URL is set
+const PROXY_URL = process.env.PROXY_URL;
+const proxyAgent = PROXY_URL ? new ProxyAgent(PROXY_URL) : undefined;
+const proxyFetch: typeof fetch | undefined = proxyAgent
+  ? (input, init) =>
+      fetch(input, { ...init, dispatcher: proxyAgent } as RequestInit)
+  : undefined;
+
+const crawlingTargetGroups = createCrawlingTargetGroups(proxyFetch);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -47,6 +58,8 @@ async function fetchHtml(
   url: string,
   useCache: boolean = true,
 ): Promise<string> {
+  process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+
   if (useCache) {
     const cached = htmlCache.get(url);
     if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
@@ -54,7 +67,8 @@ async function fetchHtml(
     }
   }
 
-  const response = await fetch(url, {
+  const fetchFn = proxyFetch ?? fetch;
+  const response = await fetchFn(url, {
     headers: {
       'User-Agent': getRandomUserAgent(), // Randomize User-Agent
       Accept:
@@ -69,6 +83,9 @@ async function fetchHtml(
 
   const html = await response.text();
   htmlCache.set(url, { html, timestamp: Date.now() });
+
+  process.env.NODE_TLS_REJECT_UNAUTHORIZED = '1';
+
   return html;
 }
 
@@ -203,5 +220,6 @@ app.get('/api/cache-stats', (_req, res) => {
 
 app.listen(PORT, () => {
   console.log(`\n  Crawler Debugger running at:`);
-  console.log(`  http://localhost:${PORT}\n`);
+  console.log(`  http://localhost:${PORT}`);
+  console.log(`  Proxy: ${PROXY_URL ?? 'disabled'}\n`);
 });

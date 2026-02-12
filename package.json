@@ -38,6 +38,7 @@
     "typecheck": "tsc --noEmit",
     "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,css,md,mdx}\"",
     "dev:crawler": "tsx watch dev-tools/crawler-debugger/server.ts",
+    "dev:crawler:proxy": "tsx watch --env-file=dev-tools/crawler-debugger/.env dev-tools/crawler-debugger/server.ts",
     "dev:newsletter-preview": "tsx watch dev-tools/newsletter-preview/server.ts",
     "dev:welcome-preview": "tsx watch dev-tools/welcome-preview/server.ts"
   },
@@ -54,11 +55,11 @@
     "turndown": "^7.2.2"
   },
   "peerDependencies": {
-    "@llm-newsletter-kit/core": "~1.2.0"
+    "@llm-newsletter-kit/core": "~1.3.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.2",
-    "@llm-newsletter-kit/core": "^1.2.0",
+    "@llm-newsletter-kit/core": "^1.3.0",
     "@trivago/prettier-plugin-sort-imports": "^6.0.2",
     "@types/dompurify": "^3.0.5",
     "@types/express": "^5.0.6",

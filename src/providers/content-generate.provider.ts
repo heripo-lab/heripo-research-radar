@@ -15,7 +15,7 @@ import type {
 
 import { createNewsletterHtmlTemplate } from '~/templates/newsletter-html';
 
-import { crawlingTargetGroups, llmConfig, newsletterConfig } from '../config';
+import { createCrawlingTargetGroups, llmConfig, newsletterConfig } from '../config';
 
 /**
  * Content generation provider implementation
@@ -45,7 +45,7 @@ export class ContentGenerateProvider implements CoreContentGenerateProvider {
     this.newsletterBrandName = brandName ?? newsletterConfig.brandName;
     this.htmlTemplate = {
       html: createNewsletterHtmlTemplate(
-        crawlingTargetGroups.flatMap((group) => group.targets),
+        createCrawlingTargetGroups().flatMap((group) => group.targets),
         templateOptions,
       ),
       markers: {

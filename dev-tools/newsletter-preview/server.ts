@@ -3,7 +3,7 @@ import juice from 'juice';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-import { crawlingTargetGroups } from '../../src/config/crawling-targets';
+import { createCrawlingTargetGroups } from '../../src/config/crawling-targets';
 import { createNewsletterHtmlTemplate } from '../../src/templates/newsletter-html';
 import { sampleContent, sampleTitle } from './sample-content';
 
@@ -36,7 +36,7 @@ app.get('/api/preview', (req, res) => {
   if (heripolabNews)
     options.heripolabNewsMarkdown = `1월 28일 오픈소스 [heripo engine](https://github.com/heripo-lab/heripo-engine)을 공개하였습니다.`;
 
-  const targets = crawlingTargetGroups.flatMap((group) => group.targets);
+  const targets = createCrawlingTargetGroups().flatMap((group) => group.targets);
   let html = createNewsletterHtmlTemplate(
     targets,
     Object.keys(options).length > 0 ? options : undefined,
