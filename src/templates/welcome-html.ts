@@ -40,9 +40,7 @@ export function generateWelcomeHTML(
   const isKras = options?.isKrasNewsletter ?? false;
   const siteUrl = options?.siteUrl ?? 'https://heripo.com';
   const safeName = sanitizeText(name);
-  const unsubscribeUrl = isKras
-    ? '{{{RESEND_UNSUBSCRIBE_URL}}}'
-    : `${siteUrl}/research-radar/unsubscribe?id=${id}`;
+  const unsubscribeUrl = `${siteUrl}/research-radar/unsubscribe?id=${id}`;
 
   return juice(createWelcomeHtmlRaw(safeName, isKras, siteUrl, unsubscribeUrl));
 }
