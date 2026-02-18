@@ -15,7 +15,11 @@ import type {
 
 import { createNewsletterHtmlTemplate } from '~/templates/newsletter-html';
 
-import { createCrawlingTargetGroups, llmConfig, newsletterConfig } from '../config';
+import {
+  createCrawlingTargetGroups,
+  llmConfig,
+  newsletterConfig,
+} from '../config';
 
 /**
  * Content generation provider implementation
