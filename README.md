@@ -24,7 +24,7 @@ An AI-powered newsletter service for Korean cultural heritage. Built on [`@llm-n
 - Type-safe TypeScript with strict interfaces
 - Provider pattern for swapping components (Crawling/Analysis/Content/Email)
 - 66 crawling targets across heritage agencies, museums, academic societies
-- LLM-driven analysis (GPT-5 models)
+- Dual LLM providers: OpenAI GPT-5 (analysis) + Google Gemini (content generation)
 - Built-in retries, chain options, preview emails
 
 **Links**: [Live service](https://heripo.com/research-radar/subscribe) • [Newsletter example](https://heripo.com/research-radar-newsletter-example.html) • [Core engine](https://github.com/heripo-lab/llm-newsletter-kit-core)
@@ -69,7 +69,7 @@ For academic publications:
 npm install @heripo/research-radar @llm-newsletter-kit/core
 ```
 
-**Requirements**: Node.js >= 22, OpenAI API key
+**Requirements**: Node.js >= 22, OpenAI API key, Google Generative AI API key
 
 **Note**: `@llm-newsletter-kit/core` is a peer dependency and must be installed separately.
 
@@ -80,6 +80,7 @@ import { generateNewsletter } from '@heripo/research-radar';
 
 const newsletterId = await generateNewsletter({
   openAIApiKey: process.env.OPENAI_API_KEY,
+  googleGenerativeAIApiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
 
   // Implement these repository interfaces (see src/types/dependencies.ts)
   taskRepository: {
@@ -104,8 +105,11 @@ const newsletterId = await generateNewsletter({
     saveNewsletter: async (data) => db.newsletters.save(data),
   },
 
-  // Optional: Custom logger and preview
+  // Optional parameters:
   logger: console,
+  publishDate: '2026-02-20',        // Override publication date (ISO format)
+  templateOptions: { /* ... */ },    // Newsletter template customization
+  customFetch: proxyFetch,           // Custom fetch for proxy-based crawling
   previewNewsletter: {
     fetchNewsletterForPreview: async () => db.newsletters.latest(),
     emailService: resendEmailService,
@@ -135,7 +139,7 @@ Uses the **Provider-Service pattern** from `@llm-newsletter-kit/core`. See [core
 
 **Parsers** (`src/parsers/`): Custom extractors per organization
 
-**Template** (`src/templates/newsletter-html.ts`): Responsive email with light/dark mode
+**Templates** (`src/templates/`): `newsletter-html.ts` (responsive email with light/dark mode), `welcome-html.ts` (`generateWelcomeHTML()`), `shared.ts` (shared HTML components)
 
 ## Development commands
 
@@ -158,6 +162,7 @@ A web-based tool for testing crawling parsers during development. Built with Exp
 
 ```bash
 npm run dev:crawler        # Start at http://localhost:3333
+npm run dev:crawler:proxy  # Start with proxy support (uses .env)
 ```
 
 **Features**:
@@ -166,6 +171,26 @@ npm run dev:crawler        # Start at http://localhost:3333
 - Copy parsed results as JSON
 - 5-minute response cache (with skip/clear options)
 - Timing info for fetch and parse operations
+
+### Newsletter Preview
+
+Preview rendered newsletter HTML with sample content.
+
+```bash
+npm run dev:newsletter-preview  # Start at http://localhost:3334
+```
+
+Query params: `?kras=true` (KRAS mode), `?krasNews=true` (KRAS news section), `?heripolabNews=true` (heripo lab news section)
+
+### Welcome Email Preview
+
+Preview rendered welcome email HTML.
+
+```bash
+npm run dev:welcome-preview  # Start at http://localhost:3335
+```
+
+Query params: `?kras=true` (KRAS mode), `?name=홍길동` (subscriber name)
 
 ## 🤝 Contributing
 
@@ -197,14 +222,14 @@ subscribeUrl: 'https://yourdomain.com/subscribe'
 
 **4. Switch LLM provider** (optional):
 
-To use Anthropic/Gemini/Ollama instead of OpenAI:
-- `src/newsletter-generator.ts`: Change `createOpenAI()` to your provider
+Currently uses dual providers: **OpenAI** (analysis) + **Google Gemini** (content generation). To change:
+- `src/newsletter-generator.ts`: Change `createOpenAI()` / `createGoogleGenerativeAI()` to your provider
 - `src/providers/analysis.provider.ts`: Update model names (currently `gpt-5-mini`, `gpt-5.1`)
-- `src/providers/content-generate.provider.ts`: Update model name
+- `src/providers/content-generate.provider.ts`: Update model name (currently `gemini-3-pro-preview`)
 
 Any [Vercel AI SDK provider](https://sdk.vercel.ai/providers) works.
 
-**Search keywords**: `heripo`, `kimhongyeon`, `#D2691E`, `openai`, `gpt-5`
+**Search keywords**: `heripo`, `kimhongyeon`, `#D2691E`, `openai`, `gpt-5`, `google`, `GoogleGenerativeAI`, `gemini`, `createGoogleGenerativeAI`
 
 ## Why Code-Based?
 

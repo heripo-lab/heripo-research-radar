@@ -24,7 +24,7 @@
 - 엄격한 타입 시스템의 TypeScript
 - 교체 가능한 Provider 패턴 (Crawling/Analysis/Content/Email)
 - 문화유산 기관, 박물관, 학회 등 66개 크롤링 타겟
-- LLM 기반 분석 (GPT-5 모델)
+- 듀얼 LLM 프로바이더: OpenAI GPT-5 (분석) + Google Gemini (콘텐츠 생성)
 - 재시도, 체인 옵션, 미리보기 이메일 내장
 
 **링크**: [라이브 서비스](https://heripo.com/research-radar/subscribe) • [뉴스레터 예시](https://heripo.com/research-radar-newsletter-example.html) • [Core 엔진](https://github.com/heripo-lab/llm-newsletter-kit-core)
@@ -69,7 +69,7 @@ Powered by LLM Newsletter Kit
 npm install @heripo/research-radar @llm-newsletter-kit/core
 ```
 
-**요구사항**: Node.js >= 22, OpenAI API 키
+**요구사항**: Node.js >= 22, OpenAI API 키, Google Generative AI API 키
 
 **참고**: `@llm-newsletter-kit/core`는 peer dependency이므로 별도로 설치해야 합니다.
 
@@ -80,6 +80,7 @@ import { generateNewsletter } from '@heripo/research-radar';
 
 const newsletterId = await generateNewsletter({
   openAIApiKey: process.env.OPENAI_API_KEY,
+  googleGenerativeAIApiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
 
   // Repository 인터페이스 구현 (src/types/dependencies.ts 참조)
   taskRepository: {
@@ -104,8 +105,11 @@ const newsletterId = await generateNewsletter({
     saveNewsletter: async (data) => db.newsletters.save(data),
   },
 
-  // 옵션: 커스텀 로거 및 미리보기
+  // 선택적 파라미터:
   logger: console,
+  publishDate: '2026-02-20',        // 발행일 오버라이드 (ISO 형식)
+  templateOptions: { /* ... */ },    // 뉴스레터 템플릿 커스터마이징
+  customFetch: proxyFetch,           // 프록시 기반 크롤링용 커스텀 fetch
   previewNewsletter: {
     fetchNewsletterForPreview: async () => db.newsletters.latest(),
     emailService: resendEmailService,
@@ -135,7 +139,7 @@ const newsletterId = await generateNewsletter({
 
 **파서** (`src/parsers/`): 기관별 커스텀 추출기 (khs.parser.ts, museum.parser.ts 등)
 
-**템플릿** (`src/templates/newsletter-html.ts`): 라이트/다크 모드 지원 반응형 이메일
+**템플릿** (`src/templates/`): `newsletter-html.ts` (라이트/다크 모드 지원 반응형 이메일), `welcome-html.ts` (`generateWelcomeHTML()`), `shared.ts` (공유 HTML 컴포넌트)
 
 ## 개발 명령어
 
@@ -158,6 +162,7 @@ npm run format             # Prettier로 코드 포맷
 
 ```bash
 npm run dev:crawler        # http://localhost:3333 에서 시작
+npm run dev:crawler:proxy  # 프록시 지원으로 시작 (.env 사용)
 ```
 
 **기능**:
@@ -166,6 +171,26 @@ npm run dev:crawler        # http://localhost:3333 에서 시작
 - 파싱 결과를 JSON으로 복사
 - 5분 응답 캐시 (skip/clear 옵션)
 - fetch 및 parse 작업 타이밍 정보
+
+### 뉴스레터 미리보기
+
+샘플 콘텐츠로 렌더링된 뉴스레터 HTML을 미리 볼 수 있습니다.
+
+```bash
+npm run dev:newsletter-preview  # http://localhost:3334 에서 시작
+```
+
+쿼리 파라미터: `?kras=true` (KRAS 모드), `?krasNews=true` (KRAS 소식 섹션), `?heripolabNews=true` (heripo lab 소식 섹션)
+
+### 웰컴 이메일 미리보기
+
+렌더링된 웰컴 이메일 HTML을 미리 볼 수 있습니다.
+
+```bash
+npm run dev:welcome-preview  # http://localhost:3335 에서 시작
+```
+
+쿼리 파라미터: `?kras=true` (KRAS 모드), `?name=홍길동` (구독자 이름)
 
 ## 🤝 기여하기
 
@@ -197,14 +222,14 @@ subscribeUrl: 'https://yourdomain.com/subscribe'
 
 **4. LLM 프로바이더 변경** (옵션):
 
-OpenAI 대신 Anthropic/Gemini/Ollama를 사용하려면:
-- `src/newsletter-generator.ts`: `createOpenAI()`를 해당 프로바이더로 변경
+현재 듀얼 프로바이더 사용: **OpenAI** (분석) + **Google Gemini** (콘텐츠 생성). 변경하려면:
+- `src/newsletter-generator.ts`: `createOpenAI()` / `createGoogleGenerativeAI()`를 해당 프로바이더로 변경
 - `src/providers/analysis.provider.ts`: 모델명 변경 (현재 `gpt-5-mini`, `gpt-5.1`)
-- `src/providers/content-generate.provider.ts`: 모델명 변경
+- `src/providers/content-generate.provider.ts`: 모델명 변경 (현재 `gemini-3-pro-preview`)
 
 [Vercel AI SDK provider](https://sdk.vercel.ai/providers)를 모두 사용할 수 있습니다.
 
-**검색 키워드**: `heripo`, `김홍연`, `#D2691E`, `openai`, `gpt-5`
+**검색 키워드**: `heripo`, `김홍연`, `#D2691E`, `openai`, `gpt-5`, `google`, `GoogleGenerativeAI`, `gemini`, `createGoogleGenerativeAI`
 
 ## 왜 코드 기반일까?
 
