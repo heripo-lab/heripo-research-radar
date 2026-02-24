@@ -477,6 +477,9 @@ ${options.krasNewsMarkdown}
                       fixBoldSyntax: true,
                       convertStrikethrough: true,
                     },
+                  ).replaceAll(
+                    '%7B%7B%7BRESEND_UNSUBSCRIBE_URL%7D%7D%7D',
+                    '{{{RESEND_UNSUBSCRIBE_URL}}}',
                   )
                 : ''
             }
@@ -516,7 +519,7 @@ ${options.heripolabNewsMarkdown}
             </ul>
             <hr style="border: 0; border-top: 2px solid #D2691E; margin: 32px 0;">
             <h2 style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 24px; font-weight: bold; line-height: 1.3; color: #D2691E; margin: 0 0 16px 0; letter-spacing: -0.2px; border-left: 5px solid #D2691E; padding-left: 12px; background: none;">📅 발행 정책</h2>
-            <p style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.7; color: #444444; margin: 0 0 18px 0;"><strong>${options?.isKrasNewsletter ? '한국고고학회' : 'heripo 리서치 레이더'}</strong>는 매일 발행을 원칙으로 하되, 독자분들께 의미 있는 정보를 제공하기 위해 다음과 같은 발행 기준을 적용합니다:</p>
+            <p style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.7; color: #444444; margin: 0 0 18px 0;"><strong>${options?.isKrasNewsletter ? '한국고고학회 뉴스레터' : 'heripo 리서치 레이더'}</strong>는 매일 발행을 원칙으로 하되, 독자분들께 의미 있는 정보를 제공하기 위해 다음과 같은 발행 기준을 적용합니다:</p>
             <ul style="padding-left: 24px; margin: 0 0 18px 0;">
               <li style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.7; color: #444444; margin: 0 0 18px 0; margin-bottom: 8px;"><strong>정상 발행</strong>: 새로운 소식이 ${newsletterConfig.publicationCriteria.minimumArticleCountForIssue + 1}개 이상이거나, ${newsletterConfig.publicationCriteria.minimumArticleCountForIssue}개 이하여도 중요도 ${newsletterConfig.publicationCriteria.priorityArticleScoreThreshold}점 이상의 핵심 소식이 포함된 경우</li>
               <li style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.7; color: #444444; margin: 0 0 18px 0; margin-bottom: 8px;"><strong>이월 발행</strong>: 새로운 소식이 ${newsletterConfig.publicationCriteria.minimumArticleCountForIssue}개 이하이면서 중요한 내용(${newsletterConfig.publicationCriteria.priorityArticleScoreThreshold}점 이상)이 없을 경우, 다음 호로 이월하여 더 풍성한 내용으로 제공</li>
