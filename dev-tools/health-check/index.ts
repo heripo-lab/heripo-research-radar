@@ -204,7 +204,7 @@ function buildSlackSummary(
     }
   }
 
-  return lines.join('\n');
+  return '```\n' + lines.join('\n') + '\n```';
 }
 
 async function main() {
