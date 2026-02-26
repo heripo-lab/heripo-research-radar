@@ -9,13 +9,13 @@ export const parseKhsList = (html: string): ParsedTargetListItem[] => {
   const posts: ParsedTargetListItem[] = [];
   const baseUrl = 'https://www.khs.go.kr';
 
-  $('table.list_t01 tbody tr').each((index, element) => {
+  $('table.tbl tbody tr').each((index, element) => {
     const columns = $(element).find('td');
     if (columns.length === 0) {
       return;
     }
 
-    const titleElement = columns.eq(1).find('a');
+    const titleElement = columns.eq(1).find('a.b_tit');
     const relativeHref = titleElement.attr('href');
 
     if (!relativeHref) {
@@ -27,17 +27,17 @@ export const parseKhsList = (html: string): ParsedTargetListItem[] => {
     const uniqId = fullUrl.searchParams.get('id') ?? undefined;
 
     const title =
-      titleElement.attr('title')?.trim() ?? titleElement.text()?.trim() ?? '';
+      titleElement.find('span').first().text()?.trim() ??
+      titleElement.text()?.trim() ??
+      '';
     const date = getDate(columns.eq(3).text().trim());
-    const endDate = getDate(columns.eq(4).text().trim());
-    const hasEndDate = new Date(endDate) > new Date();
 
     posts.push({
       uniqId,
       title,
-      date: hasEndDate ? `${date} ~ ${endDate}` : date,
+      date,
       detailUrl: cleanUrl(detailUrl),
-      dateType: hasEndDate ? DateType.DURATION : DateType.REGISTERED,
+      dateType: DateType.REGISTERED,
     });
   });
 
@@ -49,8 +49,9 @@ export const parseKhsGalleryList = (html: string): ParsedTargetListItem[] => {
   const posts: ParsedTargetListItem[] = [];
   const baseUrl = 'https://www.khs.go.kr';
 
-  $('ul.photo_board li a').each((index, element) => {
-    const relativeHref = $(element).attr('href');
+  $('ul.board-list > li').each((index, element) => {
+    const linkElement = $(element).find('a').first();
+    const relativeHref = linkElement.attr('href');
 
     if (!relativeHref) {
       return;
@@ -60,14 +61,15 @@ export const parseKhsGalleryList = (html: string): ParsedTargetListItem[] => {
     const detailUrl = fullUrl.href;
     const uniqId = fullUrl.searchParams.get('nttId') ?? undefined;
 
-    const children = $(element).find('div');
+    const imgElement = $(element).find('img');
+    const titleElement = $(element).find('strong');
+    const dateElement = $(element).find('dl dd');
 
-    const imgElement = children.eq(0).find('img');
-    const titleElement = children.eq(1).find('strong');
-    const dateElement = children.eq(2).find('span');
-
-    const title = imgElement.attr('alt') || titleElement.text() || '';
-    const date = getDate(dateElement.text().trim());
+    const title =
+      imgElement.attr('alt')?.replace(/\s*이미지$/, '') ||
+      titleElement.text()?.trim() ||
+      '';
+    const date = getDate(dateElement.first().text().trim());
 
     posts.push({
       uniqId,
@@ -86,13 +88,13 @@ export const parseKhsLawList = (html: string): ParsedTargetListItem[] => {
   const posts: ParsedTargetListItem[] = [];
   const baseUrl = 'https://www.khs.go.kr';
 
-  $('table.b_list tbody tr').each((index, element) => {
+  $('table.tbl tbody tr').each((index, element) => {
     const columns = $(element).find('td');
     if (columns.length === 0) {
       return;
     }
 
-    const titleElement = columns.eq(1).find('a');
+    const titleElement = columns.eq(1).find('a.b_tit');
     const relativeHref = titleElement.attr('href');
 
     if (!relativeHref) {
@@ -104,7 +106,9 @@ export const parseKhsLawList = (html: string): ParsedTargetListItem[] => {
     const uniqId = fullUrl.searchParams.get('id') ?? undefined;
 
     const title =
-      titleElement.attr('title')?.trim() ?? titleElement.text().trim() ?? '';
+      titleElement.find('span').first().text()?.trim() ??
+      titleElement.text().trim() ??
+      '';
     const date = getDate(columns.eq(4).text().trim());
     const hasEndDate = date.includes('~');
 
@@ -125,7 +129,7 @@ export const parseKhsTenderList = (html: string): ParsedTargetListItem[] => {
   const posts: ParsedTargetListItem[] = [];
   const baseUrl = 'https://www.khs.go.kr';
 
-  $('table.b_list tbody tr').each((index, element) => {
+  $('table.tbl tbody tr').each((index, element) => {
     const columns = $(element).find('td');
     if (columns.length === 0) return;
 
@@ -137,7 +141,9 @@ export const parseKhsTenderList = (html: string): ParsedTargetListItem[] => {
     const detailUrl = fullUrl.href;
     const uniqId = fullUrl.searchParams.get('id') ?? undefined;
 
-    const title = titleElement.text().trim();
+    const title =
+      titleElement.find('span').first().text()?.trim() ||
+      titleElement.text().trim();
     const date = getDate(columns.eq(4).text().trim());
 
     posts.push({
@@ -155,8 +161,8 @@ export const parseKhsTenderList = (html: string): ParsedTargetListItem[] => {
 export const parseKhsDetail = async (html: string) => {
   const $ = cheerio.load(html);
 
-  const content = $('div.b_content');
-  const fileCount = $('dl.b_file dd ul li').length;
+  const content = $('div.board-view-content');
+  const fileCount = $('.file-container ul.box-group-area li').length;
 
   return {
     detailContent: new TurndownService().turndown(content.html() ?? ''),
