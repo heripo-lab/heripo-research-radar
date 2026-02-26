@@ -37,39 +37,40 @@ jobs:
 
       - name: Build Slack payload
         if: always()
+        env:
+          OUTCOME: ${{ steps.health_check.outcome }}
+          SUMMARY: ${{ steps.health_check.outputs.summary }}
+          CHANNEL: ${{ vars.SLACK_ALERT_DEV_CHANNEL }}
+          REPO: ${{ github.repository }}
+          ACTOR: ${{ github.actor }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          OUTCOME="${{ steps.health_check.outcome }}"
-          if [ "$OUTCOME" = "success" ]; then
-            TITLE="✅ 뉴스레터 파서 헬스체크 통과"
-          else
-            TITLE="🚨 뉴스레터 파서 헬스체크 실패"
-          fi
+          python3 -c '
+          import json, os
 
-          SUMMARY="${{ steps.health_check.outputs.summary }}"
-          SUMMARY_ESCAPED=$(echo "$SUMMARY" | python3 -c 'import sys,json; print(json.dumps(sys.stdin.read()))')
+          outcome = os.environ["OUTCOME"]
+          summary = os.environ.get("SUMMARY", "")
+          channel = os.environ["CHANNEL"]
+          repo = os.environ["REPO"]
+          actor = os.environ["ACTOR"]
+          run_url = os.environ["RUN_URL"]
 
-          cat > slack-payload.json <<EOFPAYLOAD
-          {
-            "channel": "${{ vars.SLACK_ALERT_DEV_CHANNEL }}",
-            "text": "${TITLE}: ${{ github.repository }}",
-            "blocks": [
-              {
-                "type": "section",
-                "text": {
-                  "type": "mrkdwn",
-                  "text": "*${TITLE}*\n\n*프로젝트:* ${{ github.repository }}\n*실행자:* ${{ github.actor }}\n\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|🔗 워크플로우 로그 보기>"
-                }
-              },
-              {
-                "type": "section",
-                "text": {
-                  "type": "mrkdwn",
-                  "text": $SUMMARY_ESCAPED
-                }
-              }
-            ]
+          title = "✅ 뉴스레터 파서 헬스체크 통과" if outcome == "success" else "🚨 뉴스레터 파서 헬스체크 실패"
+
+          header = f"*{title}*\n\n*프로젝트:* {repo}\n*실행자:* {actor}\n\n<{run_url}|🔗 워크플로우 로그 보기>"
+
+          payload = {
+              "channel": channel,
+              "text": f"{title}: {repo}",
+              "blocks": [
+                  {"type": "section", "text": {"type": "mrkdwn", "text": header}},
+                  {"type": "section", "text": {"type": "mrkdwn", "text": summary or "_(no summary)_"}},
+              ],
           }
-          EOFPAYLOAD
+
+          with open("slack-payload.json", "w") as f:
+              json.dump(payload, f, ensure_ascii=False)
+          '
 
       - name: Slack notification
         uses: slackapi/slack-github-action@v2
