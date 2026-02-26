@@ -1,0 +1,68 @@
+name: Parser Health-Check
+
+on:
+  schedule:
+    - cron: '0 6 * * *' # Daily at 15:00 KST (= 06:00 UTC)
+  workflow_dispatch:
+
+concurrency:
+  group: parser-health-check
+  cancel-in-progress: false # Health-check must run to completion
+
+jobs:
+  health-check:
+    name: Run Parser Health-Check
+    runs-on: self-hosted
+    timeout-minutes: 30
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.x
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run health-check
+        id: health_check
+        continue-on-error: true
+        run: npm run health-check
+
+      - name: Slack notification
+        uses: slackapi/slack-github-action@v2
+        if: always()
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.SLACK_BOT_TOKEN }}
+          payload: |
+            channel: "${{ vars.SLACK_ALERT_DEV_CHANNEL }}"
+            text: "${{ steps.health_check.outcome == 'success' && '✅ 뉴스레터 파서 헬스체크 통과' || '🚨 뉴스레터 파서 헬스체크 실패' }}: ${{ github.repository }}"
+            blocks:
+              - type: section
+                text:
+                  type: mrkdwn
+                  text: |
+                    *${{ steps.health_check.outcome == 'success' && '✅ 뉴스레터 파서 헬스체크 통과' || '🚨 뉴스레터 파서 헬스체크 실패' }}*
+
+                    *프로젝트:* ${{ github.repository }}
+                    *실행자:* ${{ github.actor }}
+
+                    <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|🔗 워크플로우 로그 보기>
+              - type: section
+                text:
+                  type: mrkdwn
+                  text: |
+                    ```
+                    ${{ steps.health_check.outputs.summary }}
+                    ```
+
+      - name: Fail workflow if health-check failed
+        if: steps.health_check.outcome == 'failure'
+        run: exit 1

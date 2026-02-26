@@ -40,7 +40,9 @@
     "dev:crawler": "tsx watch dev-tools/crawler-debugger/server.ts",
     "dev:crawler:proxy": "tsx watch --env-file=dev-tools/crawler-debugger/.env dev-tools/crawler-debugger/server.ts",
     "dev:newsletter-preview": "tsx watch dev-tools/newsletter-preview/server.ts",
-    "dev:welcome-preview": "tsx watch dev-tools/welcome-preview/server.ts"
+    "dev:welcome-preview": "tsx watch dev-tools/welcome-preview/server.ts",
+    "health-check": "tsx dev-tools/health-check/index.ts",
+    "health-check:proxy": "tsx --env-file=dev-tools/crawler-debugger/.env dev-tools/health-check/index.ts --proxy"
   },
   "author": "kimhongyeon",
   "license": "Apache-2.0",
