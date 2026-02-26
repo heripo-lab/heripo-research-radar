@@ -192,6 +192,23 @@ npm run dev:welcome-preview  # http://localhost:3335 에서 시작
 
 쿼리 파라미터: `?kras=true` (KRAS 모드), `?name=홍길동` (구독자 이름)
 
+### 파서 헬스체크
+
+모든 활성 크롤링 파서를 실제 웹사이트에 대해 검증하는 CLI 도구입니다. 웹사이트 리디자인으로 인한 파서의 조용한 실패(빈 결과, 깨진 셀렉터)를 조기에 감지합니다.
+
+```bash
+npm run health-check        # 헬스체크 실행
+npm run health-check:proxy  # 프록시 지원으로 실행 (.env 사용)
+```
+
+**타겟별 검증 항목**:
+- `parseList()`: 유효한 title, date, detailUrl을 가진 비어있지 않은 배열 반환 여부
+- `parseDetail()`: 비어있지 않은 detailContent 반환 여부 (20자 이상)
+
+**출력**: 콘솔 테이블 요약 + CI 연동을 위한 compact 텍스트 서머리
+
+**CI**: GitHub Actions(`.github/workflows/parser-health-check.yml`)를 통한 일간 자동 실행, 결과를 Slack으로 알림
+
 ## 🤝 기여하기
 
 이 프로젝트는 두 가지 방식으로 활용할 수 있습니다:

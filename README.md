@@ -192,6 +192,23 @@ npm run dev:welcome-preview  # Start at http://localhost:3335
 
 Query params: `?kras=true` (KRAS mode), `?name=홍길동` (subscriber name)
 
+### Parser Health-Check
+
+CLI tool that validates all active crawling parsers against live websites. Detects silent failures (empty results, broken selectors) caused by upstream website redesigns.
+
+```bash
+npm run health-check        # Run health-check
+npm run health-check:proxy  # Run with proxy support (uses .env)
+```
+
+**What it checks per target**:
+- `parseList()`: Returns non-empty array with valid title, date, and detailUrl
+- `parseDetail()`: Returns non-empty detailContent (20+ chars)
+
+**Output**: Console table summary + compact text summary for CI integrations.
+
+**CI**: Daily automated run via GitHub Actions (`.github/workflows/parser-health-check.yml`) with Slack notifications on pass/fail.
+
 ## 🤝 Contributing
 
 You can use this project in two ways:
