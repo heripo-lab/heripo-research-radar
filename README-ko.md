@@ -7,7 +7,7 @@
 ![npm version](https://img.shields.io/npm/v/%40heripo%2Fresearch-radar?logo=npm&color=cb0000)
 ](https://www.npmjs.com/package/@heripo/research-radar)
 ![license](https://img.shields.io/github/license/heripo-lab/heripo-research-radar)
-![node](https://img.shields.io/badge/node-%3E%3D22-brightgreen)
+![node](https://img.shields.io/badge/node-%3E%3D24-brightgreen)
 
 [행동 강령](./CODE_OF_CONDUCT.md) • [보안 정책](./SECURITY.md) • [기여 가이드](./CONTRIBUTING.md)
 
@@ -69,7 +69,7 @@ Powered by LLM Newsletter Kit
 npm install @heripo/research-radar @llm-newsletter-kit/core
 ```
 
-**요구사항**: Node.js >= 22, OpenAI API 키, Google Generative AI API 키
+**요구사항**: Node.js >= 24, OpenAI API 키, Google Generative AI API 키
 
 **참고**: `@llm-newsletter-kit/core`는 peer dependency이므로 별도로 설치해야 합니다.
 

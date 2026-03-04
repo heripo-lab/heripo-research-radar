@@ -7,7 +7,7 @@ English | [한국어](./README-ko.md)
 ![npm version](https://img.shields.io/npm/v/%40heripo%2Fresearch-radar?logo=npm&color=cb0000)
 ](https://www.npmjs.com/package/@heripo/research-radar)
 ![license](https://img.shields.io/github/license/heripo-lab/heripo-research-radar)
-![node](https://img.shields.io/badge/node-%3E%3D22-brightgreen)
+![node](https://img.shields.io/badge/node-%3E%3D24-brightgreen)
 
 [Code of Conduct](./CODE_OF_CONDUCT.md) • [Security Policy](./SECURITY.md) • [Contributing](./CONTRIBUTING.md)
 
@@ -69,7 +69,7 @@ For academic publications:
 npm install @heripo/research-radar @llm-newsletter-kit/core
 ```
 
-**Requirements**: Node.js >= 22, OpenAI API key, Google Generative AI API key
+**Requirements**: Node.js >= 24, OpenAI API key, Google Generative AI API key
 
 **Note**: `@llm-newsletter-kit/core` is a peer dependency and must be installed separately.
 
