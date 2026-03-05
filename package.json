@@ -47,13 +47,13 @@
   "author": "kimhongyeon",
   "license": "Apache-2.0",
   "dependencies": {
-    "@ai-sdk/google": "^3.0.34",
-    "@ai-sdk/openai": "^3.0.37",
+    "@ai-sdk/google": "^3.0.43",
+    "@ai-sdk/openai": "^3.0.41",
     "cheerio": "^1.2.0",
-    "dompurify": "^3.3.1",
+    "dompurify": "^3.3.2",
     "jsdom": "^28.1.0",
     "juice": "^11.1.1",
-    "safe-markdown2html": "^1.0.0",
+    "safe-markdown2html": "^1.0.1",
     "turndown": "^7.2.2"
   },
   "peerDependencies": {
@@ -61,7 +61,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@llm-newsletter-kit/core": "^1.3.4",
+    "@llm-newsletter-kit/core": "^1.3.5",
     "@trivago/prettier-plugin-sort-imports": "^6.0.2",
     "@types/express": "^5.0.6",
     "@types/jsdom": "^28.0.0",
