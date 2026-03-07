@@ -24,7 +24,7 @@ An AI-powered newsletter service for Korean cultural heritage. Built on [`@llm-n
 - Type-safe TypeScript with strict interfaces
 - Provider pattern for swapping components (Crawling/Analysis/Content/Email)
 - 66 crawling targets across heritage agencies, museums, academic societies
-- Dual LLM providers: OpenAI GPT-5 (analysis) + Google Gemini (content generation)
+- Dual LLM providers: OpenAI GPT-5 (analysis) + Anthropic Claude (content generation)
 - Built-in retries, chain options, preview emails
 
 **Links**: [Live service](https://heripo.com/research-radar/subscribe) • [Newsletter example](https://heripo.com/research-radar-newsletter-example.html) • [Core engine](https://github.com/heripo-lab/llm-newsletter-kit-core)
@@ -69,7 +69,7 @@ For academic publications:
 npm install @heripo/research-radar @llm-newsletter-kit/core
 ```
 
-**Requirements**: Node.js >= 24, OpenAI API key, Google Generative AI API key
+**Requirements**: Node.js >= 24, OpenAI API key, Anthropic API key
 
 **Note**: `@llm-newsletter-kit/core` is a peer dependency and must be installed separately.
 
@@ -80,7 +80,7 @@ import { generateNewsletter } from '@heripo/research-radar';
 
 const newsletterId = await generateNewsletter({
   openAIApiKey: process.env.OPENAI_API_KEY,
-  googleGenerativeAIApiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
+  anthropicClaudeAIApiKey: process.env.ANTHROPIC_API_KEY,
 
   // Implement these repository interfaces (see src/types/dependencies.ts)
   taskRepository: {
@@ -239,14 +239,14 @@ subscribeUrl: 'https://yourdomain.com/subscribe'
 
 **4. Switch LLM provider** (optional):
 
-Currently uses dual providers: **OpenAI** (analysis) + **Google Gemini** (content generation). To change:
-- `src/newsletter-generator.ts`: Change `createOpenAI()` / `createGoogleGenerativeAI()` to your provider
+Currently uses dual providers: **OpenAI** (analysis) + **Anthropic Claude** (content generation). To change:
+- `src/newsletter-generator.ts`: Change `createOpenAI()` / `createAnthropic()` to your provider
 - `src/providers/analysis.provider.ts`: Update model names (currently `gpt-5-mini`, `gpt-5.1`)
-- `src/providers/content-generate.provider.ts`: Update model name (currently `gemini-3-pro-preview`)
+- `src/providers/content-generate.provider.ts`: Update model name (currently `claude-sonnet-4-6`)
 
 Any [Vercel AI SDK provider](https://sdk.vercel.ai/providers) works.
 
-**Search keywords**: `heripo`, `kimhongyeon`, `#D2691E`, `openai`, `gpt-5`, `google`, `GoogleGenerativeAI`, `gemini`, `createGoogleGenerativeAI`
+**Search keywords**: `heripo`, `kimhongyeon`, `#D2691E`, `openai`, `gpt-5`, `anthropic`, `AnthropicProvider`, `claude`, `createAnthropic`
 
 ## Why Code-Based?
 
