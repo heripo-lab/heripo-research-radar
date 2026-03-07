@@ -1,4 +1,4 @@
-import type { GoogleGenerativeAIProvider } from '@ai-sdk/google';
+import type { AnthropicProvider } from '@ai-sdk/anthropic';
 import type {
   ArticleForGenerateContent,
   ContentGenerateProvider as CoreContentGenerateProvider,
@@ -23,14 +23,14 @@ import {
 
 /**
  * Content generation provider implementation
- * - LLM-based newsletter content generation (Google Generative AI)
+ * - LLM-based newsletter content generation (Anthropic Claude AI)
  * - HTML template provisioning
  * - Newsletter persistence
  */
 export class ContentGenerateProvider implements CoreContentGenerateProvider {
   private _issueOrder: number | null = null;
 
-  model: ReturnType<GoogleGenerativeAIProvider>;
+  model: ReturnType<AnthropicProvider>;
 
   /** HTML template with markers for title and content injection */
   htmlTemplate: HtmlTemplate;
@@ -39,13 +39,13 @@ export class ContentGenerateProvider implements CoreContentGenerateProvider {
   newsletterBrandName: string;
 
   constructor(
-    private readonly google: GoogleGenerativeAIProvider,
+    private readonly anthropic: AnthropicProvider,
     private readonly articleRepository: ArticleRepository,
     private readonly newsletterRepository: NewsletterRepository,
     templateOptions?: NewsletterTemplateOptions,
     brandName?: string,
   ) {
-    this.model = this.google('gemini-3-pro-preview');
+    this.model = this.anthropic('claude-sonnet-4-6');
     this.newsletterBrandName = brandName ?? newsletterConfig.brandName;
     this.htmlTemplate = {
       html: createNewsletterHtmlTemplate(

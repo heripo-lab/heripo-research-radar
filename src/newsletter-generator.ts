@@ -1,7 +1,7 @@
 /**
  * Uses two LLM providers:
  * - OpenAI (gpt-5-mini, gpt-5.1): Article analysis (tag classification, image analysis, importance scoring)
- * - Google Generative AI (gemini-3-pro-preview): Newsletter content generation
+ * - Anthropic Claude AI (claude-sonnet-4-6): Newsletter content generation
  *
  * For details on switching providers, see README.md section:
  * "⚠️ Fork하여 나만의 뉴스레터 만들기 > 4. LLM 프로바이더 변경"
@@ -22,7 +22,7 @@ import type {
   TaskRepository,
 } from './types/dependencies';
 
-import { createGoogleGenerativeAI } from '@ai-sdk/google';
+import { createAnthropic } from '@ai-sdk/anthropic';
 import { createOpenAI } from '@ai-sdk/openai';
 import { GenerateNewsletter } from '@llm-newsletter-kit/core';
 
@@ -54,8 +54,8 @@ export interface NewsletterGeneratorDependencies {
   /** OpenAI API key (used for article analysis: tag classification, image analysis, importance scoring) */
   openAIApiKey: string;
 
-  /** Google Generative AI API key (used for newsletter content generation) */
-  googleGenerativeAIApiKey: string;
+  /** Anthropic Claude AI API key (used for newsletter content generation) */
+  anthropicClaudeAIApiKey: string;
 
   /** Task management repository */
   taskRepository: TaskRepository;
@@ -100,7 +100,7 @@ export interface NewsletterGeneratorDependencies {
  * ```typescript
  * const generator = createNewsletterGenerator({
  *   openAIApiKey: process.env.OPENAI_API_KEY,
- *   googleGenerativeAIApiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
+ *   anthropicClaudeAIApiKey: process.env.ANTHROPIC_API_KEY,
  *   taskRepository: new PrismaTaskRepository(prisma),
  *   articleRepository: new PrismaArticleRepository(prisma),
  *   tagRepository: new PrismaTagRepository(prisma),
@@ -123,8 +123,8 @@ function createNewsletterGenerator(
     apiKey: dependencies.openAIApiKey,
   });
 
-  const google = createGoogleGenerativeAI({
-    apiKey: dependencies.googleGenerativeAIApiKey,
+  const anthropic = createAnthropic({
+    apiKey: dependencies.anthropicClaudeAIApiKey,
   });
 
   const dateService = new DateService(dependencies.publishDate);
@@ -164,7 +164,7 @@ function createNewsletterGenerator(
   }
 
   const contentGenerateProvider = new ContentGenerateProvider(
-    google,
+    anthropic,
     dependencies.articleRepository,
     dependencies.newsletterRepository,
     templateOptions,
@@ -201,7 +201,7 @@ function createNewsletterGenerator(
  * ```typescript
  * const newsletterId = await generateNewsletter({
  *   openAIApiKey: process.env.OPENAI_API_KEY,
- *   googleGenerativeAIApiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
+ *   anthropicClaudeAIApiKey: process.env.ANTHROPIC_API_KEY,
  *   taskRepository: new PrismaTaskRepository(prisma),
  *   articleRepository: new PrismaArticleRepository(prisma),
  *   tagRepository: new PrismaTagRepository(prisma),
