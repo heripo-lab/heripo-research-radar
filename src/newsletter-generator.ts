@@ -52,9 +52,9 @@ export interface PreviewNewsletterOptions {
  * Each provider uses a sensible default model that can be overridden.
  *
  * Default models:
- * - openai: `gpt-5.1`
+ * - openai: `gpt-5.4`
  * - anthropic: `claude-sonnet-4-6`
- * - google: `gemini-3-pro-preview`
+ * - google: `gemini-3.1-pro-preview`
  */
 export type ContentGenerationConfig =
   | { provider: 'openai'; apiKey: string; model?: string }

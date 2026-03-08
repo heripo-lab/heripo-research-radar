@@ -248,10 +248,10 @@ subscribeUrl: 'https://yourdomain.com/subscribe'
 contentGeneration: {
   provider: 'google',  // 'openai' | 'anthropic' | 'google'
   apiKey: process.env.GOOGLE_API_KEY,
-  model: 'gemini-3-pro-preview',  // 선택사항, 프로바이더별 기본값 제공
+  model: 'gemini-3.1-pro-preview',  // 선택사항, 프로바이더별 기본값 제공
 }
 ```
-기본 모델: openai=`gpt-5.1`, anthropic=`claude-sonnet-4-6`, google=`gemini-3-pro-preview`
+기본 모델: openai=`gpt-5.1`, anthropic=`claude-sonnet-4-6`, google=`gemini-3.1-pro-preview`
 
 분석 프로바이더(OpenAI)는 `src/providers/analysis.provider.ts`를 수정하여 변경할 수 있습니다. [Vercel AI SDK provider](https://sdk.vercel.ai/providers)를 모두 사용할 수 있습니다.
 

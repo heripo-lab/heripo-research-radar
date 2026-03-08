@@ -248,10 +248,10 @@ Content generation supports **3 built-in providers** — just change `contentGen
 contentGeneration: {
   provider: 'google',  // 'openai' | 'anthropic' | 'google'
   apiKey: process.env.GOOGLE_API_KEY,
-  model: 'gemini-3-pro-preview',  // optional, each provider has a default
+  model: 'gemini-3.1-pro-preview',  // optional, each provider has a default
 }
 ```
-Default models: openai=`gpt-5.1`, anthropic=`claude-sonnet-4-6`, google=`gemini-3-pro-preview`
+Default models: openai=`gpt-5.1`, anthropic=`claude-sonnet-4-6`, google=`gemini-3.1-pro-preview`
 
 Analysis provider (OpenAI) can be changed by modifying `src/providers/analysis.provider.ts`. Any [Vercel AI SDK provider](https://sdk.vercel.ai/providers) works.
 
