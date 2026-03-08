@@ -30,7 +30,7 @@ import {
 export class ContentGenerateProvider implements CoreContentGenerateProvider {
   private _issueOrder: number | null = null;
 
-  model: LanguageModel;
+  readonly model: LanguageModel;
 
   /** HTML template with markers for title and content injection */
   htmlTemplate: HtmlTemplate;
