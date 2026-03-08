@@ -24,7 +24,7 @@ An AI-powered newsletter service for Korean cultural heritage. Built on [`@llm-n
 - Type-safe TypeScript with strict interfaces
 - Provider pattern for swapping components (Crawling/Analysis/Content/Email)
 - 66 crawling targets across heritage agencies, museums, academic societies
-- Dual LLM providers: OpenAI GPT-5 (analysis) + Anthropic Claude (content generation)
+- Multi LLM providers: OpenAI GPT-5 (analysis) + selectable content generation (OpenAI / Anthropic / Google)
 - Built-in retries, chain options, preview emails
 
 **Links**: [Live service](https://heripo.com/research-radar/subscribe) • [Newsletter example](https://heripo.com/research-radar-newsletter-example.html) • [Core engine](https://github.com/heripo-lab/llm-newsletter-kit-core)
@@ -69,7 +69,7 @@ For academic publications:
 npm install @heripo/research-radar @llm-newsletter-kit/core
 ```
 
-**Requirements**: Node.js >= 24, OpenAI API key, Anthropic API key
+**Requirements**: Node.js >= 24, OpenAI API key, content generation API key (OpenAI / Anthropic / Google)
 
 **Note**: `@llm-newsletter-kit/core` is a peer dependency and must be installed separately.
 
@@ -80,7 +80,11 @@ import { generateNewsletter } from '@heripo/research-radar';
 
 const newsletterId = await generateNewsletter({
   openAIApiKey: process.env.OPENAI_API_KEY,
-  anthropicClaudeAIApiKey: process.env.ANTHROPIC_API_KEY,
+  contentGeneration: {
+    provider: 'anthropic',           // 'openai' | 'anthropic' | 'google'
+    apiKey: process.env.ANTHROPIC_API_KEY,
+    // model: 'claude-sonnet-4-6',   // optional, uses sensible default
+  },
 
   // Implement these repository interfaces (see src/types/dependencies.ts)
   taskRepository: {
@@ -237,16 +241,21 @@ subscribeUrl: 'https://yourdomain.com/subscribe'
 - Replace Korean heritage sites with your domain sources
 - Implement parsers in `src/parsers/`
 
-**4. Switch LLM provider** (optional):
+**4. Switch content generation LLM provider** (optional):
 
-Currently uses dual providers: **OpenAI** (analysis) + **Anthropic Claude** (content generation). To change:
-- `src/newsletter-generator.ts`: Change `createOpenAI()` / `createAnthropic()` to your provider
-- `src/providers/analysis.provider.ts`: Update model names (currently `gpt-5-mini`, `gpt-5.1`)
-- `src/providers/content-generate.provider.ts`: Update model name (currently `claude-sonnet-4-6`)
+Content generation supports **3 built-in providers** — just change `contentGeneration.provider`:
+```typescript
+contentGeneration: {
+  provider: 'google',  // 'openai' | 'anthropic' | 'google'
+  apiKey: process.env.GOOGLE_API_KEY,
+  model: 'gemini-3-pro-preview',  // optional, each provider has a default
+}
+```
+Default models: openai=`gpt-5.1`, anthropic=`claude-sonnet-4-6`, google=`gemini-3-pro-preview`
 
-Any [Vercel AI SDK provider](https://sdk.vercel.ai/providers) works.
+Analysis provider (OpenAI) can be changed by modifying `src/providers/analysis.provider.ts`. Any [Vercel AI SDK provider](https://sdk.vercel.ai/providers) works.
 
-**Search keywords**: `heripo`, `kimhongyeon`, `#D2691E`, `openai`, `gpt-5`, `anthropic`, `AnthropicProvider`, `claude`, `createAnthropic`
+**Search keywords**: `heripo`, `kimhongyeon`, `#D2691E`, `openai`, `gpt-5`, `contentGeneration`
 
 ## Why Code-Based?
 

@@ -1,4 +1,3 @@
-import type { AnthropicProvider } from '@ai-sdk/anthropic';
 import type {
   ArticleForGenerateContent,
   ContentGenerateProvider as CoreContentGenerateProvider,
@@ -6,6 +5,7 @@ import type {
   Newsletter,
   UrlString,
 } from '@llm-newsletter-kit/core';
+import type { LanguageModel } from 'ai';
 
 import type {
   ArticleRepository,
@@ -23,14 +23,14 @@ import {
 
 /**
  * Content generation provider implementation
- * - LLM-based newsletter content generation (Anthropic Claude AI)
+ * - LLM-based newsletter content generation
  * - HTML template provisioning
  * - Newsletter persistence
  */
 export class ContentGenerateProvider implements CoreContentGenerateProvider {
   private _issueOrder: number | null = null;
 
-  model: ReturnType<AnthropicProvider>;
+  model: LanguageModel;
 
   /** HTML template with markers for title and content injection */
   htmlTemplate: HtmlTemplate;
@@ -39,13 +39,13 @@ export class ContentGenerateProvider implements CoreContentGenerateProvider {
   newsletterBrandName: string;
 
   constructor(
-    private readonly anthropic: AnthropicProvider,
+    model: LanguageModel,
     private readonly articleRepository: ArticleRepository,
     private readonly newsletterRepository: NewsletterRepository,
     templateOptions?: NewsletterTemplateOptions,
     brandName?: string,
   ) {
-    this.model = this.anthropic('claude-sonnet-4-6');
+    this.model = model;
     this.newsletterBrandName = brandName ?? newsletterConfig.brandName;
     this.htmlTemplate = {
       html: createNewsletterHtmlTemplate(

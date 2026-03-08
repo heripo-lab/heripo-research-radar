@@ -1,6 +1,7 @@
 // Main entry point
 export {
   generateNewsletter,
+  type ContentGenerationConfig,
   type NewsletterGeneratorDependencies,
   type PreviewNewsletterOptions,
 } from './newsletter-generator';

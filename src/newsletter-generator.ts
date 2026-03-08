@@ -1,10 +1,7 @@
 /**
- * Uses two LLM providers:
- * - OpenAI (gpt-5-mini, gpt-5.1): Article analysis (tag classification, image analysis, importance scoring)
- * - Anthropic Claude AI (claude-sonnet-4-6): Newsletter content generation
+ * Uses OpenAI for article analysis and a configurable provider (OpenAI / Anthropic / Google) for content generation.
  *
- * For details on switching providers, see README.md section:
- * "⚠️ Fork하여 나만의 뉴스레터 만들기 > 4. LLM 프로바이더 변경"
+ * Content generation provider is selected via `contentGeneration.provider` in dependencies.
  */
 import type {
   AppLogger,
@@ -12,6 +9,7 @@ import type {
   EmailService,
   Newsletter,
 } from '@llm-newsletter-kit/core';
+import type { LanguageModel } from 'ai';
 
 import type { ContentOptions } from './config';
 import type {
@@ -23,6 +21,7 @@ import type {
 } from './types/dependencies';
 
 import { createAnthropic } from '@ai-sdk/anthropic';
+import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { createOpenAI } from '@ai-sdk/openai';
 import { GenerateNewsletter } from '@llm-newsletter-kit/core';
 
@@ -48,14 +47,29 @@ export interface PreviewNewsletterOptions {
 }
 
 /**
+ * Content generation LLM provider configuration.
+ * Choose one of the three supported providers and supply the API key.
+ * Each provider uses a sensible default model that can be overridden.
+ *
+ * Default models:
+ * - openai: `gpt-5.1`
+ * - anthropic: `claude-sonnet-4-6`
+ * - google: `gemini-3-pro-preview`
+ */
+export type ContentGenerationConfig =
+  | { provider: 'openai'; apiKey: string; model?: string }
+  | { provider: 'anthropic'; apiKey: string; model?: string }
+  | { provider: 'google'; apiKey: string; model?: string };
+
+/**
  * Newsletter generator dependencies interface
  */
 export interface NewsletterGeneratorDependencies {
   /** OpenAI API key (used for article analysis: tag classification, image analysis, importance scoring) */
   openAIApiKey: string;
 
-  /** Anthropic Claude AI API key (used for newsletter content generation) */
-  anthropicClaudeAIApiKey: string;
+  /** Content generation LLM configuration (provider + API key + optional model) */
+  contentGeneration: ContentGenerationConfig;
 
   /** Task management repository */
   taskRepository: TaskRepository;
@@ -100,7 +114,10 @@ export interface NewsletterGeneratorDependencies {
  * ```typescript
  * const generator = createNewsletterGenerator({
  *   openAIApiKey: process.env.OPENAI_API_KEY,
- *   anthropicClaudeAIApiKey: process.env.ANTHROPIC_API_KEY,
+ *   contentGeneration: {
+ *     provider: 'anthropic',
+ *     apiKey: process.env.ANTHROPIC_API_KEY,
+ *   },
  *   taskRepository: new PrismaTaskRepository(prisma),
  *   articleRepository: new PrismaArticleRepository(prisma),
  *   tagRepository: new PrismaTagRepository(prisma),
@@ -116,15 +133,30 @@ export interface NewsletterGeneratorDependencies {
  * const newsletterId = await generator.generate();
  * ```
  */
+function createContentGenerationModel(
+  config: ContentGenerationConfig,
+): LanguageModel {
+  switch (config.provider) {
+    case 'openai': {
+      const provider = createOpenAI({ apiKey: config.apiKey });
+      return provider(config.model ?? 'gpt-5.4');
+    }
+    case 'anthropic': {
+      const provider = createAnthropic({ apiKey: config.apiKey });
+      return provider(config.model ?? 'claude-sonnet-4-6');
+    }
+    case 'google': {
+      const provider = createGoogleGenerativeAI({ apiKey: config.apiKey });
+      return provider(config.model ?? 'gemini-3.1-pro-preview');
+    }
+  }
+}
+
 function createNewsletterGenerator(
   dependencies: NewsletterGeneratorDependencies,
 ) {
   const openai = createOpenAI({
     apiKey: dependencies.openAIApiKey,
-  });
-
-  const anthropic = createAnthropic({
-    apiKey: dependencies.anthropicClaudeAIApiKey,
   });
 
   const dateService = new DateService(dependencies.publishDate);
@@ -163,8 +195,12 @@ function createNewsletterGenerator(
     resolvedBrandName = '한국고고학회 뉴스레터';
   }
 
+  const contentModel = createContentGenerationModel(
+    dependencies.contentGeneration,
+  );
+
   const contentGenerateProvider = new ContentGenerateProvider(
-    anthropic,
+    contentModel,
     dependencies.articleRepository,
     dependencies.newsletterRepository,
     templateOptions,
@@ -201,7 +237,10 @@ function createNewsletterGenerator(
  * ```typescript
  * const newsletterId = await generateNewsletter({
  *   openAIApiKey: process.env.OPENAI_API_KEY,
- *   anthropicClaudeAIApiKey: process.env.ANTHROPIC_API_KEY,
+ *   contentGeneration: {
+ *     provider: 'anthropic',
+ *     apiKey: process.env.ANTHROPIC_API_KEY,
+ *   },
  *   taskRepository: new PrismaTaskRepository(prisma),
  *   articleRepository: new PrismaArticleRepository(prisma),
  *   tagRepository: new PrismaTagRepository(prisma),

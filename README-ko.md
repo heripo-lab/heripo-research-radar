@@ -24,7 +24,7 @@
 - 엄격한 타입 시스템의 TypeScript
 - 교체 가능한 Provider 패턴 (Crawling/Analysis/Content/Email)
 - 문화유산 기관, 박물관, 학회 등 66개 크롤링 타겟
-- 듀얼 LLM 프로바이더: OpenAI GPT-5 (분석) + Anthropic Claude (콘텐츠 생성)
+- 멀티 LLM 프로바이더: OpenAI GPT-5 (분석) + 선택 가능한 콘텐츠 생성 (OpenAI / Anthropic / Google)
 - 재시도, 체인 옵션, 미리보기 이메일 내장
 
 **링크**: [라이브 서비스](https://heripo.com/research-radar/subscribe) • [뉴스레터 예시](https://heripo.com/research-radar-newsletter-example.html) • [Core 엔진](https://github.com/heripo-lab/llm-newsletter-kit-core)
@@ -69,7 +69,7 @@ Powered by LLM Newsletter Kit
 npm install @heripo/research-radar @llm-newsletter-kit/core
 ```
 
-**요구사항**: Node.js >= 24, OpenAI API 키, Anthropic API 키
+**요구사항**: Node.js >= 24, OpenAI API 키, 콘텐츠 생성용 API 키 (OpenAI / Anthropic / Google)
 
 **참고**: `@llm-newsletter-kit/core`는 peer dependency이므로 별도로 설치해야 합니다.
 
@@ -80,7 +80,11 @@ import { generateNewsletter } from '@heripo/research-radar';
 
 const newsletterId = await generateNewsletter({
   openAIApiKey: process.env.OPENAI_API_KEY,
-  anthropicClaudeAIApiKey: process.env.ANTHROPIC_API_KEY,
+  contentGeneration: {
+    provider: 'anthropic',           // 'openai' | 'anthropic' | 'google'
+    apiKey: process.env.ANTHROPIC_API_KEY,
+    // model: 'claude-sonnet-4-6',   // 선택사항, 프로바이더별 기본값 사용
+  },
 
   // Repository 인터페이스 구현 (src/types/dependencies.ts 참조)
   taskRepository: {
@@ -237,16 +241,21 @@ subscribeUrl: 'https://yourdomain.com/subscribe'
 - 한국 문화유산 사이트를 내 도메인의 소스로 교체
 - `src/parsers/`에 파서 구현
 
-**4. LLM 프로바이더 변경** (옵션):
+**4. 콘텐츠 생성 LLM 프로바이더 변경** (옵션):
 
-현재 듀얼 프로바이더 사용: **OpenAI** (분석) + **Anthropic Claude** (콘텐츠 생성). 변경하려면:
-- `src/newsletter-generator.ts`: `createOpenAI()` / `createAnthropic()`을 해당 프로바이더로 변경
-- `src/providers/analysis.provider.ts`: 모델명 변경 (현재 `gpt-5-mini`, `gpt-5.1`)
-- `src/providers/content-generate.provider.ts`: 모델명 변경 (현재 `claude-sonnet-4-6`)
+콘텐츠 생성은 **3개 내장 프로바이더**를 지원합니다 — `contentGeneration.provider`만 바꾸면 됩니다:
+```typescript
+contentGeneration: {
+  provider: 'google',  // 'openai' | 'anthropic' | 'google'
+  apiKey: process.env.GOOGLE_API_KEY,
+  model: 'gemini-3-pro-preview',  // 선택사항, 프로바이더별 기본값 제공
+}
+```
+기본 모델: openai=`gpt-5.1`, anthropic=`claude-sonnet-4-6`, google=`gemini-3-pro-preview`
 
-[Vercel AI SDK provider](https://sdk.vercel.ai/providers)를 모두 사용할 수 있습니다.
+분석 프로바이더(OpenAI)는 `src/providers/analysis.provider.ts`를 수정하여 변경할 수 있습니다. [Vercel AI SDK provider](https://sdk.vercel.ai/providers)를 모두 사용할 수 있습니다.
 
-**검색 키워드**: `heripo`, `김홍연`, `#D2691E`, `openai`, `gpt-5`, `anthropic`, `AnthropicProvider`, `claude`, `createAnthropic`
+**검색 키워드**: `heripo`, `김홍연`, `#D2691E`, `openai`, `gpt-5`, `contentGeneration`
 
 ## 왜 코드 기반일까?
 
