@@ -60,7 +60,7 @@ function createWelcomeHtmlRaw(
               <div style="width: 180px; min-height: 141px; display: inline-block; margin-bottom: 20px;"><img src="https://heripo.com/kras-50.png" width="180" alt="한국고고학회 50주년" style="-ms-interpolation-mode: bicubic; border: 0; height: auto; line-height: 100%; outline: none; text-decoration: none; display: block;" height="auto"></div>
               <div class="kras-header-title" style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 30px; font-weight: bold; color: #111111; line-height: 1.2; margin-bottom: 0;">한국고고학회 뉴스레터</div>
             </div>
-            <h1 style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; line-height: 1.2; margin: 0 0 18px 0; letter-spacing: -0.5px; font-size: 32px; font-weight: bold; color: #111111;">${name}님, 한국고고학회 뉴스레터를 구독해주셔서 감사합니다.</h1>`
+            <hr class="kras-header-divider" style="border: 0; border-top: 2px solid #D2691E; margin: 0 0 32px 0;">`
     : `${heripoLogoHtml('8px')}
 
             <h1 style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; line-height: 1.2; margin: 0 0
@@ -250,7 +250,7 @@ ${headerHtml}
 
             <h2 style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 24px; font-weight: bold; line-height: 1.3; color: #D2691E; margin: 0 0 15px 0; letter-spacing: -0.2px; border-left: 5px solid #D2691E; padding-left: 12px; background: #fff7f2;">💬 ${feedbackHeading}</h2>
 
-            <p style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.7; color: #444444; margin: 0 0 18px 0;">가장 큰 응원은 ${feedbackText}를 직접 사용해보시고, 솔직한 피드백을 주시는 것입니다.</p>
+${isKras ? `            <p style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.7; color: #444444; margin: 0 0 18px 0;">${name}님, 한국고고학회 뉴스레터를 구독해주셔서 감사합니다.</p>` : ''}
 
             <p style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.7; color: #444444; margin: 0 0 18px 0;"><strong style="color: #D2691E; font-weight: bold;">"이런 기능이 있다면 좋겠다"</strong> 혹은 <strong style="color: #D2691E; font-weight: bold;">"이런 점은 불편하다"</strong>와 같은 의견을 언제든 보내주세요.</p>
 
