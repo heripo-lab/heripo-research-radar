@@ -4,7 +4,6 @@ import type { WelcomeTemplateOptions } from '~/types/dependencies';
 
 import {
   heripoLogoHtml,
-  krasHeaderHtml,
   platformIntroHtml,
   poweredByFooterHtml,
   sanitizeText,
@@ -56,9 +55,12 @@ function createWelcomeHtmlRaw(
     : 'heripo 리서치 레이더 구독 완료';
 
   const headerHtml = isKras
-    ? `${krasHeaderHtml()}
-            <h1 style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; line-height: 1.2; margin: 0 0
-            18px 0; letter-spacing: -0.5px; margin-top: 0; font-size: 32px; font-weight: bold; color: #111111; border-bottom: 3px solid #D2691E; padding-bottom: 8px;">${name}님, 한국고고학회 뉴스레터를 구독해주셔서 감사합니다.</h1>`
+    ? `<!-- KRAS 50주년 헤더 -->
+            <div style="text-align: center; margin-bottom: 36px;">
+              <div style="width: 180px; min-height: 141px; display: inline-block; margin-bottom: 20px;"><img src="https://heripo.com/kras-50.png" width="180" alt="한국고고학회 50주년" style="-ms-interpolation-mode: bicubic; border: 0; height: auto; line-height: 100%; outline: none; text-decoration: none; display: block;" height="auto"></div>
+              <div class="kras-header-title" style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 30px; font-weight: bold; color: #111111; line-height: 1.2; margin-bottom: 0;">한국고고학회 뉴스레터</div>
+            </div>
+            <h1 style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; line-height: 1.2; margin: 0 0 18px 0; letter-spacing: -0.5px; font-size: 32px; font-weight: bold; color: #111111;">${name}님, 한국고고학회 뉴스레터를 구독해주셔서 감사합니다.</h1>`
     : `${heripoLogoHtml('8px')}
 
             <h1 style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; line-height: 1.2; margin: 0 0
@@ -121,7 +123,7 @@ function createWelcomeHtmlRaw(
       .button-link:hover {
           background: #b85a1a;
       }
-      @media screen and (max-width: 800px) {
+      @media screen and (max-width: 700px) {
           .container {
               width: 100% !important;
               max-width: 100% !important;
@@ -217,6 +219,18 @@ function createWelcomeHtmlRaw(
           .dark-logo-inline {
               display: inline-block !important;
           }
+
+          .kras-newsletter .kras-header-title {
+              color: #eeeeee !important;
+          }
+
+          .kras-newsletter .kras-header-date {
+              color: #bbbbbb !important;
+          }
+
+          .kras-newsletter .kras-header-divider {
+              border-top-color: #E59866 !important;
+          }
       }
   </style>
 </head>
@@ -225,13 +239,13 @@ function createWelcomeHtmlRaw(
   <tr>
     <td bgcolor="#f4f4f4" align="center" style="-webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; mso-table-lspace: 0pt; mso-table-rspace: 0pt; padding: 20px 0;" class="dark-mode-bg">
       <!--[if (gte mso 9)|(IE)]>
-      <table align="center" border="0" cellspacing="0" cellpadding="0" width="800">
+      <table align="center" border="0" cellspacing="0" cellpadding="0" width="700">
         <tr>
-          <td align="center" valign="top" width="800">
+          <td align="center" valign="top" width="700">
       <![endif]-->
-      <table border="0" cellpadding="0" cellspacing="0" width="100%" style="-webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; mso-table-lspace: 0pt; mso-table-rspace: 0pt; max-width: 800px;" class="container" role="presentation">
+      <table border="0" cellpadding="0" cellspacing="0" width="100%" style="-webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; mso-table-lspace: 0pt; mso-table-rspace: 0pt; max-width: 700px;" class="container" role="presentation">
         <tr>
-          <td bgcolor="#ffffff" align="left" class="content-cell dark-mode-content-bg" style="-webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; mso-table-lspace: 0pt; mso-table-rspace: 0pt; padding: 48px 44px 44px 44px; border-radius: 12px; box-shadow: 0 4px 18px rgba(0,0,0,0.07);">
+          <td bgcolor="#ffffff" align="left" class="content-cell dark-mode-content-bg${isKras ? ' kras-newsletter' : ''}" style="-webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; mso-table-lspace: 0pt; mso-table-rspace: 0pt; padding: 48px 44px 44px 44px; border-radius: 12px; box-shadow: 0 4px 18px rgba(0,0,0,0.07);">
 ${headerHtml}
 
             <h2 style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 24px; font-weight: bold; line-height: 1.3; color: #D2691E; margin: 0 0 15px 0; letter-spacing: -0.2px; border-left: 5px solid #D2691E; padding-left: 12px; background: #fff7f2;">💬 ${feedbackHeading}</h2>
