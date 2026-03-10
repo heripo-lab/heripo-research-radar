@@ -6,7 +6,6 @@ import safeMarkdown2Html from 'safe-markdown2html';
 import { newsletterConfig } from '~/config';
 import {
   heripoLogoHtml,
-  krasHeaderHtml,
   platformIntroHtml,
   poweredByFooterHtml,
 } from '~/templates/shared';
@@ -104,7 +103,7 @@ export const createNewsletterHtmlTemplate = (
           -ms-text-size-adjust: 100%;
           mso-table-lspace: 0pt;
           mso-table-rspace: 0pt;
-          max-width: 800px;
+          max-width: 700px;
       }
 
       .content-cell {
@@ -269,7 +268,7 @@ export const createNewsletterHtmlTemplate = (
           background-color: #faf7f3;
       }
 
-      @media screen and (max-width: 800px) {
+      @media screen and (max-width: 700px) {
           .container {
               width: 100% !important;
               max-width: 100% !important;
@@ -428,6 +427,18 @@ export const createNewsletterHtmlTemplate = (
           .dark-logo-inline {
             display: inline-block !important;
           }
+
+          .kras-newsletter .kras-header-title {
+            color: #eeeeee !important;
+          }
+
+          .kras-newsletter .kras-header-date {
+            color: #bbbbbb !important;
+          }
+
+          .kras-newsletter .kras-header-divider {
+            border-top-color: #E59866 !important;
+          }
       }
   </style>
 </head>
@@ -436,27 +447,22 @@ export const createNewsletterHtmlTemplate = (
   <tr>
     <td bgcolor="#f4f4f4" align="center" style="-webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; mso-table-lspace: 0pt; mso-table-rspace: 0pt; padding: 20px 0;" class="dark-mode-bg">
       <!--[if (gte mso 9)|(IE)]>
-      <table align="center" border="0" cellspacing="0" cellpadding="0" width="800">
+      <table align="center" border="0" cellspacing="0" cellpadding="0" width="700">
         <tr>
-          <td align="center" valign="top" width="800">
+          <td align="center" valign="top" width="700">
       <![endif]-->
-      <table border="0" cellpadding="0" cellspacing="0" width="100%" style="-webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; mso-table-lspace: 0pt; mso-table-rspace: 0pt; max-width: 800px;" class="container" role="presentation">
+      <table border="0" cellpadding="0" cellspacing="0" width="100%" style="-webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; mso-table-lspace: 0pt; mso-table-rspace: 0pt; max-width: 700px;" class="container" role="presentation">
         <tr>
-          <td bgcolor="#ffffff" align="left" class="content-cell dark-mode-content-bg" style="-webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; mso-table-lspace: 0pt; mso-table-rspace: 0pt; padding: 44px 44px 36px 44px; border-radius: 12px; box-shadow: 0 4px 18px rgba(0,0,0,0.07);">
+          <td bgcolor="#ffffff" align="left" class="content-cell dark-mode-content-bg${options?.isKrasNewsletter ? ' kras-newsletter' : ''}" style="-webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; mso-table-lspace: 0pt; mso-table-rspace: 0pt; padding: 44px 44px 36px 44px; border-radius: 12px; box-shadow: 0 4px 18px rgba(0,0,0,0.07);">
             ${
               options?.isKrasNewsletter
-                ? `${krasHeaderHtml()}
-            <!-- 헤더: 제목/날짜 행 -->
-            <table cellpadding="0" cellspacing="0" width="100%" role="presentation" class="header-title-border" style="width: 100%; border-collapse: collapse; margin: 0 0 18px 0; mso-table-lspace: 0pt; mso-table-rspace: 0pt; margin-bottom: 32px; border: none; border-bottom: 3px solid #D2691E;">
-              <tr>
-                <td align="left" valign="baseline" class="header-dark-text" style="text-align: left; padding: 0 0 14px 0; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 26px; font-weight: bold; color: #111111; line-height: 1.2; border: none;">
-                  한국고고학회 뉴스레터
-                </td>
-                <td align="left" valign="baseline" class="header-dark-text" style="text-align: left; padding: 0 0 14px 0; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 24px; color: #333333; white-space: nowrap; border: none; width: 1px;" width="1">
-                  ${options?.displayDate ?? ''}
-                </td>
-              </tr>
-            </table>            
+                ? `<!-- KRAS 50주년 헤더 -->
+            <div style="text-align: center; margin-bottom: 28px;">
+              <div style="width: 180px; min-height: 141px; display: inline-block; margin-bottom: 20px;"><img src="https://heripo.com/kras-50.png" width="180" alt="한국고고학회 50주년" style="-ms-interpolation-mode: bicubic; border: 0; height: auto; line-height: 100%; outline: none; text-decoration: none; display: block;" height="auto"></div>
+              <div class="kras-header-title" style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 30px; font-weight: bold; color: #111111; line-height: 1.2; margin-bottom: 8px;">한국고고학회 뉴스레터</div>
+              <div class="kras-header-date" style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 16px; color: #666666; line-height: 1.5;">${options?.displayDate ?? ''}</div>
+            </div>
+            <hr class="kras-header-divider" style="border: 0; border-top: 2px solid #D2691E; margin: 0 0 32px 0;">
             `
                 : `${heripoLogoHtml('12px')}
                 `
@@ -464,9 +470,9 @@ export const createNewsletterHtmlTemplate = (
 
             ${
               options?.krasNewsMarkdown
-                ? safeMarkdown2Html(
-                    `## 학회 소식
-${options.krasNewsMarkdown}
+                ? `<h2 style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 24px; font-weight: bold; line-height: 1.3; color: #D2691E; margin: 0 0 16px 0; letter-spacing: -0.2px; border-left: 5px solid #D2691E; padding-left: 12px; background: none;"><span style="display: inline-block; width: 26px; height: 26px; vertical-align: -4px; margin-right: 6px;"><img src="https://heripo.com/kras-symbol.png" width="26" height="26" alt="" style="border: 0; display: block;"></span>학회 소식</h2>` +
+                  safeMarkdown2Html(
+                    `${options.krasNewsMarkdown}
 
 ---
 `,

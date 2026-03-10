@@ -23,7 +23,10 @@ app.get('/api/preview', (req, res) => {
   const heripolabNews = req.query.heripolabNews === 'true';
 
   const options: Record<string, unknown> = {};
-  if (isKras) options.isKrasNewsletter = true;
+  if (isKras) {
+    options.isKrasNewsletter = true;
+    options.displayDate = '2026년 3월 5일';
+  }
   if (krasNews)
     options.krasNewsMarkdown = `학회 업무 인수인계:
 - 2025년 12월 30일 대전 국립문화유산연구원 학연정 사무실에서 업무 인수인계를 하였으며, 2026년 1월 5일 경북대학교에서 사무집기 및 물품등을 인수인계 하였습니다.
