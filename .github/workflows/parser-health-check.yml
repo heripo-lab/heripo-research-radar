@@ -19,7 +19,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -73,7 +73,7 @@ jobs:
           '
 
       - name: Slack notification
-        uses: slackapi/slack-github-action@v2
+        uses: slackapi/slack-github-action@v3
         if: always()
         with:
           method: chat.postMessage
