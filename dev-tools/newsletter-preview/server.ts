@@ -20,6 +20,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.get('/api/preview', (req, res) => {
   const isKras = req.query.kras === 'true';
   const krasNews = req.query.krasNews === 'true';
+  const krasNotice = req.query.krasNotice === 'true';
   const heripolabNews = req.query.heripolabNews === 'true';
 
   const options: Record<string, unknown> = {};
@@ -36,6 +37,15 @@ app.get('/api/preview', (req, res) => {
 
 학회 운영위원회 구성:
 - 제 31대 학회 운영위원회 구성을 완료하고, 홈페이지에 게시하였습니다.`;
+  if (krasNotice)
+    options.krasNoticeMarkdown = `학술대회 안내:
+- 제50회 한국고고학전국대회가 2026년 11월 7~8일 국립중앙박물관 대강당에서 개최됩니다.
+- 주제: "한국 고고학의 과거·현재·미래"
+- 사전등록: [학회 홈페이지](https://www.kras.or.kr)에서 접수
+
+학회지 투고 안내:
+- 『한국고고학보』 제130호 원고 접수 마감: 2026년 4월 30일
+- 투고 규정은 [학회 홈페이지](https://www.kras.or.kr)를 참고하시기 바랍니다.`;
   if (heripolabNews)
     options.heripolabNewsMarkdown = `1월 28일 오픈소스 [heripo engine](https://github.com/heripo-lab/heripo-engine)을 공개하였습니다.`;
 

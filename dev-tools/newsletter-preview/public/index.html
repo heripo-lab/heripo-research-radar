@@ -49,6 +49,10 @@
           krasNewsMarkdown
         </label>
         <label class="checkbox-label">
+          <input type="checkbox" id="krasNoticeCheck">
+          krasNoticeMarkdown
+        </label>
+        <label class="checkbox-label">
           <input type="checkbox" id="heripolabNewsCheck">
           heripolabNewsMarkdown
         </label>
@@ -90,6 +94,7 @@
     const templateBtns = document.querySelectorAll('#templateGroup .btn-group-item');
     const themeBtns = document.querySelectorAll('#themeGroup .btn-group-item');
     const krasNewsCheck = document.getElementById('krasNewsCheck');
+    const krasNoticeCheck = document.getElementById('krasNoticeCheck');
     const heripolabNewsCheck = document.getElementById('heripolabNewsCheck');
 
     async function loadPreview() {
@@ -97,6 +102,7 @@
         const query = new URLSearchParams();
         if (template === 'kras') query.set('kras', 'true');
         if (krasNewsCheck.checked) query.set('krasNews', 'true');
+        if (krasNoticeCheck.checked) query.set('krasNotice', 'true');
         if (heripolabNewsCheck.checked) query.set('heripolabNews', 'true');
         const qs = query.toString();
         const response = await fetch('/api/preview' + (qs ? '?' + qs : ''));
@@ -211,6 +217,7 @@
     });
 
     krasNewsCheck.addEventListener('change', loadPreview);
+    krasNoticeCheck.addEventListener('change', loadPreview);
     heripolabNewsCheck.addEventListener('change', loadPreview);
 
     viewSourceBtn.addEventListener('click', () => {
