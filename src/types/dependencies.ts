@@ -93,6 +93,12 @@ interface BaseNewsletterTemplateOptions {
   krasNewsMarkdown?: string;
 
   /**
+   * Markdown content for KRAS notice section.
+   * Converted to HTML and injected into the newsletter template.
+   */
+  krasNoticeMarkdown?: string;
+
+  /**
    * Markdown content for heripo lab news section.
    * Converted to HTML and injected into the newsletter template.
    */

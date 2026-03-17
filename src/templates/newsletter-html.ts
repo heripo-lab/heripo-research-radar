@@ -512,6 +512,29 @@ ${options.heripolabNewsMarkdown}
             {{NEWSLETTER_CONTENT}}
 
             <hr style="border: 0; border-top: 2px solid #D2691E; margin: 32px 0;">
+            
+            ${
+              options?.krasNoticeMarkdown
+                ? `<h2 style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 24px; font-weight: bold; line-height: 1.3; color: #D2691E; margin: 0 0 16px 0; letter-spacing: -0.2px; border-left: 5px solid #D2691E; padding-left: 12px; background: none;"><span style="display: inline-block; width: 26px; height: 26px; vertical-align: -4px; margin-right: 6px;"><img src="https://heripo.com/kras-symbol.png" width="26" height="26" alt="" style="border: 0; display: block;"></span>학회 안내</h2>` +
+                  safeMarkdown2Html(
+                    `${options.krasNoticeMarkdown}
+
+---
+`,
+                    {
+                      window: new JSDOM('').window,
+                      linkTargetBlank: true,
+                      fixMalformedUrls: true,
+                      fixBoldSyntax: true,
+                      convertStrikethrough: true,
+                    },
+                  ).replaceAll(
+                    '%7B%7B%7BRESEND_UNSUBSCRIBE_URL%7D%7D%7D',
+                    '{{{RESEND_UNSUBSCRIBE_URL}}}',
+                  )
+                : ''
+            }
+
             <h2 style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 24px; font-weight: bold; line-height: 1.3; color: #D2691E; margin: 0 0 16px 0; letter-spacing: -0.2px; border-left: 5px solid #D2691E; padding-left: 12px; background: none;">🔍 뉴스레터 출처</h2>
             <p style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.7; color: #444444; margin: 0 0 18px 0;">모든 소식은 다음 출처에서 수집됩니다:</p>
             <ul style="padding-left: 24px; margin: 0 0 18px 0;">
