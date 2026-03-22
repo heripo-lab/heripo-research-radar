@@ -56,6 +56,7 @@ import {
   parseNrichPortalDetail,
   parseNrichPortalList,
 } from '~/parsers/nrich.parser';
+import { parseSeamuseDetail, parseSeamuseList } from '~/parsers/seamuse.parser';
 import {
   extractNttSeq,
   parseYngogoDetail,
@@ -154,6 +155,38 @@ export function createCrawlingTargetGroups(
           url: 'https://portal.nrich.go.kr/kor/boardList.do?menuIdx=1058&bbscd=9',
           parseList: parseNrichPortalList,
           parseDetail: parseNrichPortalDetail,
+        },
+        {
+          id: '국립해양유산연구소_공지사항',
+          name: '국립해양유산연구소 공지사항',
+          url: 'https://www.seamuse.go.kr/news/notice/list/1',
+          parseList: (html) =>
+            parseSeamuseList(
+              html,
+              '/news/notice',
+              '/news/notice/info',
+              customFetch,
+            ),
+          parseDetail: (html) =>
+            parseSeamuseDetail(html, '/news/notice', customFetch),
+        },
+        {
+          id: '국립해양유산연구소_학술지',
+          name: '국립해양유산연구소 학술지 해양유산연구',
+          url: 'https://www.seamuse.go.kr/resources/academiccultural/list/1',
+          parseList: (html) =>
+            parseSeamuseList(
+              html,
+              '/resources/academiccultural',
+              '/resources/academiccultural/info',
+              customFetch,
+            ),
+          parseDetail: (html) =>
+            parseSeamuseDetail(
+              html,
+              '/resources/academiccultural',
+              customFetch,
+            ),
         },
         {
           id: '국립고궁박물관_공지사항',
