@@ -88,6 +88,31 @@ export class AnalysisProvider implements CoreAnalysisProvider {
           targetUrl: 'https://www.kaah.kr/ipcopen',
           minScore: 6,
         },
+        {
+          targetUrl:
+            'https://www.seamuse.go.kr/resources/academiccultural/list/1',
+          minScore: 6,
+        },
+        {
+          targetUrl:
+            'https://www.seamuse.go.kr/resources/academicreport/list/1',
+          minScore: 6,
+        },
+        {
+          targetUrl:
+            'https://www.seamuse.go.kr/resources/academicreport/list/1#tab2',
+          minScore: 6,
+        },
+        {
+          targetUrl:
+            'https://www.seamuse.go.kr/resources/academicreport/list/1#tab3',
+          minScore: 6,
+        },
+        {
+          targetUrl:
+            'https://www.seamuse.go.kr/resources/academicreport/list/1#tab4',
+          minScore: 6,
+        },
         // Excavation report news: minimum score 2
         {
           targetUrl:
