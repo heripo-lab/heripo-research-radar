@@ -189,6 +189,66 @@ export function createCrawlingTargetGroups(
             ),
         },
         {
+          id: '국립해양유산연구소_학술보고서_수중유산조사',
+          name: '국립해양유산연구소 학술보고서 수중유산 조사',
+          url: 'https://www.seamuse.go.kr/resources/academicreport/list/1',
+          parseList: (html) =>
+            parseSeamuseList(
+              html,
+              '/resources/academicreport',
+              '/resources/academicreport/info',
+              customFetch,
+              'ACARPT001',
+            ),
+          parseDetail: (html) =>
+            parseSeamuseDetail(html, '/resources/academicreport', customFetch),
+        },
+        {
+          id: '국립해양유산연구소_학술보고서_수중유산보존',
+          name: '국립해양유산연구소 학술보고서 수중유산 보존',
+          url: 'https://www.seamuse.go.kr/resources/academicreport/list/1#tab2',
+          parseList: (html) =>
+            parseSeamuseList(
+              html,
+              '/resources/academicreport',
+              '/resources/academicreport/info',
+              customFetch,
+              'ACARPT002',
+            ),
+          parseDetail: (html) =>
+            parseSeamuseDetail(html, '/resources/academicreport', customFetch),
+        },
+        {
+          id: '국립해양유산연구소_학술보고서_전통선박',
+          name: '국립해양유산연구소 학술보고서 전통 선박',
+          url: 'https://www.seamuse.go.kr/resources/academicreport/list/1#tab3',
+          parseList: (html) =>
+            parseSeamuseList(
+              html,
+              '/resources/academicreport',
+              '/resources/academicreport/info',
+              customFetch,
+              'ACARPT003',
+            ),
+          parseDetail: (html) =>
+            parseSeamuseDetail(html, '/resources/academicreport', customFetch),
+        },
+        {
+          id: '국립해양유산연구소_학술보고서_해양문화역사',
+          name: '국립해양유산연구소 학술보고서 해양문화역사',
+          url: 'https://www.seamuse.go.kr/resources/academicreport/list/1#tab4',
+          parseList: (html) =>
+            parseSeamuseList(
+              html,
+              '/resources/academicreport',
+              '/resources/academicreport/info',
+              customFetch,
+              'ACARPT004',
+            ),
+          parseDetail: (html) =>
+            parseSeamuseDetail(html, '/resources/academicreport', customFetch),
+        },
+        {
           id: '국립고궁박물관_공지사항',
           name: '국립고궁박물관 공지사항',
           url: 'https://www.gogung.go.kr/gogung/bbs/BMSR00022/list.do?gubunCd=B22_001&menuNo=800088',

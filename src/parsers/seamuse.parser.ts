@@ -65,7 +65,9 @@ export const parseSeamuseList = async (
   listDataPath: string,
   infoPathPrefix: string,
   customFetch?: typeof fetch,
+  searchCategory?: string,
 ): Promise<ParsedTargetListItem[]> => {
+  const body = searchCategory ? `searchCategory=${searchCategory}` : '';
   const response = await (customFetch ?? fetch)(
     `${BASE_URL}${listDataPath}/listData/1`,
     {
@@ -73,7 +75,7 @@ export const parseSeamuseList = async (
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
-      body: '',
+      body,
     },
   );
 
