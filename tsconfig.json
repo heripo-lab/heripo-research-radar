@@ -9,7 +9,6 @@
     "skipLibCheck": true,
     "moduleResolution": "bundler",
     "verbatimModuleSyntax": true,
-    "baseUrl": ".",
     "paths": {
       "~/*": ["./src/*"],
       "test/*": ["./test/*"]
