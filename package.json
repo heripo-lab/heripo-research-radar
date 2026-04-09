@@ -48,7 +48,7 @@
   "license": "Apache-2.0",
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.68",
-    "@ai-sdk/google": "^3.0.60",
+    "@ai-sdk/google": "^3.0.61",
     "@ai-sdk/openai": "^3.0.52",
     "cheerio": "^1.2.0",
     "dompurify": "^3.3.3",
