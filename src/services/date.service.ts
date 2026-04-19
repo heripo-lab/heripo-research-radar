@@ -5,16 +5,17 @@ import type {
 
 /**
  * Date service implementation
- * - Provides current date and display date strings
+ * - Provides newsletter publication date strings (ISO and localized display form)
  * - Always returns Korea Standard Time (KST, Asia/Seoul) regardless of server timezone
- * - Accepts optional publishDate to override the current date (e.g., for next-day publishing)
+ * - Accepts optional publishDate to override "today" (e.g., generating today's run for tomorrow's publication)
  */
 export class DateService implements CoreDateService {
   private readonly targetDate: Date;
 
   /**
-   * @param publishDate - Optional ISO date string (YYYY-MM-DD) to use instead of current date.
-   *                       When provided, the newsletter will use this date as its publication date.
+   * @param publishDate - Optional ISO date string (YYYY-MM-DD) representing the newsletter
+   *                      publication date. If omitted, the current wall-clock time (KST)
+   *                      is used. Pass tomorrow's date when building the issue the night before.
    * @throws {Error} If publishDate is not in YYYY-MM-DD format or is not a real calendar date.
    */
   constructor(publishDate?: string) {
@@ -46,11 +47,11 @@ export class DateService implements CoreDateService {
   }
 
   /**
-   * Get current date in ISO format (YYYY-MM-DD)
+   * Get the newsletter publication date in ISO format (YYYY-MM-DD).
    * - Always returns date in Korea Standard Time (UTC+9)
    * @returns ISO date string (e.g., "2024-10-15")
    */
-  getCurrentISODateString(): IsoDateString {
+  getPublicationISODateString(): IsoDateString {
     // Use Intl.DateTimeFormat to get date in Korea timezone
     // 'en-CA' locale returns YYYY-MM-DD format by default
     const kstDate = this.targetDate.toLocaleDateString('en-CA', {
@@ -59,12 +60,16 @@ export class DateService implements CoreDateService {
     return kstDate as IsoDateString;
   }
 
+  getCurrentISODateString(): IsoDateString {
+    return this.getPublicationISODateString();
+  }
+
   /**
-   * Get formatted display date string
+   * Get the newsletter publication date as a localized display string.
    * - Always returns date in Korea Standard Time (UTC+9)
    * @returns Korean formatted date (e.g., "2024년 10월 15일")
    */
-  getDisplayDateString(): string {
+  getPublicationDisplayDateString(): string {
     const formatter = new Intl.DateTimeFormat('ko-KR', {
       timeZone: 'Asia/Seoul',
       year: 'numeric',
@@ -72,5 +77,9 @@ export class DateService implements CoreDateService {
       day: 'numeric',
     });
     return formatter.format(this.targetDate);
+  }
+
+  getDisplayDateString(): string {
+    return this.getPublicationDisplayDateString();
   }
 }

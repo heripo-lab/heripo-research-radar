@@ -179,7 +179,7 @@ function createNewsletterGenerator(
     dependencies.templateOptions
       ? {
           ...dependencies.templateOptions,
-          displayDate: dateService.getDisplayDateString(),
+          displayDate: dateService.getPublicationDisplayDateString(),
         }
       : undefined;
   let resolvedContentOptions: ContentOptions = { ...contentOptions };

@@ -57,12 +57,9 @@
     "safe-markdown2html": "^1.0.2",
     "turndown": "^7.2.4"
   },
-  "peerDependencies": {
-    "@llm-newsletter-kit/core": "~1.3.0"
-  },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@llm-newsletter-kit/core": "^1.3.11",
+    "@llm-newsletter-kit/core": "^2.0.0",
     "@trivago/prettier-plugin-sort-imports": "^6.0.2",
     "@types/express": "^5.0.6",
     "@types/jsdom": "^28.0.1",

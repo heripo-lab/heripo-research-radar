@@ -106,7 +106,7 @@ interface BaseNewsletterTemplateOptions {
 
   /**
    * Display date string for the newsletter header (e.g. "2026년 2월 12일").
-   * Injected from DateService.getDisplayDateString() at generation time.
+   * Injected from DateService.getPublicationDisplayDateString() at generation time.
    */
   displayDate?: string;
 }
