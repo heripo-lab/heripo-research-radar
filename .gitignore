@@ -29,6 +29,7 @@ npm-debug.log*
 .env.local
 
 # AI assistant files
+AGENTS.md
 CLAUDE.md
 .cursorrules
 .cursor/
