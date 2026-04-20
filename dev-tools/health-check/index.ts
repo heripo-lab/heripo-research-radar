@@ -1,20 +1,28 @@
-import fs from 'fs';
-
-import { ProxyAgent } from 'undici';
-
 import type { CrawlingTarget } from '@llm-newsletter-kit/core';
 
+import fs from 'fs';
+import { ProxyAgent } from 'undici';
+import { Agent, fetch as undiciFetch } from 'undici';
+
 import { createCrawlingTargetGroups } from '~/config/crawling-targets';
+
+const tlsAgent = new Agent({
+  connect: { rejectUnauthorized: false },
+});
+
+const unsafeFetch: typeof fetch = (input, init) =>
+  undiciFetch(input as any, { ...init, dispatcher: tlsAgent } as any) as any;
 
 // CLI args
 const USE_PROXY = process.argv.includes('--proxy');
 const PROXY_URL = process.env.PROXY_URL;
 
 // Create proxy fetch if --proxy flag is set and PROXY_URL is available
-const proxyAgent = USE_PROXY && PROXY_URL ? new ProxyAgent(PROXY_URL) : undefined;
+const proxyAgent =
+  USE_PROXY && PROXY_URL ? new ProxyAgent(PROXY_URL) : undefined;
 const proxyFetch: typeof fetch | undefined = proxyAgent
   ? (input, init) =>
-      fetch(input, { ...init, dispatcher: proxyAgent } as RequestInit)
+      unsafeFetch(input, { ...init, dispatcher: proxyAgent } as RequestInit)
   : undefined;
 
 const crawlingTargetGroups = createCrawlingTargetGroups(proxyFetch);
@@ -58,9 +66,7 @@ interface TargetCheckResult {
 }
 
 async function fetchHtml(url: string): Promise<string> {
-  process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
-
-  const fetchFn = proxyFetch ?? fetch;
+  const fetchFn = proxyFetch ?? unsafeFetch;
   const response = await fetchFn(url, {
     signal: AbortSignal.timeout(30_000),
     headers: {
@@ -70,8 +76,6 @@ async function fetchHtml(url: string): Promise<string> {
       'Accept-Language': 'ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7',
     },
   });
-
-  process.env.NODE_TLS_REJECT_UNAUTHORIZED = '1';
 
   if (!response.ok) {
     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -106,9 +110,7 @@ function validateListResult(
   return errors;
 }
 
-function validateDetailResult(detail: {
-  detailContent?: string;
-}): string[] {
+function validateDetailResult(detail: { detailContent?: string }): string[] {
   const errors: string[] = [];
 
   if (!detail.detailContent || detail.detailContent.trim() === '') {
@@ -218,9 +220,7 @@ async function main() {
   for (const group of crawlingTargetGroups) {
     for (const target of group.targets) {
       totalTargets++;
-      process.stdout.write(
-        `Checking [${group.name}] ${target.name} ... `,
-      );
+      process.stdout.write(`Checking [${group.name}] ${target.name} ... `);
 
       const result = await checkTarget(group.name, target);
       allResults.push(result);
@@ -272,7 +272,12 @@ async function main() {
   );
 
   // Write compact summary for GitHub Actions
-  const slackSummary = buildSlackSummary(allResults, passed, failed, totalTargets);
+  const slackSummary = buildSlackSummary(
+    allResults,
+    passed,
+    failed,
+    totalTargets,
+  );
 
   if (process.env.GITHUB_OUTPUT) {
     const delimiter = `HEREDOC_${Date.now()}`;
@@ -303,7 +308,10 @@ async function main() {
     } else {
       mdLines.push(`모든 파서가 정상 동작합니다. ✅`);
     }
-    fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, mdLines.join('\n') + '\n');
+    fs.appendFileSync(
+      process.env.GITHUB_STEP_SUMMARY,
+      mdLines.join('\n') + '\n',
+    );
   }
 
   process.exit(failed > 0 ? 1 : 0);
