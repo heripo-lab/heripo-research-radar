@@ -2,7 +2,7 @@
   "name": "@heripo/research-radar",
   "private": false,
   "type": "module",
-  "version": "3.3.5",
+  "version": "3.3.6",
   "description": "AI-driven intelligence for Korean cultural heritage. This package serves as both a ready-to-use newsletter service and a practical implementation example for the LLM-Newsletter-Kit.",
   "main": "dist/index.cjs",
   "module": "dist/index.js",
