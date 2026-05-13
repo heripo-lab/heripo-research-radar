@@ -20,7 +20,7 @@ app.get('/api/preview', (req, res) => {
 
   const html = generateWelcomeHTML('preview-subscriber-id', name, {
     isKrasNewsletter: isKras,
-    siteUrl: 'https://heripo.com',
+    siteUrl: 'https://heripo.app',
   });
 
   res.type('html').send(html);

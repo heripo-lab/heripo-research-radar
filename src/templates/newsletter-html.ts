@@ -458,7 +458,7 @@ export const createNewsletterHtmlTemplate = (
               options?.isKrasNewsletter
                 ? `<!-- KRAS 50주년 헤더 -->
             <div style="text-align: center; margin-bottom: 28px;">
-              <div style="width: 180px; min-height: 141px; display: inline-block; margin-bottom: 20px;"><img src="https://heripo.com/kras-50.png" width="180" alt="한국고고학회 50주년" style="-ms-interpolation-mode: bicubic; border: 0; height: auto; line-height: 100%; outline: none; text-decoration: none; display: block;" height="auto"></div>
+              <div style="width: 180px; min-height: 141px; display: inline-block; margin-bottom: 20px;"><img src="https://heripo.app/kras-50.png" width="180" alt="한국고고학회 50주년" style="-ms-interpolation-mode: bicubic; border: 0; height: auto; line-height: 100%; outline: none; text-decoration: none; display: block;" height="auto"></div>
               <div class="kras-header-title" style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 30px; font-weight: bold; color: #111111; line-height: 1.2; margin-bottom: 8px;">한국고고학회 뉴스레터</div>
               <div class="kras-header-date" style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 16px; color: #666666; line-height: 1.5;">${options?.displayDate ?? ''}</div>
             </div>
@@ -470,7 +470,7 @@ export const createNewsletterHtmlTemplate = (
 
             ${
               options?.krasNewsMarkdown
-                ? `<h2 style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 24px; font-weight: bold; line-height: 1.3; color: #D2691E; margin: 0 0 16px 0; letter-spacing: -0.2px; border-left: 5px solid #D2691E; padding-left: 12px; background: none;"><span style="display: inline-block; width: 26px; height: 26px; vertical-align: -4px; margin-right: 6px;"><img src="https://heripo.com/kras-symbol.png" width="26" height="26" alt="" style="border: 0; display: block;"></span>학회 소식</h2>` +
+                ? `<h2 style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 24px; font-weight: bold; line-height: 1.3; color: #D2691E; margin: 0 0 16px 0; letter-spacing: -0.2px; border-left: 5px solid #D2691E; padding-left: 12px; background: none;"><span style="display: inline-block; width: 26px; height: 26px; vertical-align: -4px; margin-right: 6px;"><img src="https://heripo.app/kras-symbol.png" width="26" height="26" alt="" style="border: 0; display: block;"></span>학회 소식</h2>` +
                   safeMarkdown2Html(
                     `${options.krasNewsMarkdown}
 
@@ -515,7 +515,7 @@ ${options.heripolabNewsMarkdown}
             
             ${
               options?.krasNoticeMarkdown
-                ? `<h2 style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 24px; font-weight: bold; line-height: 1.3; color: #D2691E; margin: 0 0 16px 0; letter-spacing: -0.2px; border-left: 5px solid #D2691E; padding-left: 12px; background: none;"><span style="display: inline-block; width: 26px; height: 26px; vertical-align: -4px; margin-right: 6px;"><img src="https://heripo.com/kras-symbol.png" width="26" height="26" alt="" style="border: 0; display: block;"></span>학회 안내</h2>` +
+                ? `<h2 style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 24px; font-weight: bold; line-height: 1.3; color: #D2691E; margin: 0 0 16px 0; letter-spacing: -0.2px; border-left: 5px solid #D2691E; padding-left: 12px; background: none;"><span style="display: inline-block; width: 26px; height: 26px; vertical-align: -4px; margin-right: 6px;"><img src="https://heripo.app/kras-symbol.png" width="26" height="26" alt="" style="border: 0; display: block;"></span>학회 안내</h2>` +
                   safeMarkdown2Html(
                     `${options.krasNoticeMarkdown}
 
@@ -569,8 +569,8 @@ ${platformIntroHtml()}
         </tr>
         <tr>
           <td align="center" style="-webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; mso-table-lspace: 0pt; mso-table-rspace: 0pt; padding: 30px 20px; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 12px; line-height: 1.5; color: #888888;">
-            <p style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.7; color: #444444; margin: 0 0 10px 0;" class="footer-text">heripo lab | newsletter@heripo.com</p>
-            <p style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.7; color: #444444; margin: 0 0 10px 0;" class="footer-text">${options?.isKrasNewsletter ? '이 메일은 heripo.com에서 뉴스레터를 구독하신 분들과 한국고고학회 회원에게 발송됩니다.' : '이 메일은 heripo.com에서 리서치 레이더를 구독하신 분들에게 발송됩니다.'}<br>
+            <p style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.7; color: #444444; margin: 0 0 10px 0;" class="footer-text">heripo lab | newsletter@heripo.org</p>
+            <p style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.7; color: #444444; margin: 0 0 10px 0;" class="footer-text">${options?.isKrasNewsletter ? '이 메일은 heripo.app에서 뉴스레터를 구독하신 분들과 한국고고학회 회원에게 발송됩니다.' : '이 메일은 heripo.app에서 리서치 레이더를 구독하신 분들에게 발송됩니다.'}<br>
               더 이상 이메일을 받고 싶지 않으시면 <a href="{{{RESEND_UNSUBSCRIBE_URL}}}" target="_blank" style="-webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; font-weight: bold; transition: color 0.2s; color: #888888; text-decoration: underline;" class="footer-link">여기에서 수신 거부</a>하세요.</p>
 ${poweredByFooterHtml()}
           </td>

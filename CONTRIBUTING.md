@@ -215,4 +215,4 @@ Include reproduction steps, expected/actual results, and logs/screenshots to hel
 ## Related Projects
 
 - **Core engine**: [`@llm-newsletter-kit/core`](https://github.com/heripo-lab/llm-newsletter-kit-core) - Domain-agnostic newsletter generation engine
-- **Live service**: [Heripo Research Radar](https://heripo.com/research-radar/subscribe)
+- **Live service**: [Heripo Research Radar](https://heripo.app/research-radar/subscribe)

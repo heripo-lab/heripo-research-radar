@@ -157,7 +157,7 @@ export interface WelcomeTemplateOptions {
   /** When true, apply KRAS (Korean Archaeological Society) branding */
   isKrasNewsletter?: boolean;
 
-  /** Site base URL for constructing links (default: 'https://heripo.com') */
+  /** Site base URL for constructing links (default: 'https://heripo.app') */
   siteUrl?: string;
 }
 

@@ -102,5 +102,5 @@ export const sampleContent = `
 </tr>
 </tbody></table>
 <hr style="border: 0; border-top: 2px solid #D2691E; margin: 32px 0;">
-<p style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.7; color: #444444; margin: 0 0 18px 0;">오늘 뉴스레터에서는 부여 관북리 유적의 획기적인 발굴 성과와 함께 2026년도 주요 연구개발 지원 사업 소식을 전해드렸습니다. 특히 R&amp;D 사업과 출토자료 지원 사업은 마감 기한이 정해져 있으므로 해당 분야 연구자분들께서는 일정을 꼼꼼히 챙기시길 바랍니다. <a href="https://heripo.com/research-radar/subscribe" target="_blank">한국고고학회 뉴스레터 구독하기</a></p>
+<p style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.7; color: #444444; margin: 0 0 18px 0;">오늘 뉴스레터에서는 부여 관북리 유적의 획기적인 발굴 성과와 함께 2026년도 주요 연구개발 지원 사업 소식을 전해드렸습니다. 특히 R&amp;D 사업과 출토자료 지원 사업은 마감 기한이 정해져 있으므로 해당 분야 연구자분들께서는 일정을 꼼꼼히 챙기시길 바랍니다. <a href="https://heripo.app/research-radar/subscribe" target="_blank">한국고고학회 뉴스레터 구독하기</a></p>
 `;

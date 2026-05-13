@@ -13,7 +13,7 @@
 
 ## 이게 뭔가요?
 
-한국 문화유산 분야를 위한 AI 기반 뉴스레터 서비스입니다. [`@llm-newsletter-kit/core`](https://github.com/heripo-lab/llm-newsletter-kit-core)를 기반으로 만들어진 **실제 운영 서비스**([heripo.com](https://heripo.com/research-radar/subscribe))이자, LLM으로 자동화된 뉴스레터를 만드는 방법을 보여주는 **참조 구현**입니다.
+한국 문화유산 분야를 위한 AI 기반 뉴스레터 서비스입니다. [`@llm-newsletter-kit/core`](https://github.com/heripo-lab/llm-newsletter-kit-core)를 기반으로 만들어진 **실제 운영 서비스**([heripo.app](https://heripo.app/research-radar/subscribe))이자, LLM으로 자동화된 뉴스레터를 만드는 방법을 보여주는 **참조 구현**입니다.
 
 **운영 메트릭**:
 - **비용**: 발행당 $0.2-1
@@ -27,13 +27,13 @@
 - 멀티 LLM 프로바이더: OpenAI GPT-5 (분석) + 선택 가능한 콘텐츠 생성 (OpenAI / Anthropic / Google)
 - 재시도, 체인 옵션, 미리보기 이메일 내장
 
-**링크**: [라이브 서비스](https://heripo.com/research-radar/subscribe) • [뉴스레터 예시](https://heripo.com/research-radar-newsletter-example.html) • [Core 엔진](https://github.com/heripo-lab/llm-newsletter-kit-core)
+**링크**: [라이브 서비스](https://heripo.app/research-radar/subscribe) • [뉴스레터 예시](https://heripo.app/research-radar-newsletter-example.html) • [Core 엔진](https://github.com/heripo-lab/llm-newsletter-kit-core)
 
 ## 배경
 
 고고학을 전공한 소프트웨어 엔지니어 김홍연이 "왜 연구에는 이렇게 많은 수작업이 필요할까?"라는 질문에서 출발했습니다.
 
-[대형 언어 모델(LLM)을 활용한 고고학 정보화 연구](https://poc.heripo.com)를 마친 후, 개인용 스크립트를 프로덕션 서비스로 발전시켰습니다. 이 저장소는 실제 운영 중인 서비스를 오픈소스로 공개해 다른 개발자들이 도메인별 뉴스레터를 쉽게 시작할 수 있도록 돕습니다.
+[대형 언어 모델(LLM)을 활용한 고고학 정보화 연구](https://poc.heripo.org)를 마친 후, 개인용 스크립트를 프로덕션 서비스로 발전시켰습니다. 이 저장소는 실제 운영 중인 서비스를 오픈소스로 공개해 다른 개발자들이 도메인별 뉴스레터를 쉽게 시작할 수 있도록 돕습니다.
 
 ## 라이선스
 
@@ -279,7 +279,7 @@ contentGeneration: {
 ## 관련 프로젝트
 
 - [`@llm-newsletter-kit/core`](https://github.com/heripo-lab/llm-newsletter-kit-core) — 도메인 독립적인 뉴스레터 엔진
-- [대형 언어 모델(LLM)을 활용한 고고학 정보화 연구](https://poc.heripo.com) — 학술 연구
+- [대형 언어 모델(LLM)을 활용한 고고학 정보화 연구](https://poc.heripo.org) — 학술 연구
 
 ## 후원
 

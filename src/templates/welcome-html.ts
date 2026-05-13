@@ -37,7 +37,7 @@ export function generateWelcomeHTML(
   options?: WelcomeTemplateOptions,
 ): string {
   const isKras = options?.isKrasNewsletter ?? false;
-  const siteUrl = options?.siteUrl ?? 'https://heripo.com';
+  const siteUrl = options?.siteUrl ?? 'https://heripo.app';
   const safeName = sanitizeText(name);
   const unsubscribeUrl = `${siteUrl}/research-radar/unsubscribe?id=${id}`;
 
@@ -57,7 +57,7 @@ function createWelcomeHtmlRaw(
   const headerHtml = isKras
     ? `<!-- KRAS 50주년 헤더 -->
             <div style="text-align: center; margin-bottom: 36px;">
-              <div style="width: 180px; min-height: 141px; display: inline-block; margin-bottom: 20px;"><img src="https://heripo.com/kras-50.png" width="180" alt="한국고고학회 50주년" style="-ms-interpolation-mode: bicubic; border: 0; height: auto; line-height: 100%; outline: none; text-decoration: none; display: block;" height="auto"></div>
+              <div style="width: 180px; min-height: 141px; display: inline-block; margin-bottom: 20px;"><img src="https://heripo.app/kras-50.png" width="180" alt="한국고고학회 50주년" style="-ms-interpolation-mode: bicubic; border: 0; height: auto; line-height: 100%; outline: none; text-decoration: none; display: block;" height="auto"></div>
               <div class="kras-header-title" style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 30px; font-weight: bold; color: #111111; line-height: 1.2; margin-bottom: 0;">한국고고학회 뉴스레터</div>
             </div>
             <hr class="kras-header-divider" style="border: 0; border-top: 2px solid #D2691E; margin: 0 0 32px 0;">`
@@ -89,8 +89,8 @@ function createWelcomeHtmlRaw(
             </blockquote>`;
 
   const footerDisclaimerText = isKras
-    ? '이 이메일은 heripo.com에서 한국고고학회 뉴스레터를 구독하신 분들에게 발송됩니다.'
-    : '이 이메일은 heripo.com에서 리서치 레이더를 구독하신 분들에게 발송됩니다.';
+    ? '이 이메일은 heripo.app에서 한국고고학회 뉴스레터를 구독하신 분들에게 발송됩니다.'
+    : '이 이메일은 heripo.app에서 리서치 레이더를 구독하신 분들에게 발송됩니다.';
 
   const footerUnsubscribeHtml = isKras
     ? `<p style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 14px; line-height: 1.7; color: #6b7280; margin: 0 0 18px 0; margin-bottom: 8px;">📱 구독 관리: <a href="${unsubscribeUrl}" class="footer-link">구독 해지</a></p>`

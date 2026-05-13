@@ -13,7 +13,7 @@ English | [한국어](./README-ko.md)
 
 ## What is this?
 
-An AI-powered newsletter service for Korean cultural heritage. Built on [`@llm-newsletter-kit/core`](https://github.com/heripo-lab/llm-newsletter-kit-core), it's both a production service ([live at heripo.com](https://heripo.com/research-radar/subscribe)) and a reference implementation showing how to build automated newsletters with LLMs.
+An AI-powered newsletter service for Korean cultural heritage. Built on [`@llm-newsletter-kit/core`](https://github.com/heripo-lab/llm-newsletter-kit-core), it's both a production service ([live at heripo.app](https://heripo.app/research-radar/subscribe)) and a reference implementation showing how to build automated newsletters with LLMs.
 
 **Production metrics**:
 - **Cost**: $0.2-1 USD per issue
@@ -27,13 +27,14 @@ An AI-powered newsletter service for Korean cultural heritage. Built on [`@llm-n
 - Multi LLM providers: OpenAI GPT-5 (analysis) + selectable content generation (OpenAI / Anthropic / Google)
 - Built-in retries, chain options, preview emails
 
-**Links**: [Live service](https://heripo.com/research-radar/subscribe) • [Newsletter example](https://heripo.com/research-radar-newsletter-example.html) • [Core engine](https://github.com/heripo-lab/llm-newsletter-kit-core)
+**Links**: [Live service](https://heripo.app/research-radar/subscribe) • [Newsletter example](https://heripo.app/research-radar-newsletter-example.html) • [Core engine](https://github.com/heripo-lab/llm-newsletter-kit-core)
 
 ## Background
 
 Created by archaeologist-turned-engineer Hongyeon Kim to answer: "Why must research rely on labor-intensive manual work?"
 
-A personal script evolved into a production service after completing research on [Archaeological Informatization Using LLMs](https://poc.heripo.com). This repository open-sources the running service so developers can build domain-specific newsletters without starting from scratch.
+A personal script evolved into a production service after completing research on [Archaeological Informatization Using LLMs](https://poc.heripo.org). This repository open-sources the running service so developers can build 
+domain-specific newsletters without starting from scratch.
 
 ## License
 
@@ -279,7 +280,7 @@ Code-based automation delivers **superior output quality** through advanced AI t
 ## Related Projects
 
 - [`@llm-newsletter-kit/core`](https://github.com/heripo-lab/llm-newsletter-kit-core) — Domain-agnostic newsletter engine
-- [Archaeological Informatization Using LLMs](https://poc.heripo.com) — Academic research (Korean)
+- [Archaeological Informatization Using LLMs](https://poc.heripo.org) — Academic research (Korean)
 
 ## Sponsor
 

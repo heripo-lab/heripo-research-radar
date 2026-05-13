@@ -30,7 +30,7 @@ export const contentOptions: ContentOptions = {
  */
 export const newsletterConfig: NewsletterConfig = {
   brandName: '문화유산 리서치 레이더',
-  subscribePageUrl: 'https://heripo.com/research-radar/subscribe',
+  subscribePageUrl: 'https://heripo.app/research-radar/subscribe',
   publicationCriteria: {
     minimumArticleCountForIssue: 5,
     priorityArticleScoreThreshold: 8,
