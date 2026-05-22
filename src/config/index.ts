@@ -52,3 +52,13 @@ export const llmConfig = {
  * Crawling target configuration
  */
 export { createCrawlingTargetGroups } from './crawling-targets';
+
+/**
+ * Source list for public display (no parser dependencies)
+ */
+export {
+  getSourceList,
+  type SourceGroup,
+  type SourceItem,
+  type SourceOrganization,
+} from './source-list';
