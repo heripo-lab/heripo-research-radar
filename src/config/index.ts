@@ -58,7 +58,6 @@ export { createCrawlingTargetGroups } from './crawling-targets';
  */
 export {
   getSourceList,
-  type SourceGroup,
   type SourceItem,
   type SourceOrganization,
 } from './source-list';
