@@ -711,3 +711,27 @@ export function createCrawlingTargetGroups(
     },
   ];
 }
+
+export interface SourceItem {
+  id: string;
+  name: string;
+  url: string;
+}
+
+export interface SourceGroup {
+  id: string;
+  name: string;
+  sources: SourceItem[];
+}
+
+export function getSourceList(): SourceGroup[] {
+  return createCrawlingTargetGroups().map((group) => ({
+    id: group.id,
+    name: group.name,
+    sources: group.targets.map((target) => ({
+      id: target.id,
+      name: target.name,
+      url: target.url,
+    })),
+  }));
+}
