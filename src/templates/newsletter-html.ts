@@ -536,16 +536,7 @@ ${options.heripolabNewsMarkdown}
             }
 
             <h2 style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 24px; font-weight: bold; line-height: 1.3; color: #D2691E; margin: 0 0 16px 0; letter-spacing: -0.2px; border-left: 5px solid #D2691E; padding-left: 12px; background: none;">🔍 뉴스레터 출처</h2>
-            <p style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.7; color: #444444; margin: 0 0 18px 0;">모든 소식은 다음 출처에서 수집됩니다:</p>
-            <ul style="padding-left: 24px; margin: 0 0 18px 0;">
-              ${targets
-                .map(
-                  (target) => `
-                <li style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.7; color: #444444; margin: 0 0 18px 0; margin-bottom: 8px;"><a href="${target.url}" target="_blank">${target.name}</a></li>
-              `,
-                )
-                .join('\n')}
-            </ul>
+            <p style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.7; color: #444444; margin: 0 0 18px 0;">모든 소식의 출처는 <a href="https://heripo.app/research-radar/sources" target="_blank">이곳에서</a> 확인할 수 있습니다.</p>
             <hr style="border: 0; border-top: 2px solid #D2691E; margin: 32px 0;">
             <h2 style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 24px; font-weight: bold; line-height: 1.3; color: #D2691E; margin: 0 0 16px 0; letter-spacing: -0.2px; border-left: 5px solid #D2691E; padding-left: 12px; background: none;">📅 발행 정책</h2>
             <p style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.7; color: #444444; margin: 0 0 18px 0;"><strong>${options?.isKrasNewsletter ? '한국고고학회 뉴스레터' : 'heripo 리서치 레이더'}</strong>는 매일 발행을 원칙으로 하되, 독자분들께 의미 있는 정보를 제공하기 위해 다음과 같은 발행 기준을 적용합니다:</p>
