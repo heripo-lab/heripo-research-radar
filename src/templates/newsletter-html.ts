@@ -1,5 +1,3 @@
-import type { CrawlingTarget } from '@llm-newsletter-kit/core';
-
 import { JSDOM } from 'jsdom';
 import safeMarkdown2Html from 'safe-markdown2html';
 
@@ -18,24 +16,21 @@ import type { NewsletterTemplateOptions } from '~/types/dependencies';
  * - Light/dark mode support
  * - Mobile-friendly design
  * - Brand-specific styling
- * - List of crawling sources
+ * - Link to crawling sources page
  * - Publication policy information
  * - Platform introduction
  *
- * @param targets - Array of crawling targets to be listed in the newsletter footer
  * @param options - Optional template customization options
  * @returns Complete HTML string for the newsletter email
  *
  * @example
  * ```typescript
  * const html = createNewsletterHtmlTemplate(
- *   [{ id: '1', name: 'Source 1', url: 'https://example.com', ... }],
  *   { isKrasNewsletter: true, krasNewsMarkdown: '## News...' },
  * );
  * ```
  */
 export const createNewsletterHtmlTemplate = (
-  targets: CrawlingTarget[],
   options?: NewsletterTemplateOptions,
 ) => `<!DOCTYPE html>
 <html lang="ko" style="color-scheme: light dark; supported-color-schemes: light dark;">
