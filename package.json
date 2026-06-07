@@ -54,7 +54,7 @@
     "cheerio": "^1.2.0",
     "dompurify": "^3.4.8",
     "jsdom": "^29.1.1",
-    "juice": "^11.1.1",
+    "juice": "^12.1.0",
     "safe-markdown2html": "^1.0.6",
     "turndown": "^7.2.4"
   },

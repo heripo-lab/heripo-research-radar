@@ -14,11 +14,11 @@ const PORT = 3335;
 app.use(express.static(path.join(__dirname, 'public')));
 
 // API: Get rendered welcome email HTML
-app.get('/api/preview', (req, res) => {
+app.get('/api/preview', async (req, res) => {
   const isKras = req.query.kras === 'true';
   const name = (req.query.name as string) || '홍길동';
 
-  const html = generateWelcomeHTML('preview-subscriber-id', name, {
+  const html = await generateWelcomeHTML('preview-subscriber-id', name, {
     isKrasNewsletter: isKras,
     siteUrl: 'https://heripo.app',
   });

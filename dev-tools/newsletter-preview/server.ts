@@ -1,5 +1,4 @@
 import express from 'express';
-import juice from 'juice';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -16,7 +15,7 @@ const PORT = 3334;
 app.use(express.static(path.join(__dirname, 'public')));
 
 // API: Get rendered newsletter HTML with sample content
-app.get('/api/preview', (req, res) => {
+app.get('/api/preview', async (req, res) => {
   const isKras = req.query.kras === 'true';
   const krasNews = req.query.krasNews === 'true';
   const krasNotice = req.query.krasNotice === 'true';
@@ -56,6 +55,8 @@ app.get('/api/preview', (req, res) => {
   html = html.replace('{{NEWSLETTER_TITLE}}', sampleTitle);
   html = html.replace('{{NEWSLETTER_CONTENT}}', sampleContent);
   html = html.replace('{{{RESEND_UNSUBSCRIBE_URL}}}', '#');
+
+  const { default: juice } = await import('juice');
 
   res.type('html').send(juice(html));
 });

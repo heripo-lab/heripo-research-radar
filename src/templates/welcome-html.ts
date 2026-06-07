@@ -1,5 +1,3 @@
-import juice from 'juice';
-
 import type { WelcomeTemplateOptions } from '~/types/dependencies';
 
 import {
@@ -23,23 +21,24 @@ import {
  * @example
  * ```typescript
  * // Default heripo branding (same as original heripo-web usage):
- * const html = generateWelcomeHTML('subscriber-123', '홍길동');
+ * const html = await generateWelcomeHTML('subscriber-123', '홍길동');
  *
  * // KRAS mode:
- * const krasHtml = generateWelcomeHTML('subscriber-123', '홍길동', {
+ * const krasHtml = await generateWelcomeHTML('subscriber-123', '홍길동', {
  *   isKrasNewsletter: true,
  * });
  * ```
  */
-export function generateWelcomeHTML(
+export async function generateWelcomeHTML(
   id: string,
   name: string,
   options?: WelcomeTemplateOptions,
-): string {
+): Promise<string> {
   const isKras = options?.isKrasNewsletter ?? false;
   const siteUrl = options?.siteUrl ?? 'https://heripo.app';
   const safeName = sanitizeText(name);
   const unsubscribeUrl = `${siteUrl}/research-radar/unsubscribe?id=${id}`;
+  const { default: juice } = await import('juice');
 
   return juice(createWelcomeHtmlRaw(safeName, isKras, siteUrl, unsubscribeUrl));
 }

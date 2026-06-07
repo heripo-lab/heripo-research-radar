@@ -144,7 +144,7 @@ Uses the **Provider-Service pattern** from `@llm-newsletter-kit/core`. See [core
 
 **Parsers** (`src/parsers/`): Custom extractors per organization
 
-**Templates** (`src/templates/`): `newsletter-html.ts` (responsive email with light/dark mode), `welcome-html.ts` (`generateWelcomeHTML()`), `shared.ts` (shared HTML components)
+**Templates** (`src/templates/`): `newsletter-html.ts` (responsive email with light/dark mode), `welcome-html.ts` (`generateWelcomeHTML()` async), `shared.ts` (shared HTML components)
 
 ## Development commands
 

@@ -143,7 +143,7 @@ const newsletterId = await generateNewsletter({
 
 **파서** (`src/parsers/`): 기관별 커스텀 추출기 (khs.parser.ts, museum.parser.ts 등)
 
-**템플릿** (`src/templates/`): `newsletter-html.ts` (라이트/다크 모드 지원 반응형 이메일), `welcome-html.ts` (`generateWelcomeHTML()`), `shared.ts` (공유 HTML 컴포넌트)
+**템플릿** (`src/templates/`): `newsletter-html.ts` (라이트/다크 모드 지원 반응형 이메일), `welcome-html.ts` (`generateWelcomeHTML()` async), `shared.ts` (공유 HTML 컴포넌트)
 
 ## 개발 명령어
 
