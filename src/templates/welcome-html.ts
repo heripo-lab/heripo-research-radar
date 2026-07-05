@@ -1,5 +1,7 @@
 import type { WelcomeTemplateOptions } from '~/types/dependencies';
 
+import juice from 'juice';
+
 import {
   heripoLogoHtml,
   platformIntroHtml,
@@ -38,7 +40,6 @@ export async function generateWelcomeHTML(
   const siteUrl = options?.siteUrl ?? 'https://heripo.app';
   const safeName = sanitizeText(name);
   const unsubscribeUrl = `${siteUrl}/research-radar/unsubscribe?id=${id}`;
-  const { default: juice } = await import('juice');
 
   return juice(createWelcomeHtmlRaw(safeName, isKras, siteUrl, unsubscribeUrl));
 }

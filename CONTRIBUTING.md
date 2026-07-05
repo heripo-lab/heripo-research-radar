@@ -26,7 +26,7 @@ npm run build
 
 ### Useful Scripts
 
-- Build: `npm run build` (Rollup, generates CJS/ESM/d.ts in dist)
+- Build: `npm run build` (Rollup, generates ESM/d.ts in dist)
 - Lint: `npm run lint` / auto fix `npm run lint:fix`
 - Typecheck: `npm run typecheck`
 - Format: `npm run format`

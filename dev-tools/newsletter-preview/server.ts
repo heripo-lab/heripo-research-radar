@@ -1,4 +1,5 @@
 import express from 'express';
+import juice from 'juice';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -55,8 +56,6 @@ app.get('/api/preview', async (req, res) => {
   html = html.replace('{{NEWSLETTER_TITLE}}', sampleTitle);
   html = html.replace('{{NEWSLETTER_CONTENT}}', sampleContent);
   html = html.replace('{{{RESEND_UNSUBSCRIBE_URL}}}', '#');
-
-  const { default: juice } = await import('juice');
 
   res.type('html').send(juice(html));
 });

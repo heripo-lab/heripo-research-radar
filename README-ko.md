@@ -149,7 +149,7 @@ const newsletterId = await generateNewsletter({
 
 ```bash
 # 빌드
-npm run build              # dist/ 정리 및 Rollup으로 빌드 (CJS + ESM + types)
+npm run build              # dist/ 정리 및 Rollup으로 빌드 (ESM + types)
 
 # 타입 체크 & 린트
 npm run lint               # 소스 파일 린트

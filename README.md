@@ -150,7 +150,7 @@ Uses the **Provider-Service pattern** from `@llm-newsletter-kit/core`. See [core
 
 ```bash
 # build
-npm run build              # clean dist/ and build with Rollup (CJS + ESM + types)
+npm run build              # clean dist/ and build with Rollup (ESM + types)
 
 # type-check & lint
 npm run lint               # lint source files
