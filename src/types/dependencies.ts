@@ -144,8 +144,7 @@ interface KrasNewsletterTemplateOptions extends BaseNewsletterTemplateOptions {
  * - When `isKrasNewsletter` is `false` or omitted: Only base options are available.
  */
 export type NewsletterTemplateOptions =
-  | DefaultNewsletterTemplateOptions
-  | KrasNewsletterTemplateOptions;
+  DefaultNewsletterTemplateOptions | KrasNewsletterTemplateOptions;
 
 /**
  * Options for generating the welcome email HTML.

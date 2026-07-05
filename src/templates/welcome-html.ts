@@ -1,6 +1,6 @@
-import type { WelcomeTemplateOptions } from '~/types/dependencies';
-
 import juice from 'juice';
+
+import type { WelcomeTemplateOptions } from '~/types/dependencies';
 
 import {
   heripoLogoHtml,
