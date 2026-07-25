@@ -115,5 +115,9 @@
   "allowScripts": {
     "esbuild@0.28.1": true,
     "fsevents@2.3.3": true
+  },
+  "overrides": {
+    "body-parser": "^2.3.0",
+    "postcss": "^8.5.23"
   }
 }
