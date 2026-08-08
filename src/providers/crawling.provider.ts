@@ -9,6 +9,7 @@ import type {
 import type { ArticleRepository } from '../types/dependencies';
 
 import { createCrawlingTargetGroups } from '~/config';
+import { createKrasFetch } from '~/parsers/kras.parser';
 
 /**
  * Crawling provider implementation
@@ -30,8 +31,8 @@ export class CrawlingProvider implements CoreCrawlingProvider {
     private readonly articleRepository: ArticleRepository,
     customFetch?: typeof fetch,
   ) {
-    this.customFetch = customFetch;
-    this.crawlingTargetGroups = createCrawlingTargetGroups(customFetch);
+    this.customFetch = createKrasFetch(customFetch ?? fetch);
+    this.crawlingTargetGroups = createCrawlingTargetGroups(this.customFetch);
   }
 
   /**

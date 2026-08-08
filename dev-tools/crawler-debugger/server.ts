@@ -4,6 +4,7 @@ import { ProxyAgent } from 'undici';
 import { fileURLToPath } from 'url';
 
 import { createCrawlingTargetGroups } from '../../src/config/crawling-targets';
+import { createKrasFetch } from '../../src/parsers/kras.parser';
 
 // Create proxy fetch if PROXY_URL is set
 const PROXY_URL = process.env.PROXY_URL;
@@ -13,7 +14,8 @@ const proxyFetch: typeof fetch | undefined = proxyAgent
       fetch(input, { ...init, dispatcher: proxyAgent } as RequestInit)
   : undefined;
 
-const crawlingTargetGroups = createCrawlingTargetGroups(proxyFetch);
+const crawlingFetch = createKrasFetch(proxyFetch ?? fetch);
+const crawlingTargetGroups = createCrawlingTargetGroups(crawlingFetch);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -67,7 +69,7 @@ async function fetchHtml(
     }
   }
 
-  const fetchFn = proxyFetch ?? fetch;
+  const fetchFn = crawlingFetch;
   const response = await fetchFn(url, {
     headers: {
       'User-Agent': getRandomUserAgent(), // Randomize User-Agent
