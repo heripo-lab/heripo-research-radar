@@ -39,7 +39,11 @@ import {
   parseKhsList,
   parseKhsTenderList,
 } from '~/parsers/khs.parser';
-import { parseKrasDetail, parseKrasList } from '~/parsers/kras.parser';
+import {
+  KRAS_SITE_BASE_URL,
+  parseKrasDetail,
+  parseKrasListFromApi,
+} from '~/parsers/kras.parser';
 import {
   parseMuseumDetail,
   parseMuseumList,
@@ -328,29 +332,32 @@ export function createCrawlingTargetGroups(
         {
           id: '한국고고학회_공지사항',
           name: '한국고고학회 공지사항',
-          url: 'https://www.kras.or.kr/?r=kras&m=bbs&bid=notice',
-          parseList: parseKrasList,
+          url: `${KRAS_SITE_BASE_URL}/sub/notice`,
+          parseList: (html) =>
+            parseKrasListFromApi(html, 'notice', customFetch),
           parseDetail: parseKrasDetail,
         },
         {
           id: '한국고고학회_학술대회및행사',
           name: '한국고고학회 학술대회 및 행사',
-          url: 'https://www.kras.or.kr/?r=kras&m=bbs&bid=sympo',
-          parseList: parseKrasList,
+          url: `${KRAS_SITE_BASE_URL}/sub/symposium`,
+          parseList: (html) =>
+            parseKrasListFromApi(html, 'symposium', customFetch),
           parseDetail: parseKrasDetail,
         },
         {
           id: '한국고고학회_신간안내_단행본',
           name: '한국고고학회 신간안내 - 단행본',
-          url: 'https://www.kras.or.kr/?c=61/101/105',
-          parseList: parseKrasList,
+          url: `${KRAS_SITE_BASE_URL}/sub/books`,
+          parseList: (html) => parseKrasListFromApi(html, 'books', customFetch),
           parseDetail: parseKrasDetail,
         },
         {
           id: '한국고고학회_현장소식',
           name: '한국고고학회 현장소식',
-          url: 'https://www.kras.or.kr/?c=61/73',
-          parseList: parseKrasList,
+          url: `${KRAS_SITE_BASE_URL}/sub/field_news`,
+          parseList: (html) =>
+            parseKrasListFromApi(html, 'field_news', customFetch),
           parseDetail: parseKrasDetail,
         },
         {
