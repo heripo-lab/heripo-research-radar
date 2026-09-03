@@ -9,12 +9,9 @@ import TurndownService from 'turndown';
 import { cleanUrl, getDate } from './utils';
 
 /**
- * 현재는 임시 테스트 도메인(https://kras-home.llaputa.net)을 사용한다.
- * 리뉴얼 사이트가 공식 오픈하면 기존 공식 도메인(https://www.kras.or.kr)으로
- * 이 값만 변경한다.
  * 크롤링 타겟과 API 요청 어댑터가 이 값을 함께 사용한다.
  */
-export const KRAS_SITE_BASE_URL = 'https://kras-home.llaputa.net';
+export const KRAS_SITE_BASE_URL = 'https://www.kras.or.kr';
 
 type KrasApiPost = {
   id: string | number;
