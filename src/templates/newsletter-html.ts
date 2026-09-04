@@ -531,7 +531,7 @@ ${options.heripolabNewsMarkdown}
             }
 
             <h2 style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 24px; font-weight: bold; line-height: 1.3; color: #D2691E; margin: 0 0 16px 0; letter-spacing: -0.2px; border-left: 5px solid #D2691E; padding-left: 12px; background: none;">🔍 뉴스레터 출처</h2>
-            <p style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.7; color: #444444; margin: 0 0 18px 0;">모든 소식의 출처는 <a href="https://heripo.app/research-radar/sources" target="_blank">이곳에서</a> 확인할 수 있습니다.</p>
+            <p style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.7; color: #444444; margin: 0 0 18px 0;">이 뉴스레터가 수집하는 모든 소식의 출처는 <a href="https://heripo.app/research-radar/sources" target="_blank">이곳에서</a> 확인할 수 있습니다. 새롭게 포함했으면 하는 출처나 오류가 있다면 <a href="https://github.com/heripo-lab/heripo-research-radar/issues" target="_blank">GitHub 이슈</a>로 알려주세요.</p>
             <hr style="border: 0; border-top: 2px solid #D2691E; margin: 32px 0;">
             <h2 style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 24px; font-weight: bold; line-height: 1.3; color: #D2691E; margin: 0 0 16px 0; letter-spacing: -0.2px; border-left: 5px solid #D2691E; padding-left: 12px; background: none;">📅 발행 정책</h2>
             <p style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.7; color: #444444; margin: 0 0 18px 0;"><strong>${options?.isKrasNewsletter ? '한국고고학회 뉴스레터' : 'heripo 리서치 레이더'}</strong>는 매일 발행을 원칙으로 하되, 독자분들께 의미 있는 정보를 제공하기 위해 다음과 같은 발행 기준을 적용합니다:</p>
@@ -542,10 +542,8 @@ ${options.heripolabNewsMarkdown}
             </ul>
             <p style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.7; color: #444444; margin: 0 0 18px 0;">이러한 정책을 통해 매일 의미 없는 소식으로 독자분들의 시간을 낭비하지 않고, 정말 중요한 정보를 적절한 타이밍에 제공하고자 합니다.</p>
             <hr style="border: 0; border-top: 2px solid #D2691E; margin: 32px 0;">
-            <h2 style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 24px; font-weight: bold; line-height: 1.3; color: #D2691E; margin: 0 0 16px 0; letter-spacing: -0.2px; border-left: 5px solid #D2691E; padding-left: 12px; background: none;">🔍 heripo(헤리포) 플랫폼 소개</h2>
+            <h2 style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 24px; font-weight: bold; line-height: 1.3; color: #D2691E; margin: 0 0 16px 0; letter-spacing: -0.2px; border-left: 5px solid #D2691E; padding-left: 12px; background: none;">🔍 heripo 프로젝트 소개</h2>
 ${platformIntroHtml()}
-            <p style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.7;
-             color: #444444; margin: 0 0 18px 0;">보고 계신 뉴스레터(리서치 레이더)는 heripo의 초기 선행 기능 중 하나입니다. 뉴스레터 소스 추가 요청은 <a href="https://github.com/heripo-lab/heripo-research-radar/issues" target="_blank">GitHub 이슈</a>를 통해 언제든 환영합니다.</p>
             <hr style="border: 0; border-top: 2px solid #D2691E; margin: 32px 0;">
             <h2 style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 24px; font-weight: bold; line-height: 1.3; color: #D2691E; margin: 0 0 16px 0; letter-spacing: -0.2px; border-left: 5px solid #D2691E; padding-left: 12px; background: none;">⚠️ 중요 안내</h2>
             <p style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.7; color: #444444; margin: 0 0 18px 0;">본 뉴스레터는 국가유산청 공지사항, 관련 기관 입찰 정보 등 특정 웹 게시판의 모든 신규 소식을 빠짐없이 수집하여 제공합니다. 수집된 모든 정보는 정확한 크롤링 로직에 기반하므로 원본과 일치하여 신뢰할 수 있습니다.</p>
