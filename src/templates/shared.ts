@@ -53,18 +53,14 @@ export const krasHeaderHtml = () => `
             </table>`;
 
 /**
- * Heripo platform introduction section.
+ * Heripo project introduction section.
  * Shared between newsletter and welcome email templates.
  *
- * Note: Each template may append its own additional paragraph after this block
- * (e.g., newsletter adds a line about source requests via GitHub Issues).
  */
 export const platformIntroHtml = () => `
-            <p style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.7; color: #444444; margin: 0 0 18px 0;">heripo는 고고학 연구 환경의 실질적인 디지털 전환을 지향하는 연구 플랫폼입니다.</p>
-            <p style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.7; color: #444444; margin: 0 0 18px 0;">발굴조사보고서(PDF) 속에 갇힌 텍스트와 도면을 분석 가능한 구조화된 데이터로 전환하여, 연구자가 자료를 보다 체계적으로 탐색하고 재사용할 수 있는 인프라를 구축하고 있습니다.</p>
-            <p style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.7;
-             color: #444444; margin: 0 0 18px 0;">현재는 소프트웨어 엔지니어와 고고학 연구자가 함께하는 <strong><a href="https://github.com/heripo-lab" target="_blank">heripo lab</a></strong>으로 운영 중이며, 2026년 1월 28일 핵심 엔진을 <strong><a href="https://github.com/heripo-lab/heripo-engine" target="_blank">오픈소스로 공개</a></strong>했습니다.</p>
-            <p style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.7; color: #444444; margin: 0 0 18px 0;">오픈소스로 공개된 핵심 기능은 <strong><a href="https://engine-demo.heripo.org" target="_blank">데모 사이트</a></strong>에서 직접 체험해 보실 수 있으며, 플랫폼 프로토타입 출시 시 구독자분들께 우선 안내해 드리겠습니다.</p>`;
+            <p style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.7; color: #444444; margin: 0 0 18px 0;">heripo는 발굴조사보고서의 기록을 데이터로 전환하고 출처와 변환 경로를 함께 보존하기 위한 연구 인프라 프로젝트입니다. 지금 받아보시는 뉴스레터는 그 출발점이며, 관련 오픈소스 프로젝트는 <strong><a href="https://github.com/heripo-lab" target="_blank">heripo lab</a></strong>에서 공개하고 있습니다.</p>
+            <p style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.7; color: #444444; margin: 0 0 18px 0;">뉴스레터에 이어 오픈소스 <strong><a href="https://github.com/heripo-lab/heripo-engine" target="_blank">heripo engine</a></strong>을 바탕으로 발굴조사보고서의 기록을 데이터로 전환하고 이를 탐색하고 활용할 수 있는 연구 도구 <strong>heripo 베이스캠프</strong>를 준비 중입니다.</p>
+            <p style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.7; color: #444444; margin: 0 0 18px 0;">heripo 베이스캠프는 현재 초대 기반 비공개 알파 테스트 중입니다. 공개 테스터 모집 및 정식 출시 소식은 이 뉴스레터로 전해드리겠습니다.</p>`;
 
 /**
  * "Powered by LLM Newsletter Kit · View Source" footer line.

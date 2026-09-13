@@ -52,7 +52,7 @@ function createWelcomeHtmlRaw(
 ) {
   const title = isKras
     ? '한국고고학회 뉴스레터 구독 완료'
-    : 'heripo 리서치 레이더 구독 완료';
+    : 'heripo 뉴스레터 구독 완료';
 
   const headerHtml = isKras
     ? `<!-- KRAS 50주년 헤더 -->
@@ -64,15 +64,7 @@ function createWelcomeHtmlRaw(
     : `${heripoLogoHtml('8px')}
 
             <h1 style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; line-height: 1.2; margin: 0 0
-            18px 0; letter-spacing: -0.5px; margin-top: 0; font-size: 32px; font-weight: bold; color: #111111; border-bottom: 3px solid #D2691E; padding-bottom: 8px;">${name}님, heripo 리서치 레이더에 오신 것을 환영합니다!</h1>`;
-
-  const feedbackHeading = `${name}님의 목소리가 heripo의 미래를 만듭니다`;
-
-  const feedbackText = 'heripo';
-
-  const newsletterLine = isKras
-    ? `<p style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.7; color: #444444; margin: 0 0 18px 0;">뉴스레터(리서치 레이더)는 heripo의 초기 선행 기능 중 하나입니다. 뉴스레터 소스 추가 요청은 <a href="https://github.com/heripo-lab/heripo-research-radar/issues" target="_blank">GitHub 이슈</a>를 통해 언제든 환영합니다.</p>`
-    : `<p style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.7; color: #444444; margin: 0 0 18px 0;">뉴스레터(리서치 레이더)는 heripo의 초기 선행 기능 중 하나입니다. 뉴스레터 소스 추가 요청은 <a href="https://github.com/heripo-lab/heripo-research-radar/issues" target="_blank">GitHub 이슈</a>를 통해 언제든 환영합니다.</p>`;
+            18px 0; letter-spacing: -0.5px; margin-top: 0; font-size: 32px; font-weight: bold; color: #111111; border-bottom: 3px solid #D2691E; padding-bottom: 8px;">${name}님, 환영합니다.</h1>`;
 
   const warningHtml = isKras
     ? `
@@ -90,7 +82,7 @@ function createWelcomeHtmlRaw(
 
   const footerDisclaimerText = isKras
     ? '이 이메일은 heripo.app에서 한국고고학회 뉴스레터를 구독하신 분들에게 발송됩니다.'
-    : '이 이메일은 heripo.app에서 리서치 레이더를 구독하신 분들에게 발송됩니다.';
+    : '이 이메일은 heripo.app에서 heripo 뉴스레터를 구독하신 분들에게 발송됩니다.';
 
   const footerUnsubscribeHtml = isKras
     ? `<p style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 14px; line-height: 1.7; color: #6b7280; margin: 0 0 18px 0; margin-bottom: 8px;">📱 구독 관리: <a href="${unsubscribeUrl}" class="footer-link">구독 해지</a></p>`
@@ -248,25 +240,16 @@ function createWelcomeHtmlRaw(
           <td bgcolor="#ffffff" align="left" class="content-cell dark-mode-content-bg${isKras ? ' kras-newsletter' : ''}" style="-webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; mso-table-lspace: 0pt; mso-table-rspace: 0pt; padding: 48px 44px 44px 44px; border-radius: 12px; box-shadow: 0 4px 18px rgba(0,0,0,0.07);">
 ${headerHtml}
 
-            <h2 style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 24px; font-weight: bold; line-height: 1.3; color: #D2691E; margin: 0 0 15px 0; letter-spacing: -0.2px; border-left: 5px solid #D2691E; padding-left: 12px; background: #fff7f2;">💬 ${feedbackHeading}</h2>
+            <h2 style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 24px; font-weight: bold; line-height: 1.3; color: #D2691E; margin: 0 0 15px 0; letter-spacing: -0.2px; border-left: 5px solid #D2691E; padding-left: 12px; background: #fff7f2;">📬 뉴스레터 구독이 완료되었습니다</h2>
 
-${isKras ? `            <p style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.7; color: #444444; margin: 0 0 18px 0;">${name}님, 한국고고학회 뉴스레터를 구독해주셔서 감사합니다.</p>` : ''}
+            <p style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.7; color: #444444; margin: 0 0 18px 0;">${name}님, 구독해주셔서 감사합니다. 고고학과 문화유산의 중요한 소식을 뉴스레터로 전해드리겠습니다.</p>
 
-            <p style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.7; color: #444444; margin: 0 0 18px 0;"><strong style="color: #D2691E; font-weight: bold;">"이런 기능이 있다면 좋겠다"</strong> 혹은 <strong style="color: #D2691E; font-weight: bold;">"이런 점은 불편하다"</strong>와 같은 의견을 언제든 보내주세요.</p>
+            <p style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.7; color: #444444; margin: 0 0 18px 0;">놓치고 싶지 않은 소식이나 개선 의견이 있다면 언제든 <a href="${siteUrl}/contact">문의하기</a>로 알려주세요.</p>
 
-            <p style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.7; color: #444444; margin: 0 0 18px 0;">여러분의 피드백 하나하나가 ${feedbackText}의 다음 발걸음을 결정합니다.</p>
-${
-  isKras
-    ? `
-            <p style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.7; color: #444444; margin: 0 0 18px 0;"><strong><a href="https://github.com/heripo-lab" target="_blank">heripo lab</a></strong>은 한국고고학회와 함께 뉴스레터 발행 및 고고학의 디지털 전환을 추진하고 있습니다. 앞으로도 연구 현장에 실질적으로 도움이 되는 정보와 기술을 제공해 드리겠습니다.</p>
-`
-    : ''
-}
             <hr style="border: 0; border-top: 1px solid #e5e7eb; margin: 28px 0 20px;">
 
-            <h2 style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 24px; font-weight: bold; line-height: 1.3; color: #D2691E; margin: 0 0 15px 0; letter-spacing: -0.2px; border-left: 5px solid #D2691E; padding-left: 12px; background: #fff7f2;">🔍 heripo(헤리포) 플랫폼 소개</h2>
+            <h2 style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 24px; font-weight: bold; line-height: 1.3; color: #D2691E; margin: 0 0 15px 0; letter-spacing: -0.2px; border-left: 5px solid #D2691E; padding-left: 12px; background: #fff7f2;">🔍 heripo 프로젝트 소개</h2>
 ${platformIntroHtml()}
-            ${newsletterLine}
 ${warningHtml}
 
             <hr style="border: 0; border-top: 1px solid #e5e7eb; margin: 32px 0;">
