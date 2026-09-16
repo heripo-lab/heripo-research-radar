@@ -24,5 +24,8 @@ import type { PromptProvider } from '@llm-newsletter-kit/core';
  * Tune these against real articles with core's playground
  * (`npm run playground:generate-newsletter` in ../llm-newsletter-kit-core) and
  * diff them against the defaults for free with `playground:verify-prompts`.
+ * The playground loads this module from `dist`, so run `npm run build` here
+ * after every edit — its source cannot be imported directly across repos
+ * because of the `~/*` path alias.
  */
 export const researchRadarPromptProvider: PromptProvider = {};

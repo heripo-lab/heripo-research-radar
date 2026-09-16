@@ -135,13 +135,14 @@ export async function runNewsletter(repositories: {
 
 ### 선택적 생성 설정
 
-| 옵션                | 동작                                                                                                                              |
-| ------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| `logger`            | `console` 등 core의 `AppLogger` 구현                                                                                              |
-| `publishDate`       | 실제 달력에 존재하는 `YYYY-MM-DD` 날짜. 잘못된 값은 오류 발생. 생략하면 서버 시간대와 무관하게 `Asia/Seoul`(KST)의 현재 날짜 사용 |
-| `customFetch`       | 크롤링과 파서 내부 API 요청에 사용할 `typeof fetch` 구현(예: 프록시 어댑터). LLM 요청에는 적용되지 않음                           |
-| `templateOptions`   | 기본/KRAS 브랜딩과 Markdown 섹션 설정(아래 참고)                                                                                  |
-| `previewNewsletter` | 저장된 `Newsletter`를 조회하고 전달한 core `EmailService`로 미리보기 발송                                                         |
+| 옵션                | 동작                                                                                                                                     |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `logger`            | `console` 등 core의 `AppLogger` 구현                                                                                                     |
+| `publishDate`       | 실제 달력에 존재하는 `YYYY-MM-DD` 날짜. 잘못된 값은 오류 발생. 생략하면 서버 시간대와 무관하게 `Asia/Seoul`(KST)의 현재 날짜 사용        |
+| `customFetch`       | 크롤링과 파서 내부 API 요청에 사용할 `typeof fetch` 구현(예: 프록시 어댑터). LLM 요청에는 적용되지 않음                                  |
+| `templateOptions`   | 기본/KRAS 브랜딩과 Markdown 섹션 설정(아래 참고)                                                                                         |
+| `promptProvider`    | 패키지 자체 LLM 프롬프트를 통째로 대체하는 core `PromptProvider`. 생략하면 패키지 프롬프트를 쓰고, 정의되지 않은 단계는 core 기본값 사용 |
+| `previewNewsletter` | 저장된 `Newsletter`를 조회하고 전달한 core `EmailService`로 미리보기 발송                                                                |
 
 `previewNewsletter`에는 `fetchNewsletterForPreview: () => Promise<Newsletter>`, `emailService`(`send(message)` 구현), `emailMessage`(core `EmailMessage`에서 `subject`, `html`, `text`를 제외한 값)가 필요합니다. 세 필드는 core가 채우며, 생성된 뉴스레터가 없으면 미리보기를 발송하지 않습니다. 조회 콜백은 이번 실행에서 저장한 회차를 반환하도록 구현하세요.
 
@@ -202,7 +203,7 @@ import { getSourceList } from '@heripo/research-radar';
 const groups = getSourceList(); // [{ id, name, sources: [{ id, name, url }] }]
 ```
 
-`createCrawlingTargetGroups(customFetch?)`, `getSourceList()`, `contentOptions`, `newsletterConfig`, `llmConfig`는 공개 API입니다. Provider 클래스 3개, `DateService`, `TaskService`, 공개 설정·의존성 타입도 [src/index.ts](./src/index.ts)에서 export합니다.
+`createCrawlingTargetGroups(customFetch?)`, `getSourceList()`, `contentOptions`, `newsletterConfig`, `llmConfig`, `researchRadarPromptProvider`는 공개 API입니다. Provider 클래스 3개, `DateService`, `TaskService`, 공개 설정·의존성 타입도 [src/index.ts](./src/index.ts)에서 export합니다.
 
 ## 이메일 템플릿
 
