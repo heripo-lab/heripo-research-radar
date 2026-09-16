@@ -165,10 +165,10 @@ export async function runNewsletter(repositories: {
 
 | 단계        | 프로바이더 | 기본 모델                |
 | ----------- | ---------- | ------------------------ |
-| 태그 분류   | OpenAI     | `gpt-5-mini`             |
-| 이미지 분석 | OpenAI     | `gpt-5.1`                |
-| 중요도 평가 | OpenAI     | `gpt-5.1`                |
-| 콘텐츠 생성 | OpenAI     | `gpt-5.4`                |
+| 태그 분류   | OpenAI     | `gpt-5.6-luna`           |
+| 이미지 분석 | OpenAI     | `gpt-5.6-terra`          |
+| 중요도 평가 | OpenAI     | `gpt-5.6-terra`          |
+| 콘텐츠 생성 | OpenAI     | `gpt-5.6-sol`            |
 | 콘텐츠 생성 | Anthropic  | `claude-sonnet-4-6`      |
 | 콘텐츠 생성 | Google     | `gemini-3.1-pro-preview` |
 
@@ -390,7 +390,7 @@ const contentGeneration: ContentGenerationConfig = {
 };
 ```
 
-기본 모델: openai=`gpt-5.4`, anthropic=`claude-sonnet-4-6`, google=`gemini-3.1-pro-preview`
+기본 모델: openai=`gpt-5.6-sol`, anthropic=`claude-sonnet-4-6`, google=`gemini-3.1-pro-preview`
 
 분석 프로바이더를 변경하려면 호환되는 AI SDK 프로바이더에 맞춰 `src/providers/analysis.provider.ts`의 프로바이더 타입·모델과 `src/newsletter-generator.ts`의 생성 코드를 함께 변경하세요. 분석 provider의 도메인별 최소 점수 규칙, 설정의 출력 언어·전문 분야, 패키지 메타데이터, GitHub Actions 러너·Slack 설정도 포크에 맞게 조정하세요.
 

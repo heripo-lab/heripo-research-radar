@@ -29,15 +29,15 @@ export class AnalysisProvider implements CoreAnalysisProvider {
     private readonly tagRepository: TagRepository,
   ) {
     this.classifyTagOptions = {
-      model: this.openai('gpt-5-mini'),
+      model: this.openai('gpt-5.6-luna'),
     };
 
     this.analyzeImagesOptions = {
-      model: this.openai('gpt-5.1'),
+      model: this.openai('gpt-5.6-terra'),
     };
 
     this.determineScoreOptions = {
-      model: this.openai('gpt-5.1'),
+      model: this.openai('gpt-5.6-terra'),
       minimumImportanceScoreRules: [
         // Korean Archaeological Society news: minimum score 6
         {

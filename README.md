@@ -166,10 +166,10 @@ Defaults below describe the checked-in code, not provider recommendations. This 
 
 | Stage              | Provider  | Default model            |
 | ------------------ | --------- | ------------------------ |
-| Tag classification | OpenAI    | `gpt-5-mini`             |
-| Image analysis     | OpenAI    | `gpt-5.1`                |
-| Importance scoring | OpenAI    | `gpt-5.1`                |
-| Content generation | OpenAI    | `gpt-5.4`                |
+| Tag classification | OpenAI    | `gpt-5.6-luna`           |
+| Image analysis     | OpenAI    | `gpt-5.6-terra`          |
+| Importance scoring | OpenAI    | `gpt-5.6-terra`          |
+| Content generation | OpenAI    | `gpt-5.6-sol`            |
 | Content generation | Anthropic | `claude-sonnet-4-6`      |
 | Content generation | Google    | `gemini-3.1-pro-preview` |
 
@@ -391,7 +391,7 @@ const contentGeneration: ContentGenerationConfig = {
 };
 ```
 
-Default models: openai=`gpt-5.4`, anthropic=`claude-sonnet-4-6`, google=`gemini-3.1-pro-preview`
+Default models: openai=`gpt-5.6-sol`, anthropic=`claude-sonnet-4-6`, google=`gemini-3.1-pro-preview`
 
 To change analysis providers, update both `src/providers/analysis.provider.ts` (provider type and models) and `src/newsletter-generator.ts` (provider construction), using a compatible AI SDK provider. Also adapt domain-specific minimum-score rules in the analysis provider, output language and expert fields in config, package metadata, and the GitHub Actions runner/Slack settings for your fork.
 

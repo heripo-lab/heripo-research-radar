@@ -54,7 +54,7 @@ export interface PreviewNewsletterOptions {
  * Each provider uses a sensible default model that can be overridden.
  *
  * Default models:
- * - openai: `gpt-5.4`
+ * - openai: `gpt-5.6-sol`
  * - anthropic: `claude-sonnet-4-6`
  * - google: `gemini-3.1-pro-preview`
  */
@@ -150,7 +150,7 @@ function createContentGenerationModel(
   switch (config.provider) {
     case 'openai': {
       const provider = createOpenAI({ apiKey: config.apiKey });
-      return provider(config.model ?? 'gpt-5.4');
+      return provider(config.model ?? 'gpt-5.6-sol');
     }
     case 'anthropic': {
       const provider = createAnthropic({ apiKey: config.apiKey });
