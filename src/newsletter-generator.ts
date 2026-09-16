@@ -8,6 +8,7 @@ import type {
   EmailMessage,
   EmailService,
   Newsletter,
+  PromptProvider,
 } from '@llm-newsletter-kit/core';
 import type { LanguageModel } from 'ai';
 
@@ -26,6 +27,7 @@ import { createOpenAI } from '@ai-sdk/openai';
 import { GenerateNewsletter } from '@llm-newsletter-kit/core';
 
 import { contentOptions, llmConfig, newsletterConfig } from './config';
+import { researchRadarPromptProvider } from './prompts';
 import { AnalysisProvider } from './providers/analysis.provider';
 import { ContentGenerateProvider } from './providers/content-generate.provider';
 import { CrawlingProvider } from './providers/crawling.provider';
@@ -102,6 +104,15 @@ export interface NewsletterGeneratorDependencies {
 
   /** Custom fetch function for crawling (e.g., proxy-based fetch). Optional. */
   customFetch?: typeof fetch;
+
+  /**
+   * LLM prompt overrides (optional).
+   *
+   * When provided, this replaces Research Radar's own prompt provider entirely
+   * rather than merging with it. Omit it to use the package's tuned prompts,
+   * which in turn fall back to core's defaults for any stage they do not define.
+   */
+  promptProvider?: PromptProvider;
 }
 
 /**
@@ -209,6 +220,7 @@ function createNewsletterGenerator(
 
   return new GenerateNewsletter({
     contentOptions: resolvedContentOptions,
+    promptProvider: dependencies.promptProvider ?? researchRadarPromptProvider,
     dateService,
     taskService,
     crawlingProvider,
