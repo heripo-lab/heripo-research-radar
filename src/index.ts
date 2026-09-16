@@ -9,6 +9,8 @@ export {
 // Dependency interfaces export
 export type {
   ArticleRepository,
+  ExcavationReport,
+  ExcavationReportSource,
   NewsletterRepository,
   NewsletterTemplateOptions,
   TagRepository,

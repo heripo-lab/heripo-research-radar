@@ -15,6 +15,7 @@ import type { LanguageModel } from 'ai';
 import type { ContentOptions } from './config';
 import type {
   ArticleRepository,
+  ExcavationReportSource,
   NewsletterRepository,
   NewsletterTemplateOptions,
   TagRepository,
@@ -106,6 +107,15 @@ export interface NewsletterGeneratorDependencies {
   customFetch?: typeof fetch;
 
   /**
+   * Supplies 국가유산청 발굴조사 보고서 entries from the application (optional).
+   *
+   * When provided, that board is read from this function and never crawled,
+   * which lets an application that already stores the reports reuse them. Omit
+   * it to keep crawling the board as before. No other target is affected.
+   */
+  excavationReportSource?: ExcavationReportSource;
+
+  /**
    * LLM prompt overrides (optional).
    *
    * When provided, this replaces Research Radar's own prompt provider entirely
@@ -177,6 +187,7 @@ function createNewsletterGenerator(
   const crawlingProvider = new CrawlingProvider(
     dependencies.articleRepository,
     dependencies.customFetch,
+    dependencies.excavationReportSource,
   );
 
   const analysisProvider = new AnalysisProvider(

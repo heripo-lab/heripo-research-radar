@@ -136,14 +136,15 @@ Candidate selection belongs to your repository. Persist `usedArticles` associati
 
 ### Optional generation settings
 
-| Option              | Behavior                                                                                                                                             |
-| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `logger`            | Core `AppLogger` implementation, such as `console`                                                                                                   |
-| `publishDate`       | A real calendar date in `YYYY-MM-DD` format; invalid values throw. Defaults to the current date in `Asia/Seoul` (KST), regardless of server timezone |
-| `customFetch`       | A `typeof fetch` implementation for crawling and parser API requests, such as a proxy adapter; does not configure LLM requests                       |
-| `templateOptions`   | Default or KRAS newsletter branding and Markdown sections (see below)                                                                                |
-| `promptProvider`    | Core `PromptProvider` overriding the package's own LLM prompts entirely; omit to use the package's prompts, which fall back to core's defaults       |
-| `previewNewsletter` | Fetch a saved `Newsletter` and send it through a supplied core `EmailService`                                                                        |
+| Option                   | Behavior                                                                                                                                             |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `logger`                 | Core `AppLogger` implementation, such as `console`                                                                                                   |
+| `publishDate`            | A real calendar date in `YYYY-MM-DD` format; invalid values throw. Defaults to the current date in `Asia/Seoul` (KST), regardless of server timezone |
+| `customFetch`            | A `typeof fetch` implementation for crawling and parser API requests, such as a proxy adapter; does not configure LLM requests                       |
+| `templateOptions`        | Default or KRAS newsletter branding and Markdown sections (see below)                                                                                |
+| `promptProvider`         | Core `PromptProvider` overriding the package's own LLM prompts entirely; omit to use the package's prompts, which fall back to core's defaults       |
+| `excavationReportSource` | Supplies 국가유산청 발굴조사 보고서 entries from the application; that board is then never crawled. Omit to crawl it as before                       |
+| `previewNewsletter`      | Fetch a saved `Newsletter` and send it through a supplied core `EmailService`                                                                        |
 
 `previewNewsletter` requires `fetchNewsletterForPreview: () => Promise<Newsletter>`, `emailService` (with `send(message)`), and `emailMessage` (core `EmailMessage` without `subject`, `html`, or `text`). The core fills those three fields and skips preview delivery when no newsletter was created. Ensure the callback fetches the issue saved by this run.
 
@@ -204,7 +205,7 @@ import { getSourceList } from '@heripo/research-radar';
 const groups = getSourceList(); // [{ id, name, sources: [{ id, name, url }] }]
 ```
 
-`createCrawlingTargetGroups(customFetch?)`, `getSourceList()`, `contentOptions`, `newsletterConfig`, `llmConfig`, and `researchRadarPromptProvider` are public exports. The package also exports the three provider classes, `DateService`, `TaskService`, and their public configuration/dependency types through [src/index.ts](./src/index.ts).
+`createCrawlingTargetGroups(customFetch?)`, `getSourceList()`, `contentOptions`, `newsletterConfig`, `llmConfig`, and `researchRadarPromptProvider` are public exports. `ExcavationReport` and `ExcavationReportSource` are exported as types. The package also exports the three provider classes, `DateService`, `TaskService`, and their public configuration/dependency types through [src/index.ts](./src/index.ts).
 
 ## Email templates
 

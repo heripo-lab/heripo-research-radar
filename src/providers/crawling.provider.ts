@@ -6,9 +6,13 @@ import type {
   UrlString,
 } from '@llm-newsletter-kit/core';
 
-import type { ArticleRepository } from '../types/dependencies';
+import type {
+  ArticleRepository,
+  ExcavationReportSource,
+} from '../types/dependencies';
 
 import { createCrawlingTargetGroups } from '~/config';
+import { createExcavationReportFetch } from '~/parsers/excavation.parser';
 import { createKrasFetch } from '~/parsers/kras.parser';
 
 /**
@@ -30,8 +34,17 @@ export class CrawlingProvider implements CoreCrawlingProvider {
   constructor(
     private readonly articleRepository: ArticleRepository,
     customFetch?: typeof fetch,
+    excavationReportSource?: ExcavationReportSource,
   ) {
-    this.customFetch = createKrasFetch(customFetch ?? fetch);
+    const withKras = createKrasFetch(customFetch ?? fetch);
+
+    // When the application supplies excavation reports, that board is served
+    // from the injected source and never requested over the network. Every
+    // other target keeps going through the same fetch as before.
+    this.customFetch = excavationReportSource
+      ? createExcavationReportFetch(withKras, excavationReportSource)
+      : withKras;
+
     this.crawlingTargetGroups = createCrawlingTargetGroups(this.customFetch);
   }
 
