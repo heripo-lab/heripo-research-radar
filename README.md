@@ -176,7 +176,7 @@ Defaults below describe the checked-in code, not provider recommendations. This 
 
 Select content generation with `contentGeneration: { provider, apiKey, model? }`. `model` overrides that provider's default. Analysis models are configured in [analysis.provider.ts](./src/providers/analysis.provider.ts).
 
-[src/config/index.ts](./src/config/index.ts) defines Korean output (`outputLanguage: '한국어'`), the cultural heritage domain (`expertField: ['문화유산']`), brand name, `subscribePageUrl`, LLM `maxRetries: 5`, chain `stopAfterAttempt: 3`, and generation `temperature: 0.3`. Publication settings are `minimumArticleCountForIssue: 5` and `priorityArticleScoreThreshold: 8`; the core engine evaluates them. In the locked core 3.0.4 implementation, the count check skips **5 or fewer** candidates unless at least one has importance score >= 8. An empty candidate list is always skipped.
+[src/config/index.ts](./src/config/index.ts) defines Korean output (`outputLanguage: '한국어'`), the cultural heritage domain (`expertField: ['문화유산']`), brand name, `subscribePageUrl`, LLM `maxRetries: 5`, chain `stopAfterAttempt: 3`, and generation `temperature: 0.3`. Publication settings are `minimumArticleCountForIssue: 5` and `priorityArticleScoreThreshold: 8`; the core engine evaluates them. In the locked core 3.0.5 implementation, the count check skips **5 or fewer** candidates unless at least one has importance score >= 8. An empty candidate list is always skipped.
 
 ## Crawling targets and parsers
 

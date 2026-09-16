@@ -175,7 +175,7 @@ export async function runNewsletter(repositories: {
 
 `contentGeneration: { provider, apiKey, model? }`로 콘텐츠 생성 프로바이더를 선택합니다. `model`은 해당 프로바이더의 기본값을 덮어씁니다. 분석 모델은 [analysis.provider.ts](./src/providers/analysis.provider.ts)에 설정되어 있습니다.
 
-[src/config/index.ts](./src/config/index.ts)에는 한국어 출력(`outputLanguage: '한국어'`), 문화유산 분야(`expertField: ['문화유산']`), 브랜드명, `subscribePageUrl`, LLM `maxRetries: 5`, 체인 `stopAfterAttempt: 3`, 생성 `temperature: 0.3`이 정의되어 있습니다. 발행 설정은 `minimumArticleCountForIssue: 5`, `priorityArticleScoreThreshold: 8`이며 core 엔진에서 판정합니다. 잠금 파일의 core 3.0.4 구현은 중요도 8 이상 기사가 없을 때 후보가 **5개 이하이면 생략**합니다. 후보가 없으면 항상 생략합니다.
+[src/config/index.ts](./src/config/index.ts)에는 한국어 출력(`outputLanguage: '한국어'`), 문화유산 분야(`expertField: ['문화유산']`), 브랜드명, `subscribePageUrl`, LLM `maxRetries: 5`, 체인 `stopAfterAttempt: 3`, 생성 `temperature: 0.3`이 정의되어 있습니다. 발행 설정은 `minimumArticleCountForIssue: 5`, `priorityArticleScoreThreshold: 8`이며 core 엔진에서 판정합니다. 잠금 파일의 core 3.0.5 구현은 중요도 8 이상 기사가 없을 때 후보가 **5개 이하이면 생략**합니다. 후보가 없으면 항상 생략합니다.
 
 ## 크롤링 대상과 파서
 
