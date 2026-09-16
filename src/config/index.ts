@@ -38,6 +38,26 @@ export const newsletterConfig: NewsletterConfig = {
 };
 
 /**
+ * Maximum importance score per heritage domain (`tag1`).
+ *
+ * The newsletter is archaeology-first: archaeology and cultural heritage keep
+ * the full 1-10 range, while natural and intangible heritage are capped so they
+ * cannot crowd out archaeological coverage.
+ *
+ * The cap is applied deterministically after scoring, in
+ * `AnalysisProvider.update()`, rather than asked for in the prompt, so the
+ * ceiling always holds. It never reaches 1: a score of 1 means "exclude from the
+ * newsletter" in the consuming application's candidate query, so capping to 1
+ * would delete these articles instead of demoting them.
+ *
+ * Domains absent from this map are not capped.
+ */
+export const maximumImportanceScoreByDomain: Record<string, number> = {
+  자연유산: 6,
+  무형유산: 6,
+};
+
+/**
  * LLM configuration
  */
 export const llmConfig = {

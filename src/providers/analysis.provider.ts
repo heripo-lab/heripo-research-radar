@@ -7,6 +7,9 @@ import type {
 
 import type { ArticleRepository, TagRepository } from '../types/dependencies';
 
+import { maximumImportanceScoreByDomain } from '../config';
+import { toHeritageDomainTag } from '../prompts';
+
 /**
  * Analysis provider implementation
  * - LLM-based article analysis
@@ -152,6 +155,30 @@ export class AnalysisProvider implements CoreAnalysisProvider {
    * @param article - Article with analysis data
    */
   async update(article: ArticleForUpdateByAnalysis): Promise<void> {
-    await this.articleRepository.updateAnalysis(article);
+    await this.articleRepository.updateAnalysis({
+      ...article,
+      importanceScore: capScoreByHeritageDomain(article),
+    });
   }
+}
+
+/**
+ * Applies the per-domain score ceiling from `maximumImportanceScoreByDomain`.
+ *
+ * The domain comes from `tag1`, which the tag classification prompt pins to a
+ * fixed vocabulary. An off-vocabulary value means the classification did not
+ * hold, so the article is left uncapped rather than capped on a guess.
+ */
+function capScoreByHeritageDomain(article: ArticleForUpdateByAnalysis): number {
+  const domain = toHeritageDomainTag(article.tag1);
+
+  if (!domain) {
+    return article.importanceScore;
+  }
+
+  const maximumScore = maximumImportanceScoreByDomain[domain];
+
+  return maximumScore === undefined
+    ? article.importanceScore
+    : Math.min(article.importanceScore, maximumScore);
 }

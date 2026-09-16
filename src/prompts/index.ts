@@ -1,6 +1,7 @@
 import type { PromptProvider } from '@llm-newsletter-kit/core';
 
 import { classifyTagsPrompt } from './classify-tags';
+import { determineImportancePrompt } from './determine-importance';
 
 /**
  * Research Radar's LLM prompt overrides.
@@ -33,6 +34,7 @@ import { classifyTagsPrompt } from './classify-tags';
 export const researchRadarPromptProvider: PromptProvider = {
   analysis: {
     classifyTags: classifyTagsPrompt,
+    determineImportance: determineImportancePrompt,
   },
 };
 
