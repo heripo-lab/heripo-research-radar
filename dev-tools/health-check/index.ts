@@ -4,7 +4,19 @@ import fs from 'fs';
 import { ProxyAgent } from 'undici';
 import { Agent, fetch as undiciFetch } from 'undici';
 
+import { robotsExemptOrigins } from '~/config';
 import { createCrawlingTargetGroups } from '~/config/crawling-targets';
+import { createRobotsGate } from '~/crawling/robots';
+import { createAlioFetch } from '~/parsers/alio.parser';
+import { createGojobsFetch } from '~/parsers/gojobs.parser';
+import { createKrasFetch } from '~/parsers/kras.parser';
+
+/**
+ * How many list items to try before giving up on the detail check. A board's
+ * newest post is occasionally unreadable (members-only, withdrawn) for reasons
+ * unrelated to the parser.
+ */
+const DETAIL_CHECK_ATTEMPTS = 3;
 
 const KHS_EXCAVATION_TARGET_IDS = [
   '국가유산청_발굴조사_보고서',
@@ -83,7 +95,40 @@ const proxyFetch: typeof fetch | undefined = proxyAgent
       unsafeFetch(input, { ...init, dispatcher: proxyAgent } as RequestInit)
   : undefined;
 
-const crawlingTargetGroups = createCrawlingTargetGroups(proxyFetch);
+// Mirror production: robots.txt is checked before any request leaves. The gate
+// also answers the pre-check below, so a disallowed board is reported as skipped
+// rather than as a parser failure.
+// Rules a parser hit while running. A parser that fetches its own API — 영남고고학회
+// reads /module/..., which its robots.txt disallows — is blocked inside parseList,
+// where the pre-check on the board URL cannot see it, so record it here instead.
+let robotsBlocksDuringCheck: string[] = [];
+
+const robotsGate = createRobotsGate(proxyFetch ?? unsafeFetch, {
+  exemptOrigins: robotsExemptOrigins,
+  onBlocked: ({ rule }) => {
+    if (!robotsBlocksDuringCheck.includes(rule)) {
+      robotsBlocksDuringCheck.push(rule);
+    }
+  },
+});
+
+// Same composition as CrawlingProvider: robots.txt outermost, then the KRAS
+// detail adapter. Without the adapter, KRAS detail pages parse to an empty
+// body and the checks fail for a reason production never hits.
+// The two job boards are served from data.go.kr open APIs. Without a key they
+// answer with an empty list, which would read as a parser failure, so they are
+// skipped instead — see the check loop below.
+const PUBLIC_DATA_API_KEY = process.env.PUBLIC_DATA_API_KEY ?? '';
+const PUBLIC_JOB_TARGET_IDS = ['나라일터_채용공고', '알리오_공공기관_채용공고'];
+
+const checkFetch = createAlioFetch(
+  createGojobsFetch(createKrasFetch(robotsGate.fetch), {
+    apiKey: PUBLIC_DATA_API_KEY,
+  }),
+  { apiKey: PUBLIC_DATA_API_KEY },
+);
+
+const crawlingTargetGroups = createCrawlingTargetGroups(checkFetch);
 
 // User-Agent list used by real browsers
 const USER_AGENTS = [
@@ -116,6 +161,10 @@ interface TargetCheckResult {
   listItemCount: number;
   listErrors: string[];
   detailUrl: string;
+  /** 1-based position of the list item the detail check used. */
+  detailItemIndex: number;
+  /** Items skipped before one could be fetched, with the reason for each. */
+  detailSkipped: string[];
   detailContentLength: number;
   detailErrors: string[];
   thrownError: string | null;
@@ -126,11 +175,12 @@ interface TargetCheckResult {
 interface SkippedTarget {
   groupName: string;
   targetName: string;
+  /** Why it was skipped: a CLI option, or the site's robots.txt. */
+  reason: string;
 }
 
 async function fetchHtml(url: string): Promise<string> {
-  const fetchFn = proxyFetch ?? unsafeFetch;
-  const response = await fetchFn(url, {
+  const response = await checkFetch(url, {
     signal: AbortSignal.timeout(30_000),
     headers: {
       'User-Agent': getRandomUserAgent(),
@@ -203,6 +253,8 @@ async function checkTarget(
     listItemCount: 0,
     listErrors: [],
     detailUrl: '',
+    detailItemIndex: 0,
+    detailSkipped: [],
     detailContentLength: 0,
     detailErrors: [],
     thrownError: null,
@@ -218,14 +270,39 @@ async function checkTarget(
     result.listItemCount = items.length;
     result.listErrors = validateListResult(items);
 
-    // Step 2: Fetch and parse first detail item (if list succeeded)
-    if (items.length > 0 && items[0].detailUrl?.startsWith('http')) {
-      result.detailUrl = items[0].detailUrl;
-      const detailHtml = await fetchHtml(items[0].detailUrl);
-      const detail = await target.parseDetail(detailHtml);
+    // Step 2: Fetch and parse a detail item.
+    //
+    // Normally the first one, but a board's newest post can be unreadable for
+    // reasons that say nothing about the parser — KRAS answers 401 for a
+    // members-only post (`🔒 비밀글입니다.`). Fall through to the next few items
+    // so one such post at the top does not fail the target every day.
+    const candidates = items
+      .filter((item) => item.detailUrl?.startsWith('http'))
+      .slice(0, DETAIL_CHECK_ATTEMPTS);
 
-      result.detailContentLength = detail.detailContent?.trim().length ?? 0;
-      result.detailErrors = validateDetailResult(detail);
+    if (candidates.length > 0) {
+      for (const [index, item] of candidates.entries()) {
+        try {
+          const detailHtml = await fetchHtml(item.detailUrl);
+          const detail = await target.parseDetail(detailHtml);
+
+          result.detailUrl = item.detailUrl;
+          result.detailItemIndex = index + 1;
+          result.detailContentLength = detail.detailContent?.trim().length ?? 0;
+          result.detailErrors = validateDetailResult(detail);
+          break;
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          result.detailSkipped.push(`#${index + 1}: ${message}`);
+
+          // Every candidate failed — report against the first, as before.
+          if (index === candidates.length - 1) {
+            result.detailUrl = candidates[0].detailUrl;
+            result.detailItemIndex = 1;
+            throw err;
+          }
+        }
+      }
     } else if (result.listErrors.length === 0) {
       result.detailErrors.push('Skipped: no valid detailUrl in list results');
     }
@@ -274,7 +351,9 @@ function buildSlackSummary(
     lines.push('');
     lines.push(`건너뛴 파서 (${skippedTargets.length}):`);
     for (const target of skippedTargets) {
-      lines.push(`  [${target.groupName}] ${target.targetName}`);
+      lines.push(
+        `  [${target.groupName}] ${target.targetName} — ${target.reason}`,
+      );
     }
   }
 
@@ -303,20 +382,74 @@ async function main() {
         skippedTargets.push({
           groupName: group.name,
           targetName: target.name,
+          reason: 'CLI option',
         });
         console.log(`Skipping [${group.name}] ${target.name}`);
         continue;
       }
 
-      totalTargets++;
+      if (
+        !PUBLIC_DATA_API_KEY &&
+        PUBLIC_JOB_TARGET_IDS.includes(String(target.id))
+      ) {
+        skippedTargets.push({
+          groupName: group.name,
+          targetName: target.name,
+          reason: 'PUBLIC_DATA_API_KEY not set',
+        });
+        console.log(
+          `Skipping [${group.name}] ${target.name} — PUBLIC_DATA_API_KEY not set`,
+        );
+        continue;
+      }
+
+      // A board its own robots.txt disallows is policy, not a parser
+      // regression, so it must not fail the run.
+      const verdict = await robotsGate.isAllowed(
+        target.url,
+        getRandomUserAgent(),
+      );
+
+      if (!verdict.allowed) {
+        skippedTargets.push({
+          groupName: group.name,
+          targetName: target.name,
+          reason: `robots.txt (${verdict.rule})`,
+        });
+        console.log(
+          `Skipping [${group.name}] ${target.name} — robots.txt ${verdict.rule}`,
+        );
+        continue;
+      }
+
       process.stdout.write(`Checking [${group.name}] ${target.name} ... `);
 
+      robotsBlocksDuringCheck = [];
       const result = await checkTarget(group.name, target);
+
+      // The board itself was allowed, but something the parser needed was not.
+      if (result.status === 'fail' && robotsBlocksDuringCheck.length > 0) {
+        skippedTargets.push({
+          groupName: group.name,
+          targetName: target.name,
+          reason: `robots.txt (${robotsBlocksDuringCheck.join(', ')})`,
+        });
+        console.log(
+          `SKIP — robots.txt blocked a request the parser made (${robotsBlocksDuringCheck.join(', ')})`,
+        );
+        continue;
+      }
+
+      totalTargets++;
       allResults.push(result);
 
       if (result.status === 'pass') {
+        const fellThrough =
+          result.detailItemIndex > 1
+            ? ` — detail from item #${result.detailItemIndex}, skipped ${result.detailSkipped.join('; ')}`
+            : '';
         console.log(
-          `PASS (${result.listItemCount} items, ${result.detailContentLength} chars, ${result.durationMs}ms)`,
+          `PASS (${result.listItemCount} items, ${result.detailContentLength} chars, ${result.durationMs}ms)${fellThrough}`,
         );
       } else {
         console.log('FAIL');
@@ -391,10 +524,12 @@ async function main() {
 
     if (skippedTargets.length > 0) {
       mdLines.push(`### 건너뛴 파서 (${skippedTargets.length})`);
-      mdLines.push(`| 그룹 | 파서 |`);
-      mdLines.push(`|------|------|`);
+      mdLines.push(`| 그룹 | 파서 | 사유 |`);
+      mdLines.push(`|------|------|------|`);
       for (const target of skippedTargets) {
-        mdLines.push(`| ${target.groupName} | ${target.targetName} |`);
+        mdLines.push(
+          `| ${target.groupName} | ${target.targetName} | ${target.reason} |`,
+        );
       }
       mdLines.push(``);
     }

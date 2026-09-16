@@ -38,6 +38,46 @@ export const newsletterConfig: NewsletterConfig = {
 };
 
 /**
+ * Maximum importance score per heritage domain (`tag1`).
+ *
+ * The newsletter is archaeology-first: archaeology and cultural heritage keep
+ * the full 1-10 range, while natural and intangible heritage are capped so they
+ * cannot crowd out archaeological coverage. `기타` — material that is not
+ * heritage at all — is capped lowest, because the scoring prompt's academic-value
+ * floor is domain-blind and would otherwise lift things like a general journal's
+ * call for papers into the top half of the scale.
+ *
+ * The cap is applied deterministically after scoring, in
+ * `AnalysisProvider.update()`, rather than asked for in the prompt, so the
+ * ceiling always holds. It never reaches 1: a score of 1 means "exclude from the
+ * newsletter" in the consuming application's candidate query, so capping to 1
+ * would delete these articles instead of demoting them.
+ *
+ * Domains absent from this map are not capped.
+ */
+export const maximumImportanceScoreByDomain: Record<string, number> = {
+  자연유산: 6,
+  무형유산: 6,
+  기타: 5,
+};
+
+/**
+ * Origins exempted from the robots.txt check.
+ *
+ * Each entry deliberately overrides what the site publishes, so it needs a
+ * reason and should be revisited when that site's robots.txt changes.
+ *
+ * - `http://www.yngogo.or.kr` (영남고고학회): its board is rendered from
+ *   `/module/ntt/unity/selectNttListAjax.ink`, and robots.txt carries a blanket
+ *   `Disallow: /module`. The rule reads as protecting an internal path rather
+ *   than the public board it happens to serve, and there is no other route to
+ *   the listing, so the society's boards are collected under this exemption.
+ */
+export const robotsExemptOrigins: readonly string[] = [
+  'http://www.yngogo.or.kr',
+];
+
+/**
  * LLM configuration
  */
 export const llmConfig = {

@@ -23,7 +23,7 @@ Previously reported service metrics were $0.2–1 per issue and 15% CTR. These a
 
 - Type-safe TypeScript with strict interfaces
 - Provider pattern for swapping components (Crawling/Analysis/Content/Email)
-- 59 active crawling targets across heritage agencies, museums, academic societies
+- 73 active crawling targets across heritage agencies, museums, academic societies, filtered at runtime by robots.txt
 - Multi LLM providers: OpenAI GPT-5 (analysis) + selectable content generation (OpenAI / Anthropic / Google)
 - Built-in retries, chain options, preview emails
 
@@ -70,7 +70,7 @@ For academic publications:
 npm install @heripo/research-radar '@llm-newsletter-kit/core@~3.0.0'
 ```
 
-**Requirements**: Node.js >= 24 and an ESM application. The package exports `dist/index.js` and TypeScript declarations (`dist/index.d.ts`), with a JavaScript sourcemap. The core engine is a peer dependency; the current supported range is `~3.0.0`.
+**Requirements**: Node.js >= 24 and an ESM application. The package exports `dist/index.js` and TypeScript declarations (`dist/index.d.ts`), with a JavaScript sourcemap. The core engine is a peer dependency; the current supported range is `~3.0.5`. 3.0.5 is the floor because the newsletter generation prompt this package ships relies on the self-verification retry cap added there.
 
 Article analysis requires an OpenAI API key. Content generation requires a key for the selected provider (OpenAI / Anthropic / Google); OpenAI can use the same key for both. Keys are passed explicitly to the library; load environment variables in your application.
 
@@ -136,13 +136,15 @@ Candidate selection belongs to your repository. Persist `usedArticles` associati
 
 ### Optional generation settings
 
-| Option              | Behavior                                                                                                                                             |
-| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `logger`            | Core `AppLogger` implementation, such as `console`                                                                                                   |
-| `publishDate`       | A real calendar date in `YYYY-MM-DD` format; invalid values throw. Defaults to the current date in `Asia/Seoul` (KST), regardless of server timezone |
-| `customFetch`       | A `typeof fetch` implementation for crawling and parser API requests, such as a proxy adapter; does not configure LLM requests                       |
-| `templateOptions`   | Default or KRAS newsletter branding and Markdown sections (see below)                                                                                |
-| `previewNewsletter` | Fetch a saved `Newsletter` and send it through a supplied core `EmailService`                                                                        |
+| Option                   | Behavior                                                                                                                                             |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `logger`                 | Core `AppLogger` implementation, such as `console`                                                                                                   |
+| `publishDate`            | A real calendar date in `YYYY-MM-DD` format; invalid values throw. Defaults to the current date in `Asia/Seoul` (KST), regardless of server timezone |
+| `customFetch`            | A `typeof fetch` implementation for crawling and parser API requests, such as a proxy adapter; does not configure LLM requests                       |
+| `templateOptions`        | Default or KRAS newsletter branding and Markdown sections (see below)                                                                                |
+| `promptProvider`         | Core `PromptProvider` overriding the package's own LLM prompts entirely; omit to use the package's prompts, which fall back to core's defaults       |
+| `excavationReportSource` | Supplies 국가유산청 발굴조사 보고서 entries from the application; that board is then never crawled. Omit to crawl it as before                       |
+| `previewNewsletter`      | Fetch a saved `Newsletter` and send it through a supplied core `EmailService`                                                                        |
 
 `previewNewsletter` requires `fetchNewsletterForPreview: () => Promise<Newsletter>`, `emailService` (with `send(message)`), and `emailMessage` (core `EmailMessage` without `subject`, `html`, or `text`). The core fills those three fields and skips preview delivery when no newsletter was created. Ensure the callback fetches the issue saved by this run.
 
@@ -165,16 +167,16 @@ Defaults below describe the checked-in code, not provider recommendations. This 
 
 | Stage              | Provider  | Default model            |
 | ------------------ | --------- | ------------------------ |
-| Tag classification | OpenAI    | `gpt-5-mini`             |
-| Image analysis     | OpenAI    | `gpt-5.1`                |
-| Importance scoring | OpenAI    | `gpt-5.1`                |
-| Content generation | OpenAI    | `gpt-5.4`                |
+| Tag classification | OpenAI    | `gpt-5.6-luna`           |
+| Image analysis     | OpenAI    | `gpt-5.6-terra`          |
+| Importance scoring | OpenAI    | `gpt-5.6-terra`          |
+| Content generation | OpenAI    | `gpt-5.6-sol`            |
 | Content generation | Anthropic | `claude-sonnet-4-6`      |
 | Content generation | Google    | `gemini-3.1-pro-preview` |
 
 Select content generation with `contentGeneration: { provider, apiKey, model? }`. `model` overrides that provider's default. Analysis models are configured in [analysis.provider.ts](./src/providers/analysis.provider.ts).
 
-[src/config/index.ts](./src/config/index.ts) defines Korean output (`outputLanguage: '한국어'`), the cultural heritage domain (`expertField: ['문화유산']`), brand name, `subscribePageUrl`, LLM `maxRetries: 5`, chain `stopAfterAttempt: 3`, and generation `temperature: 0.3`. Publication settings are `minimumArticleCountForIssue: 5` and `priorityArticleScoreThreshold: 8`; the core engine evaluates them. In the locked core 3.0.4 implementation, the count check skips **5 or fewer** candidates unless at least one has importance score >= 8. An empty candidate list is always skipped.
+[src/config/index.ts](./src/config/index.ts) defines Korean output (`outputLanguage: '한국어'`), the cultural heritage domain (`expertField: ['문화유산']`), brand name, `subscribePageUrl`, LLM `maxRetries: 5`, chain `stopAfterAttempt: 3`, and generation `temperature: 0.3`. Publication settings are `minimumArticleCountForIssue: 5` and `priorityArticleScoreThreshold: 8`; the core engine evaluates them. In the locked core 3.0.5 implementation, the count check skips **5 or fewer** candidates unless at least one has importance score >= 8. An empty candidate list is always skipped.
 
 ## Crawling targets and parsers
 
@@ -182,16 +184,20 @@ Select content generation with `contentGeneration: { provider, apiKey, model? }`
 
 | Group      | Active | Commented out |
 | ---------- | -----: | ------------: |
-| News       |     48 |            10 |
+| News       |     57 |             1 |
 | Business   |      4 |             0 |
-| Employment |      7 |             3 |
-| **Total**  | **59** |        **13** |
+| Employment |     12 |             0 |
+| **Total**  | **73** |         **1** |
 
-The 13 commented targets are excluded from runtime configuration: one excavation status board is marked as low-value fragmented data, and 12 museum boards are marked as restricted by robots.txt. Their parser code remains in the repository.
+Only the excavation status board stays commented out, as low-value fragmented data. Boards that a site's robots.txt restricts are configured normally and refused at runtime by the robots.txt check, so the configuration does not have to track each site's policy by hand. With current policies 14 of the 73 targets are refused.
+
+Two Employment targets are read from data.go.kr open APIs instead of scraped: 나라일터 (`PblJobService`) and 알리오 (`recruitment`). Each is a single request, and `publicDataApiKey` supplies the service key — omit it and both answer with an empty list without making a request. `src/crawling/heritage-job-filter.ts` narrows them before analysis, since the boards carry every public-sector vacancy in the country; roughly 2% survive, about 2.6 postings a day.
+
+Crawling fetches pass through that check (`src/crawling/robots.ts`) before reaching the network: a disallowed request is refused rather than sent, and a missing or unreachable robots.txt allows it. `robotsExemptOrigins` in `src/config/index.ts` lists origins exempted from the check, each with its reason.
 
 Sources include the Korea Heritage Service, National Research Institute of Cultural Heritage, National Research Institute of Maritime Heritage, Korea Heritage Agency, Korea Association of Archaeological Heritage, archaeological societies, and national museums.
 
-[src/parsers/](./src/parsers/) contains 20 organization-specific parser modules plus shared date and URL utilities. List parsers return `ParsedTargetListItem[]` (title, date, detail URL, date type, and optional source ID); detail parsers return Markdown `detailContent` and attachment/image flags. Parsers can be synchronous or asynchronous. KRAS, Yeongnam Archaeological Society, and maritime heritage sources use additional API requests for client-rendered content.
+[src/parsers/](./src/parsers/) contains 22 organization-specific parser modules plus shared date and URL utilities. List parsers return `ParsedTargetListItem[]` (title, date, detail URL, date type, and optional source ID); detail parsers return Markdown `detailContent` and attachment/image flags. Parsers can be synchronous or asynchronous. KRAS, Yeongnam Archaeological Society, and maritime heritage sources use additional API requests for client-rendered content.
 
 `CrawlingProvider` uses a maximum concurrency of 5 and wraps the supplied fetch to route KRAS public detail URLs to its detail API, while retaining public URLs in article metadata. When constructing your own pipeline, use the provider's fetch together with its target groups.
 
@@ -203,7 +209,7 @@ import { getSourceList } from '@heripo/research-radar';
 const groups = getSourceList(); // [{ id, name, sources: [{ id, name, url }] }]
 ```
 
-`createCrawlingTargetGroups(customFetch?)`, `getSourceList()`, `contentOptions`, `newsletterConfig`, and `llmConfig` are public exports. The package also exports the three provider classes, `DateService`, `TaskService`, and their public configuration/dependency types through [src/index.ts](./src/index.ts).
+`createCrawlingTargetGroups(customFetch?)`, `getSourceList()`, `contentOptions`, `newsletterConfig`, `llmConfig`, and `researchRadarPromptProvider` are public exports. `ExcavationReport` and `ExcavationReportSource` are exported as types. The package also exports the three provider classes, `DateService`, `TaskService`, and their public configuration/dependency types through [src/index.ts](./src/index.ts).
 
 ## Email templates
 
@@ -332,7 +338,7 @@ Use repeatable `--skip-target=<id-or-name>` or `--skip-target <id-or-name>` to e
 
 **Output**: Console table summary + compact text summary for CI integrations.
 
-**CI**: [.github/workflows/parser-health-check.yml](./.github/workflows/parser-health-check.yml) runs daily at 08:00 UTC (17:00 KST), or manually, on an `org-linux` runner with a 30-minute job timeout. It skips the two KHS excavation report/site-open targets (57 targets checked with the current configuration). Slack notifications require the `SLACK_BOT_TOKEN` secret and `SLACK_ALERT_DEV_CHANNEL` repository variable. Forks need a matching runner and notification configuration to use this workflow unchanged. The CLI also writes GitHub Actions outputs and a job summary when their environment variables are present.
+**CI**: [.github/workflows/parser-health-check.yml](./.github/workflows/parser-health-check.yml) runs daily at 08:00 UTC (17:00 KST), or manually, on an `org-linux` runner with a 30-minute job timeout. It skips the two KHS excavation report/site-open targets. The health-check composes the same fetch as production — robots.txt gate, then the KRAS detail adapter — so disallowed boards are reported as skipped rather than failed: 16 skipped and 55 checked with the current configuration. The detail check tries up to three list items, so one unreadable post at the top of a board does not fail the target. Slack notifications require the `SLACK_BOT_TOKEN` secret and `SLACK_ALERT_DEV_CHANNEL` repository variable. Forks need a matching runner and notification configuration to use this workflow unchanged. The CLI also writes GitHub Actions outputs and a job summary when their environment variables are present.
 
 ## 🤝 Contributing
 
@@ -390,7 +396,7 @@ const contentGeneration: ContentGenerationConfig = {
 };
 ```
 
-Default models: openai=`gpt-5.4`, anthropic=`claude-sonnet-4-6`, google=`gemini-3.1-pro-preview`
+Default models: openai=`gpt-5.6-sol`, anthropic=`claude-sonnet-4-6`, google=`gemini-3.1-pro-preview`
 
 To change analysis providers, update both `src/providers/analysis.provider.ts` (provider type and models) and `src/newsletter-generator.ts` (provider construction), using a compatible AI SDK provider. Also adapt domain-specific minimum-score rules in the analysis provider, output language and expert fields in config, package metadata, and the GitHub Actions runner/Slack settings for your fork.
 

@@ -9,6 +9,8 @@ export {
 // Dependency interfaces export
 export type {
   ArticleRepository,
+  ExcavationReport,
+  ExcavationReportSource,
   NewsletterRepository,
   NewsletterTemplateOptions,
   TagRepository,
@@ -30,3 +32,6 @@ export { CrawlingProvider } from './providers/crawling.provider';
 
 // Configuration export
 export * from './config';
+
+// LLM prompt overrides export
+export { researchRadarPromptProvider } from './prompts';

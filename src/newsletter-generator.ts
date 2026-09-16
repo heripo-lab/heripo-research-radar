@@ -8,12 +8,14 @@ import type {
   EmailMessage,
   EmailService,
   Newsletter,
+  PromptProvider,
 } from '@llm-newsletter-kit/core';
 import type { LanguageModel } from 'ai';
 
 import type { ContentOptions } from './config';
 import type {
   ArticleRepository,
+  ExcavationReportSource,
   NewsletterRepository,
   NewsletterTemplateOptions,
   TagRepository,
@@ -26,6 +28,7 @@ import { createOpenAI } from '@ai-sdk/openai';
 import { GenerateNewsletter } from '@llm-newsletter-kit/core';
 
 import { contentOptions, llmConfig, newsletterConfig } from './config';
+import { researchRadarPromptProvider } from './prompts';
 import { AnalysisProvider } from './providers/analysis.provider';
 import { ContentGenerateProvider } from './providers/content-generate.provider';
 import { CrawlingProvider } from './providers/crawling.provider';
@@ -52,7 +55,7 @@ export interface PreviewNewsletterOptions {
  * Each provider uses a sensible default model that can be overridden.
  *
  * Default models:
- * - openai: `gpt-5.4`
+ * - openai: `gpt-5.6-sol`
  * - anthropic: `claude-sonnet-4-6`
  * - google: `gemini-3.1-pro-preview`
  */
@@ -102,6 +105,33 @@ export interface NewsletterGeneratorDependencies {
 
   /** Custom fetch function for crawling (e.g., proxy-based fetch). Optional. */
   customFetch?: typeof fetch;
+
+  /**
+   * Supplies 국가유산청 발굴조사 보고서 entries from the application (optional).
+   *
+   * When provided, that board is read from this function and never crawled,
+   * which lets an application that already stores the reports reuse them. Omit
+   * it to keep crawling the board as before. No other target is affected.
+   */
+  excavationReportSource?: ExcavationReportSource;
+
+  /**
+   * data.go.kr service key for the 나라일터 and 알리오 job boards (optional).
+   *
+   * Pass the encoded key exactly as the portal supplies it. Both boards are read
+   * through open APIs rather than scraped; omit the key and they collect
+   * nothing while every other target is unaffected.
+   */
+  publicDataApiKey?: string;
+
+  /**
+   * LLM prompt overrides (optional).
+   *
+   * When provided, this replaces Research Radar's own prompt provider entirely
+   * rather than merging with it. Omit it to use the package's tuned prompts,
+   * which in turn fall back to core's defaults for any stage they do not define.
+   */
+  promptProvider?: PromptProvider;
 }
 
 /**
@@ -139,7 +169,7 @@ function createContentGenerationModel(
   switch (config.provider) {
     case 'openai': {
       const provider = createOpenAI({ apiKey: config.apiKey });
-      return provider(config.model ?? 'gpt-5.4');
+      return provider(config.model ?? 'gpt-5.6-sol');
     }
     case 'anthropic': {
       const provider = createAnthropic({ apiKey: config.apiKey });
@@ -166,6 +196,9 @@ function createNewsletterGenerator(
   const crawlingProvider = new CrawlingProvider(
     dependencies.articleRepository,
     dependencies.customFetch,
+    dependencies.excavationReportSource,
+    dependencies.logger,
+    dependencies.publicDataApiKey,
   );
 
   const analysisProvider = new AnalysisProvider(
@@ -209,6 +242,7 @@ function createNewsletterGenerator(
 
   return new GenerateNewsletter({
     contentOptions: resolvedContentOptions,
+    promptProvider: dependencies.promptProvider ?? researchRadarPromptProvider,
     dateService,
     taskService,
     crawlingProvider,

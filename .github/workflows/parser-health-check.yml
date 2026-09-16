@@ -33,6 +33,10 @@ jobs:
       - name: Run health-check
         id: health_check
         continue-on-error: true
+        env:
+          # data.go.kr key for the 나라일터 and 알리오 job boards. When the
+          # secret is absent those two targets are skipped rather than failed.
+          PUBLIC_DATA_API_KEY: ${{ secrets.PUBLIC_DATA_API_KEY }}
         run: npm run health-check -- --skip-khs-excavation
 
       - name: Build Slack payload

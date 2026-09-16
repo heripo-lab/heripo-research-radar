@@ -3,6 +3,7 @@ import type {
   ArticleForUpdateByAnalysis,
   CrawlingTarget,
   CrawlingTargetGroup,
+  IsoDateString,
   Newsletter,
   ParsedTarget,
   UnscoredArticle,
@@ -70,6 +71,59 @@ export interface ArticleRepository {
    */
   findCandidatesForNewsletter(): Promise<ArticleForGenerateContent[]>;
 }
+
+/**
+ * A single excavation report supplied by the application instead of crawled.
+ *
+ * Field names mirror what the 국가유산청 report board exposes, so an application
+ * that already stores these rows can hand them over without reshaping them.
+ */
+export interface ExcavationReport {
+  /**
+   * The board's own identifier (`ecexmRcno`). Used both as the article's unique
+   * id and to build its public detail URL, so it must match the value the board
+   * uses — otherwise previously crawled reports are re-saved as duplicates.
+   * @example "202609157717"
+   */
+  externalId: string;
+
+  /**
+   * Report title (보고서명).
+   * @example "태안 태안읍성 -남문지 및 연지-"
+   */
+  title: string;
+
+  /**
+   * Submission date (제출일) in ISO format (YYYY-MM-DD).
+   * @example "2026-09-15"
+   */
+  submittedDate: IsoDateString;
+
+  /**
+   * Report detail fields as label/value pairs, rendered into the article body in
+   * insertion order. Supply whatever the source holds — 허가번호, 유적명,
+   * 발간기관, 조사시도시군구, 조사기간, 유적성격/시대구분 and so on.
+   * Empty values are skipped.
+   */
+  fields: Record<string, string | null | undefined>;
+
+  /**
+   * Whether the report has a downloadable file. Defaults to true, matching the
+   * crawled parser.
+   */
+  hasAttachedFile?: boolean;
+}
+
+/**
+ * Supplies excavation reports from the application instead of crawling them.
+ *
+ * When provided, the 국가유산청 발굴조사 보고서 board is served from this
+ * function and never requested over the network; the rest of the crawl is
+ * unaffected. When omitted, the board is crawled as before.
+ *
+ * Called at most once per generation run.
+ */
+export type ExcavationReportSource = () => Promise<ExcavationReport[]>;
 
 /**
  * Repository interface for tag management
