@@ -9,6 +9,13 @@ import { createCrawlingTargetGroups } from '~/config/crawling-targets';
 import { createRobotsGate } from '~/crawling/robots';
 import { createKrasFetch } from '~/parsers/kras.parser';
 
+/**
+ * How many list items to try before giving up on the detail check. A board's
+ * newest post is occasionally unreadable (members-only, withdrawn) for reasons
+ * unrelated to the parser.
+ */
+const DETAIL_CHECK_ATTEMPTS = 3;
+
 const KHS_EXCAVATION_TARGET_IDS = [
   '국가유산청_발굴조사_보고서',
   '국가유산청_발굴조사_현장공개',
@@ -141,6 +148,10 @@ interface TargetCheckResult {
   listItemCount: number;
   listErrors: string[];
   detailUrl: string;
+  /** 1-based position of the list item the detail check used. */
+  detailItemIndex: number;
+  /** Items skipped before one could be fetched, with the reason for each. */
+  detailSkipped: string[];
   detailContentLength: number;
   detailErrors: string[];
   thrownError: string | null;
@@ -229,6 +240,8 @@ async function checkTarget(
     listItemCount: 0,
     listErrors: [],
     detailUrl: '',
+    detailItemIndex: 0,
+    detailSkipped: [],
     detailContentLength: 0,
     detailErrors: [],
     thrownError: null,
@@ -244,14 +257,39 @@ async function checkTarget(
     result.listItemCount = items.length;
     result.listErrors = validateListResult(items);
 
-    // Step 2: Fetch and parse first detail item (if list succeeded)
-    if (items.length > 0 && items[0].detailUrl?.startsWith('http')) {
-      result.detailUrl = items[0].detailUrl;
-      const detailHtml = await fetchHtml(items[0].detailUrl);
-      const detail = await target.parseDetail(detailHtml);
+    // Step 2: Fetch and parse a detail item.
+    //
+    // Normally the first one, but a board's newest post can be unreadable for
+    // reasons that say nothing about the parser — KRAS answers 401 for a
+    // members-only post (`🔒 비밀글입니다.`). Fall through to the next few items
+    // so one such post at the top does not fail the target every day.
+    const candidates = items
+      .filter((item) => item.detailUrl?.startsWith('http'))
+      .slice(0, DETAIL_CHECK_ATTEMPTS);
 
-      result.detailContentLength = detail.detailContent?.trim().length ?? 0;
-      result.detailErrors = validateDetailResult(detail);
+    if (candidates.length > 0) {
+      for (const [index, item] of candidates.entries()) {
+        try {
+          const detailHtml = await fetchHtml(item.detailUrl);
+          const detail = await target.parseDetail(detailHtml);
+
+          result.detailUrl = item.detailUrl;
+          result.detailItemIndex = index + 1;
+          result.detailContentLength = detail.detailContent?.trim().length ?? 0;
+          result.detailErrors = validateDetailResult(detail);
+          break;
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          result.detailSkipped.push(`#${index + 1}: ${message}`);
+
+          // Every candidate failed — report against the first, as before.
+          if (index === candidates.length - 1) {
+            result.detailUrl = candidates[0].detailUrl;
+            result.detailItemIndex = 1;
+            throw err;
+          }
+        }
+      }
     } else if (result.listErrors.length === 0) {
       result.detailErrors.push('Skipped: no valid detailUrl in list results');
     }
@@ -378,8 +416,12 @@ async function main() {
       allResults.push(result);
 
       if (result.status === 'pass') {
+        const fellThrough =
+          result.detailItemIndex > 1
+            ? ` — detail from item #${result.detailItemIndex}, skipped ${result.detailSkipped.join('; ')}`
+            : '';
         console.log(
-          `PASS (${result.listItemCount} items, ${result.detailContentLength} chars, ${result.durationMs}ms)`,
+          `PASS (${result.listItemCount} items, ${result.detailContentLength} chars, ${result.durationMs}ms)${fellThrough}`,
         );
       } else {
         console.log('FAIL');
