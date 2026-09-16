@@ -70,7 +70,7 @@ For academic publications:
 npm install @heripo/research-radar '@llm-newsletter-kit/core@~3.0.0'
 ```
 
-**Requirements**: Node.js >= 24 and an ESM application. The package exports `dist/index.js` and TypeScript declarations (`dist/index.d.ts`), with a JavaScript sourcemap. The core engine is a peer dependency; the current supported range is `~3.0.0`.
+**Requirements**: Node.js >= 24 and an ESM application. The package exports `dist/index.js` and TypeScript declarations (`dist/index.d.ts`), with a JavaScript sourcemap. The core engine is a peer dependency; the current supported range is `~3.0.5`. 3.0.5 is the floor because the newsletter generation prompt this package ships relies on the self-verification retry cap added there.
 
 Article analysis requires an OpenAI API key. Content generation requires a key for the selected provider (OpenAI / Anthropic / Google); OpenAI can use the same key for both. Keys are passed explicitly to the library; load environment variables in your application.
 

@@ -69,7 +69,7 @@ Powered by LLM Newsletter Kit
 npm install @heripo/research-radar '@llm-newsletter-kit/core@~3.0.0'
 ```
 
-**요구사항**: Node.js >= 24와 ESM 애플리케이션. 패키지는 `dist/index.js`, TypeScript 선언 파일(`dist/index.d.ts`), JavaScript 소스맵을 제공합니다. Core 엔진은 peer dependency이며 현재 지원 범위는 `~3.0.0`입니다.
+**요구사항**: Node.js >= 24와 ESM 애플리케이션. 패키지는 `dist/index.js`, TypeScript 선언 파일(`dist/index.d.ts`), JavaScript 소스맵을 제공합니다. Core 엔진은 peer dependency이며 현재 지원 범위는 `~3.0.5`입니다. 이 패키지의 뉴스레터 생성 프롬프트가 3.0.5에 추가된 자가검증 재시도 상한에 의존하므로 3.0.5가 하한입니다.
 
 기사 분석에는 OpenAI API 키가 필요합니다. 콘텐츠 생성에는 선택한 프로바이더(OpenAI / Anthropic / Google)의 키가 필요하며, OpenAI를 선택하면 같은 키를 사용할 수 있습니다. 라이브러리에 키를 명시적으로 전달하므로 환경변수 로딩은 애플리케이션에서 처리하세요.
 
