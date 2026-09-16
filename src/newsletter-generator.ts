@@ -116,6 +116,15 @@ export interface NewsletterGeneratorDependencies {
   excavationReportSource?: ExcavationReportSource;
 
   /**
+   * data.go.kr service key for the 나라일터 and 알리오 job boards (optional).
+   *
+   * Pass the encoded key exactly as the portal supplies it. Both boards are read
+   * through open APIs rather than scraped; omit the key and they collect
+   * nothing while every other target is unaffected.
+   */
+  publicDataApiKey?: string;
+
+  /**
    * LLM prompt overrides (optional).
    *
    * When provided, this replaces Research Radar's own prompt provider entirely
@@ -189,6 +198,7 @@ function createNewsletterGenerator(
     dependencies.customFetch,
     dependencies.excavationReportSource,
     dependencies.logger,
+    dependencies.publicDataApiKey,
   );
 
   const analysisProvider = new AnalysisProvider(

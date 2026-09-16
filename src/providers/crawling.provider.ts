@@ -14,7 +14,9 @@ import type {
 
 import { createCrawlingTargetGroups, robotsExemptOrigins } from '~/config';
 import { createRobotsAwareFetch } from '~/crawling/robots';
+import { createAlioFetch } from '~/parsers/alio.parser';
 import { createExcavationReportFetch } from '~/parsers/excavation.parser';
+import { createGojobsFetch } from '~/parsers/gojobs.parser';
 import { createKrasFetch } from '~/parsers/kras.parser';
 
 /**
@@ -38,6 +40,7 @@ export class CrawlingProvider implements CoreCrawlingProvider {
     customFetch?: typeof fetch,
     excavationReportSource?: ExcavationReportSource,
     logger?: AppLogger,
+    publicDataApiKey?: string,
   ) {
     // robots.txt is checked first, so a disallowed request is never sent — not
     // even through a proxy. The injected and KRAS adapters sit inside it: their
@@ -55,12 +58,20 @@ export class CrawlingProvider implements CoreCrawlingProvider {
 
     const withKras = createKrasFetch(withRobots);
 
+    // The two public job boards are read from data.go.kr open APIs. Without a
+    // key they answer with an empty list and make no request, so the targets
+    // stay configured and simply collect nothing.
+    const withPublicJobs = createAlioFetch(
+      createGojobsFetch(withKras, { apiKey: publicDataApiKey ?? '' }),
+      { apiKey: publicDataApiKey ?? '' },
+    );
+
     // When the application supplies excavation reports, that board is served
     // from the injected source and never requested over the network. Every
     // other target keeps going through the same fetch as before.
     this.customFetch = excavationReportSource
-      ? createExcavationReportFetch(withKras, excavationReportSource)
-      : withKras;
+      ? createExcavationReportFetch(withPublicJobs, excavationReportSource)
+      : withPublicJobs;
 
     this.crawlingTargetGroups = createCrawlingTargetGroups(this.customFetch);
   }

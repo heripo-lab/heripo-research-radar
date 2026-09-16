@@ -7,6 +7,8 @@ import { Agent, fetch as undiciFetch } from 'undici';
 import { robotsExemptOrigins } from '~/config';
 import { createCrawlingTargetGroups } from '~/config/crawling-targets';
 import { createRobotsGate } from '~/crawling/robots';
+import { createAlioFetch } from '~/parsers/alio.parser';
+import { createGojobsFetch } from '~/parsers/gojobs.parser';
 import { createKrasFetch } from '~/parsers/kras.parser';
 
 /**
@@ -113,7 +115,18 @@ const robotsGate = createRobotsGate(proxyFetch ?? unsafeFetch, {
 // Same composition as CrawlingProvider: robots.txt outermost, then the KRAS
 // detail adapter. Without the adapter, KRAS detail pages parse to an empty
 // body and the checks fail for a reason production never hits.
-const checkFetch = createKrasFetch(robotsGate.fetch);
+// The two job boards are served from data.go.kr open APIs. Without a key they
+// answer with an empty list, which would read as a parser failure, so they are
+// skipped instead — see the check loop below.
+const PUBLIC_DATA_API_KEY = process.env.PUBLIC_DATA_API_KEY ?? '';
+const PUBLIC_JOB_TARGET_IDS = ['나라일터_채용공고', '알리오_공공기관_채용공고'];
+
+const checkFetch = createAlioFetch(
+  createGojobsFetch(createKrasFetch(robotsGate.fetch), {
+    apiKey: PUBLIC_DATA_API_KEY,
+  }),
+  { apiKey: PUBLIC_DATA_API_KEY },
+);
 
 const crawlingTargetGroups = createCrawlingTargetGroups(checkFetch);
 
@@ -372,6 +385,21 @@ async function main() {
           reason: 'CLI option',
         });
         console.log(`Skipping [${group.name}] ${target.name}`);
+        continue;
+      }
+
+      if (
+        !PUBLIC_DATA_API_KEY &&
+        PUBLIC_JOB_TARGET_IDS.includes(String(target.id))
+      ) {
+        skippedTargets.push({
+          groupName: group.name,
+          targetName: target.name,
+          reason: 'PUBLIC_DATA_API_KEY not set',
+        });
+        console.log(
+          `Skipping [${group.name}] ${target.name} — PUBLIC_DATA_API_KEY not set`,
+        );
         continue;
       }
 

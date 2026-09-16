@@ -4,6 +4,8 @@ import { ProxyAgent } from 'undici';
 import { fileURLToPath } from 'url';
 
 import { createCrawlingTargetGroups } from '../../src/config/crawling-targets';
+import { createAlioFetch } from '../../src/parsers/alio.parser';
+import { createGojobsFetch } from '../../src/parsers/gojobs.parser';
 import { createKrasFetch } from '../../src/parsers/kras.parser';
 
 // Create proxy fetch if PROXY_URL is set
@@ -14,7 +16,16 @@ const proxyFetch: typeof fetch | undefined = proxyAgent
       fetch(input, { ...init, dispatcher: proxyAgent } as RequestInit)
   : undefined;
 
-const crawlingFetch = createKrasFetch(proxyFetch ?? fetch);
+// data.go.kr key for the 나라일터 and 알리오 job boards. Without it those two
+// targets return an empty list instead of failing.
+const PUBLIC_DATA_API_KEY = process.env.PUBLIC_DATA_API_KEY ?? '';
+
+const crawlingFetch = createAlioFetch(
+  createGojobsFetch(createKrasFetch(proxyFetch ?? fetch), {
+    apiKey: PUBLIC_DATA_API_KEY,
+  }),
+  { apiKey: PUBLIC_DATA_API_KEY },
+);
 const crawlingTargetGroups = createCrawlingTargetGroups(crawlingFetch);
 
 const __filename = fileURLToPath(import.meta.url);
@@ -223,5 +234,8 @@ app.get('/api/cache-stats', (_req, res) => {
 app.listen(PORT, () => {
   console.log(`\n  Crawler Debugger running at:`);
   console.log(`  http://localhost:${PORT}`);
-  console.log(`  Proxy: ${PROXY_URL ?? 'disabled'}\n`);
+  console.log(`  Proxy: ${PROXY_URL ?? 'disabled'}`);
+  console.log(
+    `  PUBLIC_DATA_API_KEY: ${PUBLIC_DATA_API_KEY ? 'set' : 'not set (job boards return empty)'}\n`,
+  );
 });

@@ -1,6 +1,11 @@
 import type { CrawlingTargetGroup } from '@llm-newsletter-kit/core';
 
 import {
+  ALIO_LIST_URL,
+  parseAlioDetail,
+  parseAlioList,
+} from '~/parsers/alio.parser';
+import {
   parseBuyeoMuseumDetail,
   parseBuyeoMuseumList,
 } from '~/parsers/buyeo-museum.parser';
@@ -19,6 +24,11 @@ import {
   parseGimhaeMuseumList,
 } from '~/parsers/gimhae-museum.parser';
 import { parseGogungDetail, parseGogungList } from '~/parsers/gogung.parser';
+import {
+  GOJOBS_LIST_URL,
+  parseGojobsDetail,
+  parseGojobsList,
+} from '~/parsers/gojobs.parser';
 import {
   parseGyeongjuMuseumDetail,
   parseGyeongjuMuseumList,
@@ -732,6 +742,25 @@ export function createCrawlingTargetGroups(
           url: 'https://jeju.museum.go.kr/_prog/_board/?code=sub02_0201&site_dvs_cd=kr&menu_dvs_cd=050102&ntt_tag=2',
           parseList: parseJejuMuseumList,
           parseDetail: parseJejuMuseumDetail,
+        },
+        // Served from data.go.kr open APIs rather than scraped. Both boards
+        // carry every public-sector vacancy in the country, so their parsers
+        // apply the heritage filter in `src/crawling/heritage-job-filter.ts`
+        // before anything reaches analysis. Without an API key they yield
+        // nothing and make no request.
+        {
+          id: '나라일터_채용공고',
+          name: '나라일터 채용공고',
+          url: GOJOBS_LIST_URL,
+          parseList: parseGojobsList,
+          parseDetail: parseGojobsDetail,
+        },
+        {
+          id: '알리오_공공기관_채용공고',
+          name: '알리오 공공기관 채용공고',
+          url: ALIO_LIST_URL,
+          parseList: parseAlioList,
+          parseDetail: parseAlioDetail,
         },
       ],
     },
