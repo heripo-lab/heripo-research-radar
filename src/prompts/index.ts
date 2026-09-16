@@ -1,5 +1,7 @@
 import type { PromptProvider } from '@llm-newsletter-kit/core';
 
+import { classifyTagsPrompt } from './classify-tags';
+
 /**
  * Research Radar's LLM prompt overrides.
  *
@@ -28,4 +30,14 @@ import type { PromptProvider } from '@llm-newsletter-kit/core';
  * after every edit — its source cannot be imported directly across repos
  * because of the `~/*` path alias.
  */
-export const researchRadarPromptProvider: PromptProvider = {};
+export const researchRadarPromptProvider: PromptProvider = {
+  analysis: {
+    classifyTags: classifyTagsPrompt,
+  },
+};
+
+export {
+  HERITAGE_DOMAIN_TAGS,
+  toHeritageDomainTag,
+  type HeritageDomainTag,
+} from './classify-tags';
