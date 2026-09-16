@@ -188,6 +188,7 @@ function createNewsletterGenerator(
     dependencies.articleRepository,
     dependencies.customFetch,
     dependencies.excavationReportSource,
+    dependencies.logger,
   );
 
   const analysisProvider = new AnalysisProvider(

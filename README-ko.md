@@ -23,7 +23,7 @@
 
 - 엄격한 타입 시스템의 TypeScript
 - 교체 가능한 Provider 패턴 (Crawling/Analysis/Content/Email)
-- 문화유산 기관, 박물관, 학회 등 활성 크롤링 타겟 59개
+- 문화유산 기관, 박물관, 학회 등 활성 크롤링 타겟 71개 (robots.txt로 런타임 필터링)
 - 멀티 LLM 프로바이더: OpenAI GPT-5 (분석) + 선택 가능한 콘텐츠 생성 (OpenAI / Anthropic / Google)
 - 재시도, 체인 옵션, 미리보기 이메일 내장
 
@@ -183,12 +183,14 @@ export async function runNewsletter(repositories: {
 
 | 그룹             |   활성 | 주석 처리 |
 | ---------------- | -----: | --------: |
-| 뉴스(News)       |     48 |        10 |
+| 뉴스(News)       |     57 |         1 |
 | 입찰(Business)   |      4 |         0 |
-| 채용(Employment) |      7 |         3 |
-| **합계**         | **59** |    **13** |
+| 채용(Employment) |     10 |         0 |
+| **합계**         | **71** |     **1** |
 
-주석 처리된 13개는 실행 시 제외됩니다. 발굴조사 현황공개 1개는 정보가 파편적이고 뉴스레터 가치가 낮다는 주석이 있으며, 박물관 게시판 12개는 robots.txt 제한으로 비활성화되어 있습니다. 관련 파서 코드는 저장소에 남아 있습니다.
+주석 처리된 것은 발굴조사 현황공개 1개뿐입니다. 정보가 파편적이고 뉴스레터 가치가 낮습니다. robots.txt가 제한하는 게시판도 설정에는 그대로 두고 런타임 검사에서 거부하므로, 사이트별 정책을 설정 파일에 손으로 반영할 필요가 없습니다. 현재 정책 기준으로 71개 중 14개가 거부됩니다.
+
+크롤링 요청은 네트워크에 나가기 전에 robots.txt 검사(`src/crawling/robots.ts`)를 거칩니다. 금지된 요청은 전송하지 않고 거부하며, robots.txt가 없거나 조회에 실패하면 허용합니다.
 
 국가유산청, 국립문화유산연구원, 국립해양유산연구소, 국가유산진흥원, 한국문화유산협회, 고고학회, 국립박물관 등이 수집 대상입니다.
 
@@ -333,7 +335,7 @@ npm run health-check -- --skip-khs-excavation  # 국가유산청 발굴조사 �
 
 **출력**: 콘솔 테이블 요약 + CI 연동을 위한 compact 텍스트 서머리
 
-**CI**: [.github/workflows/parser-health-check.yml](./.github/workflows/parser-health-check.yml)은 매일 UTC 08:00(KST 17:00) 또는 수동으로 실행되며, `org-linux` 러너와 30분 작업 제한을 사용합니다. 국가유산청 발굴조사 보고서·현장공개 2개를 제외하므로 현재 설정에서는 57개를 검사합니다. Slack 알림에는 `SLACK_BOT_TOKEN` secret과 `SLACK_ALERT_DEV_CHANNEL` 저장소 변수가 필요합니다. 포크에서 그대로 실행하려면 같은 러너 및 알림 구성이 필요합니다. CLI는 관련 환경변수가 있으면 GitHub Actions 출력과 작업 요약도 기록합니다.
+**CI**: [.github/workflows/parser-health-check.yml](./.github/workflows/parser-health-check.yml)은 매일 UTC 08:00(KST 17:00) 또는 수동으로 실행되며, `org-linux` 러너와 30분 작업 제한을 사용합니다. 국가유산청 발굴조사 보고서·현장공개 2개를 제외하므로 현재 설정에서는 69개를 검사합니다. 헬스체크는 타깃 그룹을 직접 구성하며 robots.txt 어댑터를 붙이지 않으므로, 운영 크롤링이 거부하는 게시판도 그대로 요청하여 실패로 보고될 수 있습니다. Slack 알림에는 `SLACK_BOT_TOKEN` secret과 `SLACK_ALERT_DEV_CHANNEL` 저장소 변수가 필요합니다. 포크에서 그대로 실행하려면 같은 러너 및 알림 구성이 필요합니다. CLI는 관련 환경변수가 있으면 GitHub Actions 출력과 작업 요약도 기록합니다.
 
 ## 🤝 기여하기
 

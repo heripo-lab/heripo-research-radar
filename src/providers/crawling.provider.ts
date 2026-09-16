@@ -1,4 +1,5 @@
 import type {
+  AppLogger,
   CrawlingProvider as CoreCrawlingProvider,
   CrawlingTarget,
   CrawlingTargetGroup,
@@ -12,6 +13,7 @@ import type {
 } from '../types/dependencies';
 
 import { createCrawlingTargetGroups } from '~/config';
+import { createRobotsAwareFetch } from '~/crawling/robots';
 import { createExcavationReportFetch } from '~/parsers/excavation.parser';
 import { createKrasFetch } from '~/parsers/kras.parser';
 
@@ -35,8 +37,22 @@ export class CrawlingProvider implements CoreCrawlingProvider {
     private readonly articleRepository: ArticleRepository,
     customFetch?: typeof fetch,
     excavationReportSource?: ExcavationReportSource,
+    logger?: AppLogger,
   ) {
-    const withKras = createKrasFetch(customFetch ?? fetch);
+    // robots.txt is checked first, so a disallowed request is never sent — not
+    // even through a proxy. The injected and KRAS adapters sit inside it: their
+    // requests either bypass the network entirely or are rewritten to a URL
+    // that still gets checked.
+    const withRobots = createRobotsAwareFetch(customFetch ?? fetch, {
+      onBlocked: ({ url, rule, userAgent }) => {
+        logger?.info({
+          event: 'crawl.robots.blocked',
+          data: { url, rule, userAgent },
+        });
+      },
+    });
+
+    const withKras = createKrasFetch(withRobots);
 
     // When the application supplies excavation reports, that board is served
     // from the injected source and never requested over the network. Every

@@ -23,7 +23,7 @@ Previously reported service metrics were $0.2–1 per issue and 15% CTR. These a
 
 - Type-safe TypeScript with strict interfaces
 - Provider pattern for swapping components (Crawling/Analysis/Content/Email)
-- 59 active crawling targets across heritage agencies, museums, academic societies
+- 71 active crawling targets across heritage agencies, museums, academic societies, filtered at runtime by robots.txt
 - Multi LLM providers: OpenAI GPT-5 (analysis) + selectable content generation (OpenAI / Anthropic / Google)
 - Built-in retries, chain options, preview emails
 
@@ -184,12 +184,14 @@ Select content generation with `contentGeneration: { provider, apiKey, model? }`
 
 | Group      | Active | Commented out |
 | ---------- | -----: | ------------: |
-| News       |     48 |            10 |
+| News       |     57 |             1 |
 | Business   |      4 |             0 |
-| Employment |      7 |             3 |
-| **Total**  | **59** |        **13** |
+| Employment |     10 |             0 |
+| **Total**  | **71** |         **1** |
 
-The 13 commented targets are excluded from runtime configuration: one excavation status board is marked as low-value fragmented data, and 12 museum boards are marked as restricted by robots.txt. Their parser code remains in the repository.
+Only the excavation status board stays commented out, as low-value fragmented data. Boards that a site's robots.txt restricts are configured normally and refused at runtime by the robots.txt check, so the configuration does not have to track each site's policy by hand. With current policies 14 of the 71 targets are refused.
+
+Crawling fetches pass through that check (`src/crawling/robots.ts`) before reaching the network: a disallowed request is refused rather than sent, and a missing or unreachable robots.txt allows it.
 
 Sources include the Korea Heritage Service, National Research Institute of Cultural Heritage, National Research Institute of Maritime Heritage, Korea Heritage Agency, Korea Association of Archaeological Heritage, archaeological societies, and national museums.
 
@@ -334,7 +336,7 @@ Use repeatable `--skip-target=<id-or-name>` or `--skip-target <id-or-name>` to e
 
 **Output**: Console table summary + compact text summary for CI integrations.
 
-**CI**: [.github/workflows/parser-health-check.yml](./.github/workflows/parser-health-check.yml) runs daily at 08:00 UTC (17:00 KST), or manually, on an `org-linux` runner with a 30-minute job timeout. It skips the two KHS excavation report/site-open targets (57 targets checked with the current configuration). Slack notifications require the `SLACK_BOT_TOKEN` secret and `SLACK_ALERT_DEV_CHANNEL` repository variable. Forks need a matching runner and notification configuration to use this workflow unchanged. The CLI also writes GitHub Actions outputs and a job summary when their environment variables are present.
+**CI**: [.github/workflows/parser-health-check.yml](./.github/workflows/parser-health-check.yml) runs daily at 08:00 UTC (17:00 KST), or manually, on an `org-linux` runner with a 30-minute job timeout. It skips the two KHS excavation report/site-open targets (69 targets checked with the current configuration). The health-check builds target groups directly and does not install the robots.txt adapter, so boards the production crawl refuses are still requested and may report failures. Slack notifications require the `SLACK_BOT_TOKEN` secret and `SLACK_ALERT_DEV_CHANNEL` repository variable. Forks need a matching runner and notification configuration to use this workflow unchanged. The CLI also writes GitHub Actions outputs and a job summary when their environment variables are present.
 
 ## 🤝 Contributing
 

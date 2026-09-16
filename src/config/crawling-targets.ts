@@ -5,18 +5,39 @@ import {
   parseBuyeoMuseumList,
 } from '~/parsers/buyeo-museum.parser';
 import {
+  parseCheongjuMuseumDetail,
+  parseCheongjuMuseumList,
+} from '~/parsers/cheongju-museum.parser';
+import {
   parseExcavationReportDetail,
   parseExcavationReportList,
   parseExcavationSiteDetail,
   parseExcavationSiteList,
 } from '~/parsers/excavation.parser';
+import {
+  parseGimhaeMuseumDetail,
+  parseGimhaeMuseumList,
+} from '~/parsers/gimhae-museum.parser';
 import { parseGogungDetail, parseGogungList } from '~/parsers/gogung.parser';
+import {
+  parseGyeongjuMuseumDetail,
+  parseGyeongjuMuseumList,
+  parseGyeongjuMuseumNoticeList,
+} from '~/parsers/gyeongju-museum.parser';
 import {
   parseHeritageAgencyDetail,
   parseHeritageAgencyList,
 } from '~/parsers/heritage-agency.parser';
 import { parseHsasDetail, parseHsasList } from '~/parsers/hsas.parser';
+import {
+  parseIksanMuseumDetail,
+  parseIksanMuseumList,
+} from '~/parsers/iksan-museum.parser';
 import { parseJbgogoDetail, parseJbgogoList } from '~/parsers/jbgogo.parser';
+import {
+  parseJejuMuseumDetail,
+  parseJejuMuseumList,
+} from '~/parsers/jeju-museum.parser';
 import {
   parseJeonjuMuseumDetail,
   parseJeonjuMuseumList,
@@ -519,74 +540,73 @@ export function createCrawlingTargetGroups(
           parseList: parseJinjuMuseumList,
           parseDetail: parseJinjuMuseumDetail,
         },
-        // NOTE: Parsing logic is implemented, but crawling is restricted by robots.txt policy
-        // {
-        //   id: '국립경주박물관_새소식',
-        //   name: '국립경주박물관 새소식',
-        //   url: 'https://gyeongju.museum.go.kr/kor/html/sub07/0701.html',
-        //   parseList: (html) =>
-        //     parseGyeongjuMuseumList(html, '/kor/html/sub07/0701.html'),
-        //   parseDetail: parseGyeongjuMuseumDetail,
-        // },
-        // {
-        //   id: '국립경주박물관_고시공고',
-        //   name: '국립경주박물관 고시/공고',
-        //   url: 'https://gyeongju.museum.go.kr/kor/html/sub07/0703.html',
-        //   parseList: parseGyeongjuMuseumNoticeList,
-        //   parseDetail: parseGyeongjuMuseumDetail,
-        // },
-        // {
-        //   id: '국립경주박물관_보도자료',
-        //   name: '국립경주박물관 보도자료',
-        //   url: 'https://gyeongju.museum.go.kr/kor/html/sub07/0705.html',
-        //   parseList: (html) =>
-        //     parseGyeongjuMuseumList(html, '/kor/html/sub07/0705.html'),
-        //   parseDetail: parseGyeongjuMuseumDetail,
-        // },
-        // {
-        //   id: '국립청주박물관_새소식',
-        //   name: '국립청주박물관 새소식',
-        //   url: 'https://cheongju.museum.go.kr/www/selectBbsNttList.do?bbsNo=1&key=482&nbar=s',
-        //   parseList: parseCheongjuMuseumList,
-        //   parseDetail: parseCheongjuMuseumDetail,
-        // },
-        // {
-        //   id: '국립청주박물관_언론보도자료',
-        //   name: '국립청주박물관 언론보도자료',
-        //   url: 'https://cheongju.museum.go.kr/www/selectBbsNttList.do?bbsNo=20&key=31&nbar=s',
-        //   parseList: parseCheongjuMuseumList,
-        //   parseDetail: parseCheongjuMuseumDetail,
-        // },
-        // {
-        //   id: '국립김해박물관_새소식',
-        //   name: '국립김해박물관 새소식',
-        //   url: 'https://gimhae.museum.go.kr/kr/html/sub04/0401.html',
-        //   parseList: (html) =>
-        //     parseGimhaeMuseumList(html, '/kr/html/sub04/0401.html'),
-        //   parseDetail: parseGimhaeMuseumDetail,
-        // },
-        // {
-        //   id: '국립김해박물관_보도자료',
-        //   name: '국립김해박물관 언론보도자료',
-        //   url: 'https://gimhae.museum.go.kr/kr/html/sub04/0402.html',
-        //   parseList: (html) =>
-        //     parseGimhaeMuseumList(html, '/kr/html/sub04/0402.html'),
-        //   parseDetail: parseGimhaeMuseumDetail,
-        // },
-        // {
-        //   id: '국립제주박물관_새소식',
-        //   name: '국립제주박물관 새소식',
-        //   url: 'https://jeju.museum.go.kr/_prog/_board/?code=sub02_0201&site_dvs_cd=kr&menu_dvs_cd=050101&ntt_tag=1',
-        //   parseList: parseJejuMuseumList,
-        //   parseDetail: parseJejuMuseumDetail,
-        // },
-        // {
-        //   id: '국립익산박물관_공지사항',
-        //   name: '국립익산박물관 공지사항',
-        //   url: 'https://iksan.museum.go.kr/kor/html/sub05/0501.html',
-        //   parseList: parseIksanMuseumList,
-        //   parseDetail: parseIksanMuseumDetail,
-        // },
+        {
+          id: '국립경주박물관_새소식',
+          name: '국립경주박물관 새소식',
+          url: 'https://gyeongju.museum.go.kr/kor/html/sub07/0701.html',
+          parseList: (html) =>
+            parseGyeongjuMuseumList(html, '/kor/html/sub07/0701.html'),
+          parseDetail: parseGyeongjuMuseumDetail,
+        },
+        {
+          id: '국립경주박물관_고시공고',
+          name: '국립경주박물관 고시/공고',
+          url: 'https://gyeongju.museum.go.kr/kor/html/sub07/0703.html',
+          parseList: parseGyeongjuMuseumNoticeList,
+          parseDetail: parseGyeongjuMuseumDetail,
+        },
+        {
+          id: '국립경주박물관_보도자료',
+          name: '국립경주박물관 보도자료',
+          url: 'https://gyeongju.museum.go.kr/kor/html/sub07/0705.html',
+          parseList: (html) =>
+            parseGyeongjuMuseumList(html, '/kor/html/sub07/0705.html'),
+          parseDetail: parseGyeongjuMuseumDetail,
+        },
+        {
+          id: '국립청주박물관_새소식',
+          name: '국립청주박물관 새소식',
+          url: 'https://cheongju.museum.go.kr/www/selectBbsNttList.do?bbsNo=1&key=482&nbar=s',
+          parseList: parseCheongjuMuseumList,
+          parseDetail: parseCheongjuMuseumDetail,
+        },
+        {
+          id: '국립청주박물관_언론보도자료',
+          name: '국립청주박물관 언론보도자료',
+          url: 'https://cheongju.museum.go.kr/www/selectBbsNttList.do?bbsNo=20&key=31&nbar=s',
+          parseList: parseCheongjuMuseumList,
+          parseDetail: parseCheongjuMuseumDetail,
+        },
+        {
+          id: '국립김해박물관_새소식',
+          name: '국립김해박물관 새소식',
+          url: 'https://gimhae.museum.go.kr/kr/html/sub04/0401.html',
+          parseList: (html) =>
+            parseGimhaeMuseumList(html, '/kr/html/sub04/0401.html'),
+          parseDetail: parseGimhaeMuseumDetail,
+        },
+        {
+          id: '국립김해박물관_보도자료',
+          name: '국립김해박물관 언론보도자료',
+          url: 'https://gimhae.museum.go.kr/kr/html/sub04/0402.html',
+          parseList: (html) =>
+            parseGimhaeMuseumList(html, '/kr/html/sub04/0402.html'),
+          parseDetail: parseGimhaeMuseumDetail,
+        },
+        {
+          id: '국립제주박물관_새소식',
+          name: '국립제주박물관 새소식',
+          url: 'https://jeju.museum.go.kr/_prog/_board/?code=sub02_0201&site_dvs_cd=kr&menu_dvs_cd=050101&ntt_tag=1',
+          parseList: parseJejuMuseumList,
+          parseDetail: parseJejuMuseumDetail,
+        },
+        {
+          id: '국립익산박물관_공지사항',
+          name: '국립익산박물관 공지사항',
+          url: 'https://iksan.museum.go.kr/kor/html/sub05/0501.html',
+          parseList: parseIksanMuseumList,
+          parseDetail: parseIksanMuseumDetail,
+        },
       ],
     },
     {
@@ -691,29 +711,28 @@ export function createCrawlingTargetGroups(
           parseList: (html) => parseBuyeoMuseumList(html, '2301270001'),
           parseDetail: parseBuyeoMuseumDetail,
         },
-        // NOTE: Parsing logic is implemented, but crawling is restricted by robots.txt policy
-        // {
-        //   id: '국립경주박물관_채용안내',
-        //   name: '국립경주박물관 채용안내',
-        //   url: 'https://gyeongju.museum.go.kr/kor/html/sub07/0704.html',
-        //   parseList: (html) =>
-        //     parseGyeongjuMuseumList(html, '/kor/html/sub07/0704.html'),
-        //   parseDetail: parseGyeongjuMuseumDetail,
-        // },
-        // {
-        //   id: '국립청주박물관_채용및공고',
-        //   name: '국립청주박물관 채용 및 공고',
-        //   url: 'https://cheongju.museum.go.kr/www/selectBbsNttList.do?bbsNo=29&key=476&nbar=s',
-        //   parseList: parseCheongjuMuseumList,
-        //   parseDetail: parseCheongjuMuseumDetail,
-        // },
-        // {
-        //   id: '국립제주박물관_채용정보',
-        //   name: '국립제주박물관 채용정보',
-        //   url: 'https://jeju.museum.go.kr/_prog/_board/?code=sub02_0201&site_dvs_cd=kr&menu_dvs_cd=050102&ntt_tag=2',
-        //   parseList: parseJejuMuseumList,
-        //   parseDetail: parseJejuMuseumDetail,
-        // },
+        {
+          id: '국립경주박물관_채용안내',
+          name: '국립경주박물관 채용안내',
+          url: 'https://gyeongju.museum.go.kr/kor/html/sub07/0704.html',
+          parseList: (html) =>
+            parseGyeongjuMuseumList(html, '/kor/html/sub07/0704.html'),
+          parseDetail: parseGyeongjuMuseumDetail,
+        },
+        {
+          id: '국립청주박물관_채용및공고',
+          name: '국립청주박물관 채용 및 공고',
+          url: 'https://cheongju.museum.go.kr/www/selectBbsNttList.do?bbsNo=29&key=476&nbar=s',
+          parseList: parseCheongjuMuseumList,
+          parseDetail: parseCheongjuMuseumDetail,
+        },
+        {
+          id: '국립제주박물관_채용정보',
+          name: '국립제주박물관 채용정보',
+          url: 'https://jeju.museum.go.kr/_prog/_board/?code=sub02_0201&site_dvs_cd=kr&menu_dvs_cd=050102&ntt_tag=2',
+          parseList: parseJejuMuseumList,
+          parseDetail: parseJejuMuseumDetail,
+        },
       ],
     },
   ];
