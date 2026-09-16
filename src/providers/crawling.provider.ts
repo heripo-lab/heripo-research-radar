@@ -12,7 +12,7 @@ import type {
   ExcavationReportSource,
 } from '../types/dependencies';
 
-import { createCrawlingTargetGroups } from '~/config';
+import { createCrawlingTargetGroups, robotsExemptOrigins } from '~/config';
 import { createRobotsAwareFetch } from '~/crawling/robots';
 import { createExcavationReportFetch } from '~/parsers/excavation.parser';
 import { createKrasFetch } from '~/parsers/kras.parser';
@@ -44,6 +44,7 @@ export class CrawlingProvider implements CoreCrawlingProvider {
     // requests either bypass the network entirely or are rewritten to a URL
     // that still gets checked.
     const withRobots = createRobotsAwareFetch(customFetch ?? fetch, {
+      exemptOrigins: robotsExemptOrigins,
       onBlocked: ({ url, rule, userAgent }) => {
         logger?.info({
           event: 'crawl.robots.blocked',

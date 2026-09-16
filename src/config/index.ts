@@ -62,6 +62,22 @@ export const maximumImportanceScoreByDomain: Record<string, number> = {
 };
 
 /**
+ * Origins exempted from the robots.txt check.
+ *
+ * Each entry deliberately overrides what the site publishes, so it needs a
+ * reason and should be revisited when that site's robots.txt changes.
+ *
+ * - `http://www.yngogo.or.kr` (영남고고학회): its board is rendered from
+ *   `/module/ntt/unity/selectNttListAjax.ink`, and robots.txt carries a blanket
+ *   `Disallow: /module`. The rule reads as protecting an internal path rather
+ *   than the public board it happens to serve, and there is no other route to
+ *   the listing, so the society's boards are collected under this exemption.
+ */
+export const robotsExemptOrigins: readonly string[] = [
+  'http://www.yngogo.or.kr',
+];
+
+/**
  * LLM configuration
  */
 export const llmConfig = {

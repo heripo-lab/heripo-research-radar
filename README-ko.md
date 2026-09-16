@@ -190,7 +190,7 @@ export async function runNewsletter(repositories: {
 
 주석 처리된 것은 발굴조사 현황공개 1개뿐입니다. 정보가 파편적이고 뉴스레터 가치가 낮습니다. robots.txt가 제한하는 게시판도 설정에는 그대로 두고 런타임 검사에서 거부하므로, 사이트별 정책을 설정 파일에 손으로 반영할 필요가 없습니다. 현재 정책 기준으로 71개 중 14개가 거부됩니다.
 
-크롤링 요청은 네트워크에 나가기 전에 robots.txt 검사(`src/crawling/robots.ts`)를 거칩니다. 금지된 요청은 전송하지 않고 거부하며, robots.txt가 없거나 조회에 실패하면 허용합니다.
+크롤링 요청은 네트워크에 나가기 전에 robots.txt 검사(`src/crawling/robots.ts`)를 거칩니다. 금지된 요청은 전송하지 않고 거부하며, robots.txt가 없거나 조회에 실패하면 허용합니다. 검사에서 제외할 origin은 `src/config/index.ts`의 `robotsExemptOrigins`에 사유와 함께 명시합니다.
 
 국가유산청, 국립문화유산연구원, 국립해양유산연구소, 국가유산진흥원, 한국문화유산협회, 고고학회, 국립박물관 등이 수집 대상입니다.
 
@@ -335,7 +335,7 @@ npm run health-check -- --skip-khs-excavation  # 국가유산청 발굴조사 �
 
 **출력**: 콘솔 테이블 요약 + CI 연동을 위한 compact 텍스트 서머리
 
-**CI**: [.github/workflows/parser-health-check.yml](./.github/workflows/parser-health-check.yml)은 매일 UTC 08:00(KST 17:00) 또는 수동으로 실행되며, `org-linux` 러너와 30분 작업 제한을 사용합니다. 국가유산청 발굴조사 보고서·현장공개 2개를 제외합니다. 헬스체크도 운영과 같은 robots.txt 게이트를 사용하므로, 거부되는 게시판은 실패가 아니라 건너뜀으로 보고됩니다. 현재 설정에서는 20개 건너뜀, 51개 검사입니다. Slack 알림에는 `SLACK_BOT_TOKEN` secret과 `SLACK_ALERT_DEV_CHANNEL` 저장소 변수가 필요합니다. 포크에서 그대로 실행하려면 같은 러너 및 알림 구성이 필요합니다. CLI는 관련 환경변수가 있으면 GitHub Actions 출력과 작업 요약도 기록합니다.
+**CI**: [.github/workflows/parser-health-check.yml](./.github/workflows/parser-health-check.yml)은 매일 UTC 08:00(KST 17:00) 또는 수동으로 실행되며, `org-linux` 러너와 30분 작업 제한을 사용합니다. 국가유산청 발굴조사 보고서·현장공개 2개를 제외합니다. 헬스체크는 운영과 동일하게 robots.txt 게이트와 KRAS 상세 어댑터를 조합하므로, 거부되는 게시판은 실패가 아니라 건너뜀으로 보고됩니다. 현재 설정에서는 16개 건너뜀, 55개 검사입니다. Slack 알림에는 `SLACK_BOT_TOKEN` secret과 `SLACK_ALERT_DEV_CHANNEL` 저장소 변수가 필요합니다. 포크에서 그대로 실행하려면 같은 러너 및 알림 구성이 필요합니다. CLI는 관련 환경변수가 있으면 GitHub Actions 출력과 작업 요약도 기록합니다.
 
 ## 🤝 기여하기
 

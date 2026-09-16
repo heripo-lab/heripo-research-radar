@@ -32,6 +32,15 @@ export type RobotsAwareFetchOptions = {
   onBlocked?: (info: RobotsBlockInfo) => void;
   /** Timeout for fetching robots.txt itself. @default 10000 */
   timeoutMs?: number;
+  /**
+   * Origins exempted from the check, e.g. `http://www.yngogo.or.kr`.
+   *
+   * These are deliberate overrides of a site's stated policy, so keep the list
+   * short, record why each entry is there, and revisit it when a site's
+   * robots.txt changes. Requests to these origins are sent without ever
+   * consulting robots.txt.
+   */
+  exemptOrigins?: readonly string[];
 };
 
 /**
@@ -244,8 +253,18 @@ export function createRobotsGate(
   baseFetch: typeof fetch = fetch,
   options: RobotsAwareFetchOptions = {},
 ): RobotsGate {
-  const { onBlocked, timeoutMs = 10_000 } = options;
+  const { onBlocked, timeoutMs = 10_000, exemptOrigins = [] } = options;
   const cache = new Map<string, Promise<RobotsGroup[]>>();
+
+  const exempt = new Set(
+    exemptOrigins.map((origin) => {
+      try {
+        return new URL(origin).origin;
+      } catch {
+        return origin;
+      }
+    }),
+  );
 
   const loadRobots = (origin: string): Promise<RobotsGroup[]> => {
     const cached = cache.get(origin);
@@ -295,6 +314,10 @@ export function createRobotsGate(
     }
 
     if (url.pathname === '/robots.txt') {
+      return { allowed: true };
+    }
+
+    if (exempt.has(url.origin)) {
       return { allowed: true };
     }
 

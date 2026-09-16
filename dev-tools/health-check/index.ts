@@ -4,8 +4,10 @@ import fs from 'fs';
 import { ProxyAgent } from 'undici';
 import { Agent, fetch as undiciFetch } from 'undici';
 
+import { robotsExemptOrigins } from '~/config';
 import { createCrawlingTargetGroups } from '~/config/crawling-targets';
 import { createRobotsGate } from '~/crawling/robots';
+import { createKrasFetch } from '~/parsers/kras.parser';
 
 const KHS_EXCAVATION_TARGET_IDS = [
   '국가유산청_발굴조사_보고서',
@@ -93,6 +95,7 @@ const proxyFetch: typeof fetch | undefined = proxyAgent
 let robotsBlocksDuringCheck: string[] = [];
 
 const robotsGate = createRobotsGate(proxyFetch ?? unsafeFetch, {
+  exemptOrigins: robotsExemptOrigins,
   onBlocked: ({ rule }) => {
     if (!robotsBlocksDuringCheck.includes(rule)) {
       robotsBlocksDuringCheck.push(rule);
@@ -100,7 +103,12 @@ const robotsGate = createRobotsGate(proxyFetch ?? unsafeFetch, {
   },
 });
 
-const crawlingTargetGroups = createCrawlingTargetGroups(robotsGate.fetch);
+// Same composition as CrawlingProvider: robots.txt outermost, then the KRAS
+// detail adapter. Without the adapter, KRAS detail pages parse to an empty
+// body and the checks fail for a reason production never hits.
+const checkFetch = createKrasFetch(robotsGate.fetch);
+
+const crawlingTargetGroups = createCrawlingTargetGroups(checkFetch);
 
 // User-Agent list used by real browsers
 const USER_AGENTS = [
@@ -148,7 +156,7 @@ interface SkippedTarget {
 }
 
 async function fetchHtml(url: string): Promise<string> {
-  const response = await robotsGate.fetch(url, {
+  const response = await checkFetch(url, {
     signal: AbortSignal.timeout(30_000),
     headers: {
       'User-Agent': getRandomUserAgent(),
