@@ -41,7 +41,9 @@
     "dev:newsletter-preview": "tsx watch dev-tools/newsletter-preview/server.ts",
     "dev:welcome-preview": "tsx watch dev-tools/welcome-preview/server.ts",
     "health-check": "tsx dev-tools/health-check/index.ts",
-    "health-check:proxy": "tsx --env-file=dev-tools/crawler-debugger/.env dev-tools/health-check/index.ts --proxy"
+    "health-check:proxy": "tsx --env-file=dev-tools/crawler-debugger/.env dev-tools/health-check/index.ts --proxy",
+    "dev:link-core": "npm --prefix ../llm-newsletter-kit-core run build && npm link ../llm-newsletter-kit-core",
+    "dev:unlink-core": "npm unlink --no-save @llm-newsletter-kit/core && npm install"
   },
   "author": "kimhongyeon",
   "license": "Apache-2.0",
