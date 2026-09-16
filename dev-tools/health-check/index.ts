@@ -5,6 +5,7 @@ import { ProxyAgent } from 'undici';
 import { Agent, fetch as undiciFetch } from 'undici';
 
 import { createCrawlingTargetGroups } from '~/config/crawling-targets';
+import { createRobotsGate } from '~/crawling/robots';
 
 const KHS_EXCAVATION_TARGET_IDS = [
   '국가유산청_발굴조사_보고서',
@@ -83,7 +84,23 @@ const proxyFetch: typeof fetch | undefined = proxyAgent
       unsafeFetch(input, { ...init, dispatcher: proxyAgent } as RequestInit)
   : undefined;
 
-const crawlingTargetGroups = createCrawlingTargetGroups(proxyFetch);
+// Mirror production: robots.txt is checked before any request leaves. The gate
+// also answers the pre-check below, so a disallowed board is reported as skipped
+// rather than as a parser failure.
+// Rules a parser hit while running. A parser that fetches its own API — 영남고고학회
+// reads /module/..., which its robots.txt disallows — is blocked inside parseList,
+// where the pre-check on the board URL cannot see it, so record it here instead.
+let robotsBlocksDuringCheck: string[] = [];
+
+const robotsGate = createRobotsGate(proxyFetch ?? unsafeFetch, {
+  onBlocked: ({ rule }) => {
+    if (!robotsBlocksDuringCheck.includes(rule)) {
+      robotsBlocksDuringCheck.push(rule);
+    }
+  },
+});
+
+const crawlingTargetGroups = createCrawlingTargetGroups(robotsGate.fetch);
 
 // User-Agent list used by real browsers
 const USER_AGENTS = [
@@ -126,11 +143,12 @@ interface TargetCheckResult {
 interface SkippedTarget {
   groupName: string;
   targetName: string;
+  /** Why it was skipped: a CLI option, or the site's robots.txt. */
+  reason: string;
 }
 
 async function fetchHtml(url: string): Promise<string> {
-  const fetchFn = proxyFetch ?? unsafeFetch;
-  const response = await fetchFn(url, {
+  const response = await robotsGate.fetch(url, {
     signal: AbortSignal.timeout(30_000),
     headers: {
       'User-Agent': getRandomUserAgent(),
@@ -274,7 +292,9 @@ function buildSlackSummary(
     lines.push('');
     lines.push(`건너뛴 파서 (${skippedTargets.length}):`);
     for (const target of skippedTargets) {
-      lines.push(`  [${target.groupName}] ${target.targetName}`);
+      lines.push(
+        `  [${target.groupName}] ${target.targetName} — ${target.reason}`,
+      );
     }
   }
 
@@ -303,15 +323,50 @@ async function main() {
         skippedTargets.push({
           groupName: group.name,
           targetName: target.name,
+          reason: 'CLI option',
         });
         console.log(`Skipping [${group.name}] ${target.name}`);
         continue;
       }
 
-      totalTargets++;
+      // A board its own robots.txt disallows is policy, not a parser
+      // regression, so it must not fail the run.
+      const verdict = await robotsGate.isAllowed(
+        target.url,
+        getRandomUserAgent(),
+      );
+
+      if (!verdict.allowed) {
+        skippedTargets.push({
+          groupName: group.name,
+          targetName: target.name,
+          reason: `robots.txt (${verdict.rule})`,
+        });
+        console.log(
+          `Skipping [${group.name}] ${target.name} — robots.txt ${verdict.rule}`,
+        );
+        continue;
+      }
+
       process.stdout.write(`Checking [${group.name}] ${target.name} ... `);
 
+      robotsBlocksDuringCheck = [];
       const result = await checkTarget(group.name, target);
+
+      // The board itself was allowed, but something the parser needed was not.
+      if (result.status === 'fail' && robotsBlocksDuringCheck.length > 0) {
+        skippedTargets.push({
+          groupName: group.name,
+          targetName: target.name,
+          reason: `robots.txt (${robotsBlocksDuringCheck.join(', ')})`,
+        });
+        console.log(
+          `SKIP — robots.txt blocked a request the parser made (${robotsBlocksDuringCheck.join(', ')})`,
+        );
+        continue;
+      }
+
+      totalTargets++;
       allResults.push(result);
 
       if (result.status === 'pass') {
@@ -391,10 +446,12 @@ async function main() {
 
     if (skippedTargets.length > 0) {
       mdLines.push(`### 건너뛴 파서 (${skippedTargets.length})`);
-      mdLines.push(`| 그룹 | 파서 |`);
-      mdLines.push(`|------|------|`);
+      mdLines.push(`| 그룹 | 파서 | 사유 |`);
+      mdLines.push(`|------|------|------|`);
       for (const target of skippedTargets) {
-        mdLines.push(`| ${target.groupName} | ${target.targetName} |`);
+        mdLines.push(
+          `| ${target.groupName} | ${target.targetName} | ${target.reason} |`,
+        );
       }
       mdLines.push(``);
     }

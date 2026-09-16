@@ -335,7 +335,7 @@ npm run health-check -- --skip-khs-excavation  # 국가유산청 발굴조사 �
 
 **출력**: 콘솔 테이블 요약 + CI 연동을 위한 compact 텍스트 서머리
 
-**CI**: [.github/workflows/parser-health-check.yml](./.github/workflows/parser-health-check.yml)은 매일 UTC 08:00(KST 17:00) 또는 수동으로 실행되며, `org-linux` 러너와 30분 작업 제한을 사용합니다. 국가유산청 발굴조사 보고서·현장공개 2개를 제외하므로 현재 설정에서는 69개를 검사합니다. 헬스체크는 타깃 그룹을 직접 구성하며 robots.txt 어댑터를 붙이지 않으므로, 운영 크롤링이 거부하는 게시판도 그대로 요청하여 실패로 보고될 수 있습니다. Slack 알림에는 `SLACK_BOT_TOKEN` secret과 `SLACK_ALERT_DEV_CHANNEL` 저장소 변수가 필요합니다. 포크에서 그대로 실행하려면 같은 러너 및 알림 구성이 필요합니다. CLI는 관련 환경변수가 있으면 GitHub Actions 출력과 작업 요약도 기록합니다.
+**CI**: [.github/workflows/parser-health-check.yml](./.github/workflows/parser-health-check.yml)은 매일 UTC 08:00(KST 17:00) 또는 수동으로 실행되며, `org-linux` 러너와 30분 작업 제한을 사용합니다. 국가유산청 발굴조사 보고서·현장공개 2개를 제외합니다. 헬스체크도 운영과 같은 robots.txt 게이트를 사용하므로, 거부되는 게시판은 실패가 아니라 건너뜀으로 보고됩니다. 현재 설정에서는 20개 건너뜀, 51개 검사입니다. Slack 알림에는 `SLACK_BOT_TOKEN` secret과 `SLACK_ALERT_DEV_CHANNEL` 저장소 변수가 필요합니다. 포크에서 그대로 실행하려면 같은 러너 및 알림 구성이 필요합니다. CLI는 관련 환경변수가 있으면 GitHub Actions 출력과 작업 요약도 기록합니다.
 
 ## 🤝 기여하기
 

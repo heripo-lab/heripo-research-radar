@@ -217,9 +217,19 @@ function resolveUserAgent(
   return entry?.[1] ?? '*';
 }
 
+export type RobotsVerdict =
+  { allowed: true } | { allowed: false; rule: string };
+
+export type RobotsGate = {
+  /** Whether this URL may be requested, per its origin's robots.txt. */
+  isAllowed: (url: string, userAgent?: string) => Promise<RobotsVerdict>;
+  /** Fetch that refuses disallowed requests with 403 instead of sending them. */
+  fetch: typeof fetch;
+};
+
 /**
- * Wraps a fetch so that requests disallowed by the origin's robots.txt are
- * refused with 403 instead of sent.
+ * Builds a robots.txt gate: a verdict function and a fetch that enforces it,
+ * sharing one per-origin cache.
  *
  * robots.txt is fetched once per origin and the in-flight promise is shared, so
  * concurrent requests to the same site cause a single lookup. The lookup itself
@@ -230,10 +240,10 @@ function resolveUserAgent(
  * 404 already means "no restrictions" under the standard. Blocked requests are
  * reported through `onBlocked` rather than logged here.
  */
-export function createRobotsAwareFetch(
+export function createRobotsGate(
   baseFetch: typeof fetch = fetch,
   options: RobotsAwareFetchOptions = {},
-): typeof fetch {
+): RobotsGate {
   const { onBlocked, timeoutMs = 10_000 } = options;
   const cache = new Map<string, Promise<RobotsGroup[]>>();
 
@@ -268,27 +278,35 @@ export function createRobotsAwareFetch(
     return pending;
   };
 
-  return async (input, init) => {
-    const requestUrl = resolveRequestUrl(input);
+  const isAllowed = async (
+    requestUrl: string,
+    userAgent = '*',
+  ): Promise<RobotsVerdict> => {
     let url: URL;
 
     try {
       url = new URL(requestUrl);
     } catch {
-      return baseFetch(input, init);
+      return { allowed: true };
     }
 
     if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-      return baseFetch(input, init);
+      return { allowed: true };
     }
 
     if (url.pathname === '/robots.txt') {
-      return baseFetch(input, init);
+      return { allowed: true };
     }
 
     const groups = await loadRobots(url.origin);
+
+    return isPathAllowed(groups, userAgent, url.pathname + url.search);
+  };
+
+  const gatedFetch: typeof fetch = async (input, init) => {
+    const requestUrl = resolveRequestUrl(input);
     const userAgent = resolveUserAgent(input, init);
-    const verdict = isPathAllowed(groups, userAgent, url.pathname + url.search);
+    const verdict = await isAllowed(requestUrl, userAgent);
 
     if (verdict.allowed) {
       return baseFetch(input, init);
@@ -297,8 +315,21 @@ export function createRobotsAwareFetch(
     onBlocked?.({ url: requestUrl, userAgent, rule: verdict.rule });
 
     return new Response(
-      `Blocked by robots.txt (${verdict.rule}) - ${url.origin}/robots.txt`,
+      `Blocked by robots.txt (${verdict.rule}) - ${new URL(requestUrl).origin}/robots.txt`,
       { status: 403, statusText: 'Blocked by robots.txt' },
     );
   };
+
+  return { isAllowed, fetch: gatedFetch };
+}
+
+/**
+ * Wraps a fetch so that requests disallowed by the origin's robots.txt are
+ * refused with 403 instead of sent. See {@link createRobotsGate}.
+ */
+export function createRobotsAwareFetch(
+  baseFetch: typeof fetch = fetch,
+  options: RobotsAwareFetchOptions = {},
+): typeof fetch {
+  return createRobotsGate(baseFetch, options).fetch;
 }
