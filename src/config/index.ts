@@ -42,7 +42,10 @@ export const newsletterConfig: NewsletterConfig = {
  *
  * The newsletter is archaeology-first: archaeology and cultural heritage keep
  * the full 1-10 range, while natural and intangible heritage are capped so they
- * cannot crowd out archaeological coverage.
+ * cannot crowd out archaeological coverage. `기타` — material that is not
+ * heritage at all — is capped lowest, because the scoring prompt's academic-value
+ * floor is domain-blind and would otherwise lift things like a general journal's
+ * call for papers into the top half of the scale.
  *
  * The cap is applied deterministically after scoring, in
  * `AnalysisProvider.update()`, rather than asked for in the prompt, so the
@@ -55,6 +58,7 @@ export const newsletterConfig: NewsletterConfig = {
 export const maximumImportanceScoreByDomain: Record<string, number> = {
   자연유산: 6,
   무형유산: 6,
+  기타: 5,
 };
 
 /**
