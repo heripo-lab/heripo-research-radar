@@ -107,12 +107,27 @@ const HERITAGE_BID_SUBJECT =
  * A word whose meaning turns on how it is used does not belong here, because
  * this check runs before every inclusion signal and cannot be argued back.
  * `드론` is narrowed to `드론쇼` for that reason: 국가유산 방재드론 스테이션 운영
- * is heritage disaster response. `재선충` was dropped outright, since 남양주
- * 홍릉과 유릉 소나무재선충병 긴급 예방사업 is care of a 조선왕릉's historic
- * landscape. Both now reach the importance prompt, which reads the whole notice.
+ * is heritage disaster response. Dropped outright for the same reason:
+ * `재선충` (남양주 홍릉과 유릉 소나무재선충병 긴급 예방사업 is care of a
+ * 조선왕릉's historic landscape), `산불` (안동 산불피해 국가유산 복원(안동
+ * 국탄댁), 청송 만세루 산불피해 복원사업, and 국가유산 재난방지시설
+ * 구축(산불소화시설) are all heritage restoration or disaster prevention),
+ * `숲가꾸기` (the same 역사경관림 care as 재선충), and `소독`/`방역` (의림지
+ * 역사박물관 수장고 및 유물 소독 is collection conservation). All of them now
+ * reach the importance prompt, which reads the whole notice.
+ *
+ * Dropping them does not widen intake on its own: this list only decides notices
+ * that already carry an inclusion signal, and the 산불·숲가꾸기 forestry notices
+ * it used to catch carry none — over a two-week sample of 10,199 notices it
+ * admitted no new ones. What it changes is that those titles can now be argued
+ * for at all: 의림지 역사박물관 수장고 및 유물 소독 passes on `유물`, and
+ * 국가유산 재난방지시설 구축(산불소화시설) passes when 국가유산청 issues it.
+ * Where the issuer is a 지자체 and the title carries no subject term — 안동
+ * 산불피해 국가유산 복원(안동 국탄댁) — the notice still fails, on the
+ * inclusion side rather than here.
  */
 const NON_HERITAGE_BID =
-  /급경사지|사방댐|숲가꾸기|산불|관정|제설|방역|소독|건설폐기물|생활폐기물|폐아스콘|석면|청소|경비|방호|급식|조리|셔틀|현수막|드론쇼|키오스크|주차/;
+  /급경사지|사방댐|관정|제설|건설폐기물|생활폐기물|폐아스콘|석면|청소|경비|방호|급식|조리|셔틀|현수막|드론쇼|키오스크|주차/;
 
 /**
  * 나라장터 procurement classifications that settle the domain on their own.
