@@ -126,6 +126,10 @@ const PUBLIC_JOB_TARGET_IDS = [
   '나라장터_입찰공고',
 ];
 
+// No `triage` is passed here on purpose: the 나라장터 adapter falls back to the
+// deterministic filter, so this check makes no LLM calls. It answers whether a
+// source still fetches and parses, and it runs daily in CI where there is no
+// model key and no budget for one.
 const checkFetch = createG2bFetch(
   createAlioFetch(
     createGojobsFetch(createKrasFetch(robotsGate.fetch), {
