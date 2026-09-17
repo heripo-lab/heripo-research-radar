@@ -12,6 +12,7 @@ import {
  */
 export type HeritageBidTriage = (
   candidates: HeritageBidCandidate[],
+  signal?: AbortSignal,
 ) => Promise<boolean[]>;
 
 export type HeritageBidTriageOptions = {
@@ -19,14 +20,23 @@ export type HeritageBidTriageOptions = {
   model: LanguageModel;
   /** Candidates per request. @default 100 */
   batchSize?: number;
-  /** Batches in flight at once. @default 4 */
+  /**
+   * Batches in flight at once.
+   *
+   * Sized against core's fetch timeout, not for throughput. This runs inside
+   * `createG2bFetch`, and core aborts a crawl fetch after 10 seconds on the
+   * first attempt. A 48-hour window is 22 batches: at 4 at a time that is six
+   * waves and about 48 seconds, which never completes; in one wave it measures
+   * 7.9 seconds and fits.
+   * @default 24
+   */
   concurrency?: number;
   /** Reports a batch that fell back to {@link isHeritageBidCandidate}. */
   onFallback?: (reason: string, batchSize: number) => void;
 };
 
 const DEFAULT_BATCH_SIZE = 100;
-const DEFAULT_CONCURRENCY = 4;
+const DEFAULT_CONCURRENCY = 24;
 
 /**
  * Asks for the indices to keep rather than a verdict per row.
@@ -98,6 +108,7 @@ function deterministicVerdicts(candidates: HeritageBidCandidate[]): boolean[] {
 async function triageBatch(
   candidates: HeritageBidCandidate[],
   { model, onFallback }: HeritageBidTriageOptions,
+  signal?: AbortSignal,
 ): Promise<boolean[]> {
   try {
     const { output } = await generateText({
@@ -105,6 +116,7 @@ async function triageBatch(
       output: Output.object({ schema: KEEP_SCHEMA }),
       system: SYSTEM_PROMPT,
       prompt: buildUserPrompt(candidates),
+      abortSignal: signal,
     });
 
     const verdicts = new Array<boolean>(candidates.length).fill(false);
@@ -127,6 +139,14 @@ async function triageBatch(
 
     return verdicts;
   } catch (error) {
+    // A cancelled crawl must fail the fetch, not quietly answer from the regex:
+    // core has already given up on this attempt, and returning a list now would
+    // hand it a result it is no longer waiting for. The signal is the ground
+    // truth rather than the error's shape, which the AI SDK may have wrapped.
+    if (signal?.aborted) {
+      throw error;
+    }
+
     onFallback?.(
       error instanceof Error ? error.message : String(error),
       candidates.length,
@@ -160,32 +180,45 @@ export const createHeritageBidTriage = (
   const { batchSize = DEFAULT_BATCH_SIZE, concurrency = DEFAULT_CONCURRENCY } =
     options;
 
-  return async (candidates) => {
+  // Verdicts survive across calls so core's retry resumes rather than restarts.
+  // Core aborts the first attempt at 10 seconds and tries again with a longer
+  // budget; without this, every attempt would pay for the whole window again.
+  const verdicts = new Map<string, boolean>();
+  const keyOf = (candidate: HeritageBidCandidate) =>
+    `${candidate.institution}\u0000${candidate.title}`;
+
+  return async (candidates, signal) => {
     if (candidates.length === 0) {
       return [];
     }
 
+    const pending = candidates.filter((c) => !verdicts.has(keyOf(c)));
     const batches: HeritageBidCandidate[][] = [];
 
-    for (let index = 0; index < candidates.length; index += batchSize) {
-      batches.push(candidates.slice(index, index + batchSize));
+    for (let index = 0; index < pending.length; index += batchSize) {
+      batches.push(pending.slice(index, index + batchSize));
     }
 
-    const results = new Array<boolean[]>(batches.length);
     let next = 0;
 
     const workers = Array.from(
       { length: Math.min(concurrency, batches.length) },
       async () => {
         while (next < batches.length) {
-          const current = next++;
-          results[current] = await triageBatch(batches[current], options);
+          const batch = batches[next++];
+          const decided = await triageBatch(batch, options, signal);
+
+          batch.forEach((candidate, index) => {
+            verdicts.set(keyOf(candidate), decided[index]);
+          });
         }
       },
     );
 
+    // A rejection here propagates out of the fetch, which is what an aborted
+    // crawl needs; completed batches stay cached for the next attempt.
     await Promise.all(workers);
 
-    return results.flat();
+    return candidates.map((c) => verdicts.get(keyOf(c)) ?? false);
   };
 };

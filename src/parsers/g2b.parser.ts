@@ -186,54 +186,85 @@ export const createG2bFetch = (
 
       const end = new Date();
       const begin = new Date(end.getTime() - windowHours * 60 * 60 * 1000);
-      const collected: G2bNotice[] = [];
-
+      // The two 업무구분 are independent queries, so they run together: walked
+      // one after the other they take about 12 seconds, which already exceeds
+      // the 10 seconds core allows a crawl fetch on its first attempt, before
+      // triage adds anything. Pages within one operation stay sequential
+      // because each page's size decides whether another is needed.
+      //
       // A partial result is worse than none here: if 공사 fails while 용역
       // succeeds, the run looks healthy — the target still yields articles and
       // the health-check still passes — while every construction tender is
       // missing. Fail the whole list instead, which core logs as
       // `crawl.list.fetch.failed` and the health-check reports as a failure.
-      for (const operation of OPERATIONS) {
-        for (let page = 1; page <= maxPages; page++) {
-          const response = await baseFetch(
-            `${API_BASE}/getBidPblancListInfo${operation}?serviceKey=${apiKey}` +
-              `&numOfRows=${rowsPerPage}&pageNo=${page}&type=json&inqryDiv=1` +
-              `&inqryBgnDt=${toApiDateTime(begin)}&inqryEndDt=${toApiDateTime(end)}`,
-            init,
-          );
+      const pages = await Promise.all(
+        OPERATIONS.map(async (operation) => {
+          const notices: G2bNotice[] = [];
 
-          if (!response.ok) {
-            return new Response(
-              `나라장터 ${operation} list failed with HTTP ${response.status}`,
-              { status: 502, statusText: 'Bad Gateway' },
+          for (let page = 1; page <= maxPages; page++) {
+            const response = await baseFetch(
+              `${API_BASE}/getBidPblancListInfo${operation}?serviceKey=${apiKey}` +
+                `&numOfRows=${rowsPerPage}&pageNo=${page}&type=json&inqryDiv=1` +
+                `&inqryBgnDt=${toApiDateTime(begin)}&inqryEndDt=${toApiDateTime(end)}`,
+              init,
             );
+
+            if (!response.ok) {
+              return `나라장터 ${operation} list failed with HTTP ${response.status}`;
+            }
+
+            const body = (await response.json()) as G2bListResponse;
+            const resultCode = body.response?.header?.resultCode;
+
+            // data.go.kr answers its own errors with HTTP 200 and a result code.
+            if (resultCode !== SUCCESS_RESULT_CODE) {
+              return `나라장터 ${operation} list returned resultCode ${resultCode ?? 'none'}`;
+            }
+
+            const batch = body.response?.body?.items ?? [];
+
+            for (const notice of batch) {
+              notices.push({
+                ...notice,
+                businessDivision: operation === 'Servc' ? '용역' : '공사',
+              });
+            }
+
+            if (batch.length < rowsPerPage) {
+              break;
+            }
+
+            // Same reasoning as the partial-failure check above: a list that is
+            // silently short looks healthy. If the window no longer fits inside
+            // `maxPages`, the notices past the cap are never judged and never
+            // missed by anything downstream, so fail instead of truncating.
+            if (page === maxPages) {
+              const totalCount = body.response?.body?.totalCount ?? 0;
+
+              if (totalCount > maxPages * rowsPerPage) {
+                return (
+                  `나라장터 ${operation} window holds ${totalCount} notices, ` +
+                  `beyond the ${maxPages * rowsPerPage} that ${maxPages} pages ` +
+                  `can retrieve — raise maxPages or narrow windowHours`
+                );
+              }
+            }
           }
 
-          const body = (await response.json()) as G2bListResponse;
-          const resultCode = body.response?.header?.resultCode;
+          return notices;
+        }),
+      );
 
-          // data.go.kr answers its own errors with HTTP 200 and a result code.
-          if (resultCode !== SUCCESS_RESULT_CODE) {
-            return new Response(
-              `나라장터 ${operation} list returned resultCode ${resultCode ?? 'none'}`,
-              { status: 502, statusText: 'Bad Gateway' },
-            );
-          }
+      const failure = pages.find((result) => typeof result === 'string');
 
-          const batch = body.response?.body?.items ?? [];
-
-          for (const notice of batch) {
-            collected.push({
-              ...notice,
-              businessDivision: operation === 'Servc' ? '용역' : '공사',
-            });
-          }
-
-          if (batch.length < rowsPerPage) {
-            break;
-          }
-        }
+      if (typeof failure === 'string') {
+        return new Response(failure, {
+          status: 502,
+          statusText: 'Bad Gateway',
+        });
       }
+
+      const collected = pages.flat() as G2bNotice[];
 
       // Deduplicate before judging: the same notice arrives on more than one
       // page, and triage is billed per row.
@@ -257,8 +288,12 @@ export const createG2bFetch = (
         classification: notice.pubPrcrmntMidClsfcNm,
       }));
 
+      // `init.signal` is core's crawl timeout. It reaches the data.go.kr calls
+      // above through `init`; triage has to be given it explicitly, or an
+      // aborted crawl would leave 22 LLM requests running and bill them again
+      // on the next attempt.
       const verdicts = triage
-        ? await triage(candidates)
+        ? await triage(candidates, init?.signal ?? undefined)
         : candidates.map((candidate) => isHeritageBidCandidate(candidate));
 
       const heritage = unique.filter((_, index) => verdicts[index]);
