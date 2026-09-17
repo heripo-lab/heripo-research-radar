@@ -103,9 +103,16 @@ const HERITAGE_BID_SUBJECT =
  * 정밀조사 is landslide risk, not archaeology, and a museum's 건설폐기물 처리 or
  * a 문화재단's 축제 셔틀버스 is not heritage work either. These are the cases
  * that need no judgement — anything arguable is left to the importance prompt.
+ *
+ * A word whose meaning turns on how it is used does not belong here, because
+ * this check runs before every inclusion signal and cannot be argued back.
+ * `드론` is narrowed to `드론쇼` for that reason: 국가유산 방재드론 스테이션 운영
+ * is heritage disaster response. `재선충` was dropped outright, since 남양주
+ * 홍릉과 유릉 소나무재선충병 긴급 예방사업 is care of a 조선왕릉's historic
+ * landscape. Both now reach the importance prompt, which reads the whole notice.
  */
 const NON_HERITAGE_BID =
-  /급경사지|사방댐|숲가꾸기|산불|재선충|관정|제설|방역|소독|건설폐기물|생활폐기물|폐아스콘|석면|청소|경비|방호|급식|조리|셔틀|현수막|드론|키오스크|주차/;
+  /급경사지|사방댐|숲가꾸기|산불|관정|제설|방역|소독|건설폐기물|생활폐기물|폐아스콘|석면|청소|경비|방호|급식|조리|셔틀|현수막|드론쇼|키오스크|주차/;
 
 /**
  * 나라장터 procurement classifications that settle the domain on their own.

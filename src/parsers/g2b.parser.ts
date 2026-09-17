@@ -31,9 +31,25 @@ export const buildG2bDetailUrl = (notice: string, order: string): string =>
  */
 const OPERATIONS = ['Servc', 'Cnstwk'] as const;
 
-/** `YYYYMMDDHHMM`, the format `inqryBgnDt` and `inqryEndDt` expect. */
+/** `resultCode` the service returns on success. */
+const SUCCESS_RESULT_CODE = '00';
+
+/** Offset the service's wall clock runs on. */
+const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
+
+/**
+ * `YYYYMMDDHHMM` in KST, the format `inqryBgnDt` and `inqryEndDt` expect.
+ *
+ * The parameters carry no timezone and the service reads them as Korean local
+ * time, the same clock `bidNtceDt` is published on. Serialising UTC instead
+ * shifts the whole window back nine hours: on a live seven-day query that was
+ * 2,595 notices against 2,975, with the most recent 380 falling outside it.
+ */
 function toApiDateTime(date: Date): string {
-  return date.toISOString().replace(/[-:T]/g, '').slice(0, 12);
+  return new Date(date.getTime() + KST_OFFSET_MS)
+    .toISOString()
+    .replace(/[-:T]/g, '')
+    .slice(0, 12);
 }
 
 /** `2026-09-15 13:42:20` to ISO `2026-09-15`. */
@@ -150,6 +166,11 @@ export const createG2bFetch = (
       const begin = new Date(end.getTime() - windowHours * 60 * 60 * 1000);
       const collected: G2bNotice[] = [];
 
+      // A partial result is worse than none here: if 공사 fails while 용역
+      // succeeds, the run looks healthy — the target still yields articles and
+      // the health-check still passes — while every construction tender is
+      // missing. Fail the whole list instead, which core logs as
+      // `crawl.list.fetch.failed` and the health-check reports as a failure.
       for (const operation of OPERATIONS) {
         for (let page = 1; page <= maxPages; page++) {
           const response = await baseFetch(
@@ -160,10 +181,23 @@ export const createG2bFetch = (
           );
 
           if (!response.ok) {
-            break;
+            return new Response(
+              `나라장터 ${operation} list failed with HTTP ${response.status}`,
+              { status: 502, statusText: 'Bad Gateway' },
+            );
           }
 
           const body = (await response.json()) as G2bListResponse;
+          const resultCode = body.response?.header?.resultCode;
+
+          // data.go.kr answers its own errors with HTTP 200 and a result code.
+          if (resultCode !== SUCCESS_RESULT_CODE) {
+            return new Response(
+              `나라장터 ${operation} list returned resultCode ${resultCode ?? 'none'}`,
+              { status: 502, statusText: 'Bad Gateway' },
+            );
+          }
+
           const batch = body.response?.body?.items ?? [];
 
           for (const notice of batch) {
