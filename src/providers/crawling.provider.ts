@@ -16,6 +16,7 @@ import { createCrawlingTargetGroups, robotsExemptOrigins } from '~/config';
 import { createRobotsAwareFetch } from '~/crawling/robots';
 import { createAlioFetch } from '~/parsers/alio.parser';
 import { createExcavationReportFetch } from '~/parsers/excavation.parser';
+import { createG2bFetch } from '~/parsers/g2b.parser';
 import { createGojobsFetch } from '~/parsers/gojobs.parser';
 import { createKrasFetch } from '~/parsers/kras.parser';
 
@@ -61,8 +62,11 @@ export class CrawlingProvider implements CoreCrawlingProvider {
     // The two public job boards are read from data.go.kr open APIs. Without a
     // key they answer with an empty list and make no request, so the targets
     // stay configured and simply collect nothing.
-    const withPublicJobs = createAlioFetch(
-      createGojobsFetch(withKras, { apiKey: publicDataApiKey ?? '' }),
+    const withPublicJobs = createG2bFetch(
+      createAlioFetch(
+        createGojobsFetch(withKras, { apiKey: publicDataApiKey ?? '' }),
+        { apiKey: publicDataApiKey ?? '' },
+      ),
       { apiKey: publicDataApiKey ?? '' },
     );
 

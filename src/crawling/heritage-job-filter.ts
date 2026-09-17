@@ -85,3 +85,74 @@ export function isHeritageJobCandidate({
 
   return categoryCodes.some((code) => HERITAGE_NCS_CODES.includes(code));
 }
+
+/**
+ * Heritage subjects as they appear in a 나라장터 notice title.
+ *
+ * Wider than {@link HERITAGE_JOB} because a bid names the work rather than a
+ * role: 발굴조사, 보수정비, 기록화 and so on.
+ */
+const HERITAGE_BID_SUBJECT =
+  /발굴조사|시굴조사|표본조사|입회조사|지표조사|매장유산|매장문화재|고분군|폐사지|문화재\s*수리|국가유산\s*수리|보존처리|보존과학|학예|고고|고건축|단청|석조문화재|목조문화재|전통건축|유적\s*정비|유물|기록화/;
+
+/**
+ * Work excluded from a 나라장터 notice regardless of who issued it.
+ *
+ * 나라장터 carries every public procurement notice in the country, and heritage
+ * vocabulary collides badly with civil engineering and event support: 급경사지
+ * 정밀조사 is landslide risk, not archaeology, and a museum's 건설폐기물 처리 or
+ * a 문화재단's 축제 셔틀버스 is not heritage work either. These are the cases
+ * that need no judgement — anything arguable is left to the importance prompt.
+ */
+const NON_HERITAGE_BID =
+  /급경사지|사방댐|숲가꾸기|산불|재선충|관정|제설|방역|소독|건설폐기물|생활폐기물|폐아스콘|석면|청소|경비|방호|급식|조리|셔틀|현수막|드론|키오스크|주차/;
+
+/**
+ * 나라장터 procurement classifications that settle the domain on their own.
+ *
+ * The taxonomy carries one heritage category, and it catches notices no
+ * vocabulary would: 팔만대장경 P-XRF 분석, issued by 해인사 장경도량, matches
+ * neither the institution nor the title patterns. It is only a supplement —
+ * 공사 notices carry no classification at all, so it cannot replace them.
+ */
+const HERITAGE_PROCUREMENT_CLASSIFICATIONS = ['문화재 조사/발굴 및 수리'];
+
+export type HeritageBidCandidate = {
+  /** Issuing and requesting institutions, joined. */
+  institution: string;
+  /** Notice title. */
+  title: string;
+  /** `pubPrcrmntMidClsfcNm`, when the notice carries one. */
+  classification?: string | null;
+};
+
+/**
+ * Whether a 나라장터 notice should reach the analysis stage.
+ *
+ * Deliberately loose. Of roughly 1,000 notices a day this keeps about ten, and
+ * the remaining judgement — a heritage institution procuring fire alarms, a
+ * 문화재단 running a festival — is left to the importance prompt, which reads
+ * the whole notice. Tightening it here cost real articles: an earlier attempt
+ * to exclude 보수정비 also dropped 영양 하담고택 보수정비사업 and 보길도
+ * 윤선도원림 판석보 보수정비공사.
+ */
+export function isHeritageBidCandidate({
+  institution,
+  title,
+  classification,
+}: HeritageBidCandidate): boolean {
+  if (NON_HERITAGE_BID.test(title)) {
+    return false;
+  }
+
+  if (
+    classification &&
+    HERITAGE_PROCUREMENT_CLASSIFICATIONS.includes(classification.trim())
+  ) {
+    return true;
+  }
+
+  return (
+    HERITAGE_INSTITUTION.test(institution) || HERITAGE_BID_SUBJECT.test(title)
+  );
+}

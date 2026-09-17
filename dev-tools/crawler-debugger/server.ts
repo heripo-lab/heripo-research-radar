@@ -5,6 +5,7 @@ import { fileURLToPath } from 'url';
 
 import { createCrawlingTargetGroups } from '../../src/config/crawling-targets';
 import { createAlioFetch } from '../../src/parsers/alio.parser';
+import { createG2bFetch } from '../../src/parsers/g2b.parser';
 import { createGojobsFetch } from '../../src/parsers/gojobs.parser';
 import { createKrasFetch } from '../../src/parsers/kras.parser';
 
@@ -20,10 +21,13 @@ const proxyFetch: typeof fetch | undefined = proxyAgent
 // targets return an empty list instead of failing.
 const PUBLIC_DATA_API_KEY = process.env.PUBLIC_DATA_API_KEY ?? '';
 
-const crawlingFetch = createAlioFetch(
-  createGojobsFetch(createKrasFetch(proxyFetch ?? fetch), {
-    apiKey: PUBLIC_DATA_API_KEY,
-  }),
+const crawlingFetch = createG2bFetch(
+  createAlioFetch(
+    createGojobsFetch(createKrasFetch(proxyFetch ?? fetch), {
+      apiKey: PUBLIC_DATA_API_KEY,
+    }),
+    { apiKey: PUBLIC_DATA_API_KEY },
+  ),
   { apiKey: PUBLIC_DATA_API_KEY },
 );
 const crawlingTargetGroups = createCrawlingTargetGroups(crawlingFetch);
