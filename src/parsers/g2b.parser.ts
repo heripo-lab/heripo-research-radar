@@ -108,7 +108,15 @@ export type G2bFetchOptions = {
   windowHours?: number;
   /** Rows per request; the service caps a page at 999. @default 999 */
   rowsPerPage?: number;
-  /** Pages to walk per business category. @default 4 */
+  /**
+   * Pages to walk per business category.
+   *
+   * Slack at 4: a live 48-hour window returns the same 2,139 notices at 4 pages
+   * and at 8. Do not lower it — triage only judges what this retrieves, so a
+   * binding cap would silently hide notices from the model rather than reject
+   * them.
+   * @default 4
+   */
   maxPages?: number;
   /**
    * Decides which notices are worth scoring.
