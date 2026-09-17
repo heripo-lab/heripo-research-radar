@@ -23,7 +23,7 @@ Previously reported service metrics were $0.2–1 per issue and 15% CTR. These a
 
 - Type-safe TypeScript with strict interfaces
 - Provider pattern for swapping components (Crawling/Analysis/Content/Email)
-- 73 active crawling targets across heritage agencies, museums, academic societies, filtered at runtime by robots.txt
+- 74 active crawling targets across heritage agencies, museums, academic societies, filtered at runtime by robots.txt
 - Multi LLM providers: OpenAI GPT-5 (analysis) + selectable content generation (OpenAI / Anthropic / Google)
 - Built-in retries, chain options, preview emails
 
@@ -185,19 +185,19 @@ Select content generation with `contentGeneration: { provider, apiKey, model? }`
 | Group      | Active | Commented out |
 | ---------- | -----: | ------------: |
 | News       |     57 |             1 |
-| Business   |      4 |             0 |
+| Business   |      5 |             0 |
 | Employment |     12 |             0 |
-| **Total**  | **73** |         **1** |
+| **Total**  | **74** |         **1** |
 
-Only the excavation status board stays commented out, as low-value fragmented data. Boards that a site's robots.txt restricts are configured normally and refused at runtime by the robots.txt check, so the configuration does not have to track each site's policy by hand. With current policies 14 of the 73 targets are refused.
+Only the excavation status board stays commented out, as low-value fragmented data. Boards that a site's robots.txt restricts are configured normally and refused at runtime by the robots.txt check, so the configuration does not have to track each site's policy by hand. With current policies 14 of the 74 targets are refused.
 
-Two Employment targets are read from data.go.kr open APIs instead of scraped: 나라일터 (`PblJobService`) and 알리오 (`recruitment`). Each is a single request, and `publicDataApiKey` supplies the service key — omit it and both answer with an empty list without making a request. `src/crawling/heritage-job-filter.ts` narrows them before analysis, since the boards carry every public-sector vacancy in the country; roughly 2% survive, about 2.6 postings a day.
+Three targets are read from data.go.kr open APIs instead of scraped: 나라일터 (`PblJobService`) and 알리오 (`recruitment`) under Employment, and 나라장터 (`BidPublicInfoService`) under Business. Each is a single round of requests, and `publicDataApiKey` supplies the service key — omit it and they answer with an empty list without making a request. `src/crawling/heritage-job-filter.ts` narrows them before analysis, since the boards carry every public-sector vacancy and procurement notice in the country; roughly 2% of postings survive, about 2.6 a day, and about 22 of some 2,100 notices in 나라장터's 48-hour window.
 
 Crawling fetches pass through that check (`src/crawling/robots.ts`) before reaching the network: a disallowed request is refused rather than sent, and a missing or unreachable robots.txt allows it. `robotsExemptOrigins` in `src/config/index.ts` lists origins exempted from the check, each with its reason.
 
 Sources include the Korea Heritage Service, National Research Institute of Cultural Heritage, National Research Institute of Maritime Heritage, Korea Heritage Agency, Korea Association of Archaeological Heritage, archaeological societies, and national museums.
 
-[src/parsers/](./src/parsers/) contains 22 organization-specific parser modules plus shared date and URL utilities. List parsers return `ParsedTargetListItem[]` (title, date, detail URL, date type, and optional source ID); detail parsers return Markdown `detailContent` and attachment/image flags. Parsers can be synchronous or asynchronous. KRAS, Yeongnam Archaeological Society, and maritime heritage sources use additional API requests for client-rendered content.
+[src/parsers/](./src/parsers/) contains 23 organization-specific parser modules plus shared date and URL utilities. List parsers return `ParsedTargetListItem[]` (title, date, detail URL, date type, and optional source ID); detail parsers return Markdown `detailContent` and attachment/image flags. Parsers can be synchronous or asynchronous. KRAS, Yeongnam Archaeological Society, and maritime heritage sources use additional API requests for client-rendered content.
 
 `CrawlingProvider` uses a maximum concurrency of 5 and wraps the supplied fetch to route KRAS public detail URLs to its detail API, while retaining public URLs in article metadata. When constructing your own pipeline, use the provider's fetch together with its target groups.
 
