@@ -657,10 +657,12 @@ export function createCrawlingTargetGroups(
           parseDetail: parseKaahDetail,
         },
         // Served from the 조달청 open API rather than scraped. 나라장터 carries
-        // every public procurement notice in the country, so the parser applies
-        // the heritage filter in `src/crawling/heritage-job-filter.ts` before
-        // anything reaches analysis. 용역 and 공사 are merged into this one
-        // target. Without an API key it yields nothing and makes no request.
+        // every public procurement notice in the country — about 2,100 in a
+        // 48-hour window — so `createG2bFetch` narrows the list before it is
+        // served: LLM triage when the generator supplies it, and the
+        // deterministic filter in `src/crawling/heritage-job-filter.ts`
+        // otherwise. 용역 and 공사 are merged into this one target. Without an
+        // API key it yields nothing and makes no request.
         {
           id: '나라장터_입찰공고',
           name: '나라장터 입찰공고',
