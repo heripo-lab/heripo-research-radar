@@ -5,6 +5,7 @@ import {
 } from '@llm-newsletter-kit/core';
 
 import { isHeritageBidCandidate } from '~/crawling/heritage-job-filter';
+import type { HeritageBidTriage } from '~/crawling/heritage-triage';
 
 const API_BASE = 'https://apis.data.go.kr/1230000/ad/BidPublicInfoService';
 const SITE_BASE = 'https://www.g2b.go.kr';
@@ -109,6 +110,13 @@ export type G2bFetchOptions = {
   rowsPerPage?: number;
   /** Pages to walk per business category. @default 4 */
   maxPages?: number;
+  /**
+   * Decides which notices are worth scoring.
+   *
+   * Omit it and {@link isHeritageBidCandidate} decides instead, which is how the
+   * health-check runs without an LLM key.
+   */
+  triage?: HeritageBidTriage;
 };
 
 function jsonResponse(payload: unknown): Response {
@@ -130,7 +138,13 @@ export const createG2bFetch = (
   baseFetch: typeof fetch = fetch,
   options: G2bFetchOptions,
 ): typeof fetch => {
-  const { apiKey, windowHours = 48, rowsPerPage = 999, maxPages = 4 } = options;
+  const {
+    apiKey,
+    windowHours = 48,
+    rowsPerPage = 999,
+    maxPages = 4,
+    triage,
+  } = options;
 
   /** Notices from the most recent list call, keyed by `<bidNtceNo>:<bidNtceOrd>`. */
   const noticeCache = new Map<string, G2bNotice>();
@@ -213,12 +227,43 @@ export const createG2bFetch = (
         }
       }
 
-      noticeCache.clear();
+      // Deduplicate before judging: the same notice arrives on more than one
+      // page, and triage is billed per row.
+      const unique: G2bNotice[] = [];
+      const seenKeys = new Set<string>();
+
       for (const notice of collected) {
+        const key = `${notice.bidNtceNo}:${notice.bidNtceOrd}`;
+
+        if (!notice.bidNtceNm || !notice.bidNtceNo || seenKeys.has(key)) {
+          continue;
+        }
+
+        seenKeys.add(key);
+        unique.push(notice);
+      }
+
+      const candidates = unique.map((notice) => ({
+        institution: `${notice.ntceInsttNm ?? ''} ${notice.dminsttNm ?? ''}`,
+        title: notice.bidNtceNm ?? '',
+        classification: notice.pubPrcrmntMidClsfcNm,
+      }));
+
+      const verdicts = triage
+        ? await triage(candidates)
+        : candidates.map((candidate) => isHeritageBidCandidate(candidate));
+
+      const heritage = unique.filter((_, index) => verdicts[index]);
+
+      // The cache backs the detail path, so it holds exactly what the list
+      // serves — dropping a notice from one and not the other either breaks its
+      // detail request or retains 1,500 entries to serve a few dozen.
+      noticeCache.clear();
+      for (const notice of heritage) {
         noticeCache.set(`${notice.bidNtceNo}:${notice.bidNtceOrd}`, notice);
       }
 
-      return jsonResponse({ items: collected });
+      return jsonResponse({ items: heritage });
     }
 
     if (url.pathname === '/link/PNPE027_01/single/') {
@@ -305,16 +350,6 @@ export const parseG2bList = (body: string): ParsedTargetListItem[] => {
     const key = `${number}:${order}`;
 
     if (seen.has(key)) {
-      continue;
-    }
-
-    const heritage = isHeritageBidCandidate({
-      institution: `${notice.ntceInsttNm ?? ''} ${notice.dminsttNm ?? ''}`,
-      title,
-      classification: notice.pubPrcrmntMidClsfcNm,
-    });
-
-    if (!heritage) {
       continue;
     }
 

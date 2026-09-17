@@ -27,6 +27,8 @@ import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { createOpenAI } from '@ai-sdk/openai';
 import { GenerateNewsletter } from '@llm-newsletter-kit/core';
 
+import { createHeritageBidTriage } from '~/crawling/heritage-triage';
+
 import { contentOptions, llmConfig, newsletterConfig } from './config';
 import { researchRadarPromptProvider } from './prompts';
 import { AnalysisProvider } from './providers/analysis.provider';
@@ -199,6 +201,18 @@ function createNewsletterGenerator(
     dependencies.excavationReportSource,
     dependencies.logger,
     dependencies.publicDataApiKey,
+    // 나라장터 publishes about 1,500 notices per 48-hour window, so which ones
+    // reach per-article scoring is decided here, 100 titles per request. The
+    // deterministic filter stays behind it as the fallback.
+    createHeritageBidTriage({
+      model: openai('gpt-5.6-luna'),
+      onFallback: (reason, batchSize) => {
+        dependencies.logger?.info({
+          event: 'crawl.g2b.triage.fallback',
+          data: { reason, batchSize },
+        });
+      },
+    }),
   );
 
   const analysisProvider = new AnalysisProvider(

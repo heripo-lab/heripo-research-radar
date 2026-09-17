@@ -190,7 +190,7 @@ export async function runNewsletter(repositories: {
 
 주석 처리된 것은 발굴조사 현황공개 1개뿐입니다. 정보가 파편적이고 뉴스레터 가치가 낮습니다. robots.txt가 제한하는 게시판도 설정에는 그대로 두고 런타임 검사에서 거부하므로, 사이트별 정책을 설정 파일에 손으로 반영할 필요가 없습니다. 현재 정책 기준으로 74개 중 14개가 거부됩니다.
 
-타깃 3개는 크롤링이 아니라 data.go.kr 오픈 API에서 읽습니다. 채용 그룹의 나라일터(`PblJobService`)·알리오(`recruitment`), 입찰 그룹의 나라장터(`BidPublicInfoService`)입니다. 인증키는 `publicDataApiKey`로 주입하며, 생략하면 해당 타깃은 요청 없이 빈 목록을 반환합니다. 세 게시판은 전국 공공부문 채용과 조달 공고를 모두 담고 있어 `src/crawling/heritage-job-filter.ts`가 분석 단계 이전에 걸러냅니다. 채용은 약 2%(하루 2.6건), 나라장터는 48시간 창의 약 2,100건 중 22건 정도가 통과합니다.
+타깃 3개는 크롤링이 아니라 data.go.kr 오픈 API에서 읽습니다. 채용 그룹의 나라일터(`PblJobService`)·알리오(`recruitment`), 입찰 그룹의 나라장터(`BidPublicInfoService`)입니다. 인증키는 `publicDataApiKey`로 주입하며, 생략하면 해당 타깃은 요청 없이 빈 목록을 반환합니다. 세 게시판은 전국 공공부문 채용과 조달 공고를 모두 담고 있어 분석 단계 이전에 걸러냅니다. 채용 게시판은 `src/crawling/heritage-job-filter.ts`를 쓰며 제외어가 모두 직무 명사라 패턴으로 버팁니다(약 2%, 하루 2.6건 통과). 나라장터는 `src/crawling/heritage-triage.ts`가 제목 100건씩을 저렴한 모델에 묻습니다. 한국어에서 유산 여부는 부분문자열로 판정할 수 없기 때문이며, 배치가 실패하면 기존 정규식이 폴백으로 판단합니다.
 
 크롤링 요청은 네트워크에 나가기 전에 robots.txt 검사(`src/crawling/robots.ts`)를 거칩니다. 금지된 요청은 전송하지 않고 거부하며, robots.txt가 없거나 조회에 실패하면 허용합니다. 검사에서 제외할 origin은 `src/config/index.ts`의 `robotsExemptOrigins`에 사유와 함께 명시합니다.
 
