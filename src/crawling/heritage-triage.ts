@@ -90,12 +90,32 @@ const SYSTEM_PROMPT = `너는 대한민국 나라장터 입찰공고를 국가�
 주의: 한국어 부분문자열에 속지 마라. '생산성'은 산성이 아니고, '재사용'은
 재사가 아니며, '서원구'는 서원이 아니다.`;
 
+/**
+ * The three fields the model is shown, normalized once.
+ *
+ * The verdict cache keys on exactly this, so a candidate that reads identically
+ * to the model is the same candidate to the cache. Deriving both from here is
+ * what keeps them from drifting: keying on less than the model sees merges two
+ * notices that it judged separately, and the second verdict silently overwrites
+ * the first — within a single run, not only across retries.
+ */
+function identityOf(candidate: HeritageBidCandidate): [string, string, string] {
+  return [
+    candidate.institution.trim(),
+    candidate.title.trim(),
+    candidate.classification?.trim() ?? '',
+  ];
+}
+
 function buildUserPrompt(candidates: HeritageBidCandidate[]): string {
-  const lines = candidates.map(
-    (candidate, index) =>
-      `${index}. [${candidate.institution.trim()}] ${candidate.title.trim()}` +
-      (candidate.classification ? ` <${candidate.classification.trim()}>` : ''),
-  );
+  const lines = candidates.map((candidate, index) => {
+    const [institution, title, classification] = identityOf(candidate);
+
+    return (
+      `${index}. [${institution}] ${title}` +
+      (classification ? ` <${classification}>` : '')
+    );
+  });
 
   return `다음 ${candidates.length}건 중 국가유산 업무와 관련될 가능성이 있는 공고의 번호만 골라라.\n\n${lines.join('\n')}`;
 }
@@ -185,7 +205,7 @@ export const createHeritageBidTriage = (
   // budget; without this, every attempt would pay for the whole window again.
   const verdicts = new Map<string, boolean>();
   const keyOf = (candidate: HeritageBidCandidate) =>
-    `${candidate.institution}\u0000${candidate.title}`;
+    identityOf(candidate).join('\u0000');
 
   return async (candidates, signal) => {
     if (candidates.length === 0) {
