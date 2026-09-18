@@ -20,6 +20,11 @@ import {
   parseExcavationSiteList,
 } from '~/parsers/excavation.parser';
 import {
+  G2B_LIST_URL,
+  parseG2bDetail,
+  parseG2bList,
+} from '~/parsers/g2b.parser';
+import {
   parseGimhaeMuseumDetail,
   parseGimhaeMuseumList,
 } from '~/parsers/gimhae-museum.parser';
@@ -650,6 +655,20 @@ export function createCrawlingTargetGroups(
           url: 'https://www.kaah.kr/ipcopen',
           parseList: parseKaahList,
           parseDetail: parseKaahDetail,
+        },
+        // Served from the 조달청 open API rather than scraped. 나라장터 carries
+        // every public procurement notice in the country — about 2,100 in a
+        // 48-hour window — so `createG2bFetch` narrows the list before it is
+        // served: LLM triage when the generator supplies it, and the
+        // deterministic filter in `src/crawling/heritage-job-filter.ts`
+        // otherwise. 용역 and 공사 are merged into this one target. Without an
+        // API key it yields nothing and makes no request.
+        {
+          id: '나라장터_입찰공고',
+          name: '나라장터 입찰공고',
+          url: G2B_LIST_URL,
+          parseList: parseG2bList,
+          parseDetail: parseG2bDetail,
         },
       ],
     },

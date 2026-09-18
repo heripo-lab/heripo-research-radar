@@ -8,6 +8,7 @@ import { robotsExemptOrigins } from '~/config';
 import { createCrawlingTargetGroups } from '~/config/crawling-targets';
 import { createRobotsGate } from '~/crawling/robots';
 import { createAlioFetch } from '~/parsers/alio.parser';
+import { createG2bFetch } from '~/parsers/g2b.parser';
 import { createGojobsFetch } from '~/parsers/gojobs.parser';
 import { createKrasFetch } from '~/parsers/kras.parser';
 
@@ -119,12 +120,23 @@ const robotsGate = createRobotsGate(proxyFetch ?? unsafeFetch, {
 // answer with an empty list, which would read as a parser failure, so they are
 // skipped instead — see the check loop below.
 const PUBLIC_DATA_API_KEY = process.env.PUBLIC_DATA_API_KEY ?? '';
-const PUBLIC_JOB_TARGET_IDS = ['나라일터_채용공고', '알리오_공공기관_채용공고'];
+const PUBLIC_JOB_TARGET_IDS = [
+  '나라일터_채용공고',
+  '알리오_공공기관_채용공고',
+  '나라장터_입찰공고',
+];
 
-const checkFetch = createAlioFetch(
-  createGojobsFetch(createKrasFetch(robotsGate.fetch), {
-    apiKey: PUBLIC_DATA_API_KEY,
-  }),
+// No `triage` is passed here on purpose: the 나라장터 adapter falls back to the
+// deterministic filter, so this check makes no LLM calls. It answers whether a
+// source still fetches and parses, and it runs daily in CI where there is no
+// model key and no budget for one.
+const checkFetch = createG2bFetch(
+  createAlioFetch(
+    createGojobsFetch(createKrasFetch(robotsGate.fetch), {
+      apiKey: PUBLIC_DATA_API_KEY,
+    }),
+    { apiKey: PUBLIC_DATA_API_KEY },
+  ),
   { apiKey: PUBLIC_DATA_API_KEY },
 );
 

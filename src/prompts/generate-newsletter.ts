@@ -15,6 +15,36 @@ const LEADING_CATEGORIES = [
 ] as const;
 
 /**
+ * The one category that runs last, immediately before 마무리.
+ *
+ * 나라장터 alone contributes about 49 notices a day — more than every other
+ * source combined — so leading with them would bury the 학술대회 and 발굴 news
+ * the newsletter exists for. They are not dropped either: procurement is how
+ * many readers earn a living, and a reader who misses a 공고 misses money.
+ * Last position keeps both true.
+ *
+ * Most of these notices concern non-archaeological heritage — 고택 보수, 향교
+ * 지붕, 사찰 방염 — and they stay for the same reason: archaeologists take that
+ * work. But they are the tail of the issue, not its headline, which is why
+ * {@link SECTION_PLACEMENT} keeps them out of the title and the briefing.
+ */
+const TRAILING_CATEGORY = '📑 사업·입찰 공고';
+
+/**
+ * Where 사업·입찰 may and may not appear.
+ *
+ * Stated in both the 제목 and 브리핑 rules as well, because fixing only one
+ * place in this prompt has no visible effect — the model satisfies whichever
+ * instruction it reads last.
+ */
+const SECTION_PLACEMENT = `- **\`${TRAILING_CATEGORY}\` 섹션의 소식은 제목(title)과 브리핑에 올리지 않는다.**
+  이 섹션은 본문 맨 끝에서 따로 정리하는 참고 정보다.
+  예외는 **발굴조사·시굴조사·매장유산 조사 입찰**뿐이다. 이것은 어디서 어떤 조사가
+  시작되는지 알리는 고고학 소식이므로, 무게가 있다면 제목과 브리핑에 올릴 수 있다.
+  고택 보수, 향교 정비, 사찰 방염, 박물관 시설 공사 같은 비고고학 유산 사업은
+  본문에는 싣되 제목과 브리핑에는 올리지 않는다.`;
+
+/**
  * Per-category table columns.
  *
  * Source pages carry far more fields than a newsletter table can hold — an
@@ -39,6 +69,14 @@ const TABLE_SPECS = `### 표 형식 (구조적 목록)
   - 공고: 공고명을 [원제목](URL) 링크로
   - 기관: 채용 기관명만 (예: 국립중앙박물관)
   - 접수 마감: 날짜와 시각. 합격자 발표처럼 마감이 없는 공고는 "—"
+- **사업·입찰**: \`사업 | 발주기관 | 마감\`
+  - 사업: 공고명을 [원제목](URL) 링크로
+  - 발주기관: 발주처 이름만 (예: 안동시). 수요기관이 따로 있으면 수요기관을 쓴다
+  - 마감: 입찰 마감 일시. 원문에 없으면 "—"
+  - **아래 시간 유효성 예외 ③으로 살린 만료 공고는 마감 칸을 "—"로 둔다.**
+    이미 지난 마감 일시를 적으면 독자가 지원할 수 있는 것으로 읽는다.
+    그 공고를 싣는 이유는 어디서 어떤 조사가 시작되는지 알리기 위해서다.
+  - 사업금액, 계약방법, 공고번호, 업무구분은 **싣지 않는다**
 
 공통 규칙:
 
@@ -67,7 +105,8 @@ const EDITORIAL_RULES = `## 편집 규칙
   한 호 안에서 같은 이모지를 두 번 쓰지 않는다.
 - 통계·비중 분석을 만들어내지 않는다. "오늘 소식의 00%가 ~" 같은 문장은 쓰지 않는다.
 - 소식을 언급할 때마다 [원제목](URL) 형식으로 링크한다. "자세히 보기", "기사", "[3번 글]" 같은 표기는 쓰지 않는다.
-- 날짜 범위는 물결표(~)가 아니라 붙임표(-)로 쓴다. 물결표는 마크다운에서 취소선이 된다.`;
+- 날짜 범위는 물결표(~)가 아니라 붙임표(-)로 쓴다. 물결표는 마크다운에서 취소선이 된다.
+${SECTION_PLACEMENT}`;
 
 const LENGTH_CONTROL = `## 분량 (중요도 점수 기준, 점수 자체는 출력하지 않는다)
 
@@ -96,6 +135,10 @@ function temporalRule(publicationDate: string): string {
 - 예외 ①: 학술 성과(발간된 학술지, 공개된 연구, 종료된 학술대회 자료)는 참조 가치가 있으므로 남긴다.
 - 예외 ②: **이미 일어난 일을 전하는 보도·발표 기사**는 남긴다. 지정·선정 결과, 조사 성과, 협약·기증·개최 소식처럼
   독자에게 아무 행동도 요구하지 않는 기사는 행사일이 지났더라도 그대로 싣는다.
+- 예외 ③: **발굴조사·시굴조사·매장유산 조사 입찰 공고**는 입찰 마감이 지났어도 싣는다.
+  독자는 입찰에 참여하려고 보는 것이 아니라 어디서 어떤 조사가 시작되는지 알려고 본다.
+  문화재 수리·보수정비·보존처리 발주도 같다. 다만 이런 항목은 **무엇을 조사·수리하는지** 중심으로 쓰고,
+  마감이 지난 입찰 일정은 적지 않는다.
 - 기사 게시일이 발행일보다 30일 이상 앞서면 신선도를 의심하고, 마감이 남은 진행 중 사업처럼 여전히 앞을 내다보는 가치가 있을 때만 싣는다.
 - 제외한 기사는 "그 밖에 주목할 만한 소식"이나 표에도 언급하지 않는다.`;
 }
@@ -114,11 +157,18 @@ ${opening}
 
    브리핑은 **3-4문장, 짧고 강하게** 쓴다. 오늘 가장 무게 있는 소식 한두 건을 이름을 들어 짚고, 독자가 왜 지금 이것을 봐야 하는지 한 문장으로 말한다.
    통계, 비중, 항목 수 세기는 쓰지 않는다. 글머리 목록도 만들지 않는다. 구독 링크는 여기에 넣지 않는다.
+   **\`${TRAILING_CATEGORY}\` 섹션의 소식은 브리핑에 올리지 않는다.** 단, 발굴조사·시굴조사
+   입찰은 고고학 소식이므로 무게가 있다면 올릴 수 있다.
 
 2. **분류**: 아래 순서를 지킨다. 해당 소식이 없는 분류는 건너뛴다.
 
 ${LEADING_CATEGORIES.map((c, i) => `   ${i + 1}) ${c}`).join('\n')}
-   ${LEADING_CATEGORIES.length + 1}) 그 외 (정책·제도, 지정·보존, 전시·행사, 입찰·공고 등 내용에 맞게 묶는다)
+   ${LEADING_CATEGORIES.length + 1}) 그 외 (정책·제도, 지정·보존, 전시·행사 등 내용에 맞게 묶는다)
+   ${LEADING_CATEGORIES.length + 2}) ${TRAILING_CATEGORY} — **반드시 마지막 분류**로, \`## 📌 마무리\` 바로 앞에 둔다
+
+   \`${TRAILING_CATEGORY}\`에는 입찰 공고와 용역·공사 발주 소식을 모은다. 위의 다른
+   분류에 섞어 넣지 않는다. 건수가 많아도 표로 한 행씩 전부 싣고, 줄이거나 생략하지 않는다.
+   독자가 놓치면 일감을 놓치는 정보다.
 
    각 분류는 Heading 2(\`##\`)를 쓴다. 분류 안에서는 중요한 것부터 배치한다.
    같은 내용이 여러 출처에서 왔다면 가장 자세한 것을 기준으로 한 번만 쓴다.
@@ -133,6 +183,9 @@ ${LEADING_CATEGORIES.map((c, i) => `   ${i + 1}) ${c}`).join('\n')}
        형식: \`- **2026년 9월 18일(금):** 국립김해박물관 특별전 개막 / 백제학회 학술대회\`
        마감 시각이 있으면 날짜 뒤에 붙인다. (예: \`- **2026년 9월 21일(월) 18:00:** …\`)
        본문에서 다룬 일정만 넣는다. 날짜가 없는 소식은 넣지 않는다.
+       **\`${TRAILING_CATEGORY}\` 섹션의 입찰 마감은 이 목록에 넣지 않는다.** 마감 일시는
+       그 섹션의 표에 이미 있고, 목록까지 입찰로 채우면 학술대회·채용·전시 일정이 묻힌다.
+       학술대회, 채용 접수, 전시 개막·종료, 신청 마감 같은 나머지 일정만 넣는다.
 
    다음 호 예고나 문의처는 쓰지 않는다.`;
 }
@@ -143,7 +196,8 @@ function titleRules(context: GenerateNewsletterPromptContext): string {
   const common = `- 길이는 20-70자를 지킨다.
 - **이모지를 넣지 않는다.**
 - "뉴스레터" 같은 일반 명사 대신 구체적인 사실, 수치, 일정을 담는다.
-- '발표', '시행', '마감 임박'처럼 중립적이고 객관적인 표현을 쓴다.`;
+- '발표', '시행', '마감 임박'처럼 중립적이고 객관적인 표현을 쓴다.
+${SECTION_PLACEMENT}`;
 
   if (titleContext) {
     return `## 제목

@@ -13,9 +13,11 @@ import type {
 } from '../types/dependencies';
 
 import { createCrawlingTargetGroups, robotsExemptOrigins } from '~/config';
+import type { HeritageBidTriage } from '~/crawling/heritage-triage';
 import { createRobotsAwareFetch } from '~/crawling/robots';
 import { createAlioFetch } from '~/parsers/alio.parser';
 import { createExcavationReportFetch } from '~/parsers/excavation.parser';
+import { createG2bFetch } from '~/parsers/g2b.parser';
 import { createGojobsFetch } from '~/parsers/gojobs.parser';
 import { createKrasFetch } from '~/parsers/kras.parser';
 
@@ -41,6 +43,7 @@ export class CrawlingProvider implements CoreCrawlingProvider {
     excavationReportSource?: ExcavationReportSource,
     logger?: AppLogger,
     publicDataApiKey?: string,
+    bidTriage?: HeritageBidTriage,
   ) {
     // robots.txt is checked first, so a disallowed request is never sent — not
     // even through a proxy. The injected and KRAS adapters sit inside it: their
@@ -61,9 +64,12 @@ export class CrawlingProvider implements CoreCrawlingProvider {
     // The two public job boards are read from data.go.kr open APIs. Without a
     // key they answer with an empty list and make no request, so the targets
     // stay configured and simply collect nothing.
-    const withPublicJobs = createAlioFetch(
-      createGojobsFetch(withKras, { apiKey: publicDataApiKey ?? '' }),
-      { apiKey: publicDataApiKey ?? '' },
+    const withPublicJobs = createG2bFetch(
+      createAlioFetch(
+        createGojobsFetch(withKras, { apiKey: publicDataApiKey ?? '' }),
+        { apiKey: publicDataApiKey ?? '' },
+      ),
+      { apiKey: publicDataApiKey ?? '', triage: bidTriage },
     );
 
     // When the application supplies excavation reports, that board is served
