@@ -67,10 +67,10 @@ For academic publications:
 ## Installation
 
 ```bash
-npm install @heripo/research-radar '@llm-newsletter-kit/core@~3.0.5'
+npm install @heripo/research-radar '@llm-newsletter-kit/core@~3.0.6'
 ```
 
-**Requirements**: Node.js 24.15.0 or newer within 24.x, or >= 26.0.0, and an ESM application. Node.js 25 is not supported. The package exports `dist/index.js` and TypeScript declarations (`dist/index.d.ts`), with a JavaScript sourcemap. The core engine is a peer dependency; the current supported range is `~3.0.5`. 3.0.5 is the floor because the newsletter generation prompt this package ships relies on the self-verification retry cap added there.
+**Requirements**: Node.js 24.15.0 or newer within 24.x, or >= 26.0.0, and an ESM application. Node.js 25 is not supported. The package exports `dist/index.js` and TypeScript declarations (`dist/index.d.ts`), with a JavaScript sourcemap. The core engine is a peer dependency; the current supported range is `~3.0.6`. The floor moved to 3.0.6 because the 나라장터 target runs its triage inside a crawl fetch that core times out, and before 3.0.6 core classified a timeout as non-retryable, so that target failed on the first attempt every run. 3.0.5 remains required for the self-verification retry cap the generation prompt relies on.
 
 Article analysis requires an OpenAI API key. Content generation requires a key for the selected provider (OpenAI / Anthropic / Google); OpenAI can use the same key for both. Keys are passed explicitly to the library; load environment variables in your application.
 
@@ -176,7 +176,7 @@ Defaults below describe the checked-in code, not provider recommendations. This 
 
 Select content generation with `contentGeneration: { provider, apiKey, model? }`. `model` overrides that provider's default. Analysis models are configured in [analysis.provider.ts](./src/providers/analysis.provider.ts).
 
-[src/config/index.ts](./src/config/index.ts) defines Korean output (`outputLanguage: '한국어'`), the cultural heritage domain (`expertField: ['문화유산']`), brand name, `subscribePageUrl`, LLM `maxRetries: 5`, chain `stopAfterAttempt: 3`, and generation `temperature: 0.3`. Publication settings are `minimumArticleCountForIssue: 5` and `priorityArticleScoreThreshold: 8`; the core engine evaluates them. In the locked core 3.0.5 implementation, the count check skips **5 or fewer** candidates unless at least one has importance score >= 8. An empty candidate list is always skipped.
+[src/config/index.ts](./src/config/index.ts) defines Korean output (`outputLanguage: '한국어'`), the cultural heritage domain (`expertField: ['문화유산']`), brand name, `subscribePageUrl`, LLM `maxRetries: 5`, chain `stopAfterAttempt: 3`, and generation `temperature: 0.3`. Publication settings are `minimumArticleCountForIssue: 5` and `priorityArticleScoreThreshold: 8`; the core engine evaluates them. In the locked core 3.0.6 implementation, the count check skips **5 or fewer** candidates unless at least one has importance score >= 8. An empty candidate list is always skipped.
 
 ## Crawling targets and parsers
 
