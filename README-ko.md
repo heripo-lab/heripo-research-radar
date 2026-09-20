@@ -66,10 +66,10 @@ Powered by LLM Newsletter Kit
 ## 설치
 
 ```bash
-npm install @heripo/research-radar '@llm-newsletter-kit/core@~3.0.5'
+npm install @heripo/research-radar '@llm-newsletter-kit/core@~3.0.6'
 ```
 
-**요구사항**: Node.js 24.x에서는 24.15.0 이상, 또는 Node.js 26.0.0 이상과 ESM 애플리케이션이 필요합니다. Node.js 25는 지원하지 않습니다. 패키지는 `dist/index.js`, TypeScript 선언 파일(`dist/index.d.ts`), JavaScript 소스맵을 제공합니다. Core 엔진은 peer dependency이며 현재 지원 범위는 `~3.0.5`입니다. 이 패키지의 뉴스레터 생성 프롬프트가 3.0.5에 추가된 자가검증 재시도 상한에 의존하므로 3.0.5가 하한입니다.
+**요구사항**: Node.js 24.x에서는 24.15.0 이상, 또는 Node.js 26.0.0 이상과 ESM 애플리케이션이 필요합니다. Node.js 25는 지원하지 않습니다. 패키지는 `dist/index.js`, TypeScript 선언 파일(`dist/index.d.ts`), JavaScript 소스맵을 제공합니다. Core 엔진은 peer dependency이며 현재 지원 범위는 `~3.0.6`입니다. 나라장터 타깃은 core가 타임아웃을 거는 크롤링 fetch 안에서 선별을 수행하는데, 3.0.6 이전의 core는 타임아웃을 재시도 대상에서 제외했기 때문에 이 타깃이 매 실행 첫 시도에서 실패했습니다. 그래서 하한이 3.0.6입니다. 생성 프롬프트가 의존하는 자가검증 재시도 상한(3.0.5 추가)도 여전히 필요합니다.
 
 기사 분석에는 OpenAI API 키가 필요합니다. 콘텐츠 생성에는 선택한 프로바이더(OpenAI / Anthropic / Google)의 키가 필요하며, OpenAI를 선택하면 같은 키를 사용할 수 있습니다. 라이브러리에 키를 명시적으로 전달하므로 환경변수 로딩은 애플리케이션에서 처리하세요.
 
@@ -175,7 +175,7 @@ export async function runNewsletter(repositories: {
 
 `contentGeneration: { provider, apiKey, model? }`로 콘텐츠 생성 프로바이더를 선택합니다. `model`은 해당 프로바이더의 기본값을 덮어씁니다. 분석 모델은 [analysis.provider.ts](./src/providers/analysis.provider.ts)에 설정되어 있습니다.
 
-[src/config/index.ts](./src/config/index.ts)에는 한국어 출력(`outputLanguage: '한국어'`), 문화유산 분야(`expertField: ['문화유산']`), 브랜드명, `subscribePageUrl`, LLM `maxRetries: 5`, 체인 `stopAfterAttempt: 3`, 생성 `temperature: 0.3`이 정의되어 있습니다. 발행 설정은 `minimumArticleCountForIssue: 5`, `priorityArticleScoreThreshold: 8`이며 core 엔진에서 판정합니다. 잠금 파일의 core 3.0.5 구현은 중요도 8 이상 기사가 없을 때 후보가 **5개 이하이면 생략**합니다. 후보가 없으면 항상 생략합니다.
+[src/config/index.ts](./src/config/index.ts)에는 한국어 출력(`outputLanguage: '한국어'`), 문화유산 분야(`expertField: ['문화유산']`), 브랜드명, `subscribePageUrl`, LLM `maxRetries: 5`, 체인 `stopAfterAttempt: 3`, 생성 `temperature: 0.3`이 정의되어 있습니다. 발행 설정은 `minimumArticleCountForIssue: 5`, `priorityArticleScoreThreshold: 8`이며 core 엔진에서 판정합니다. 잠금 파일의 core 3.0.6 구현은 중요도 8 이상 기사가 없을 때 후보가 **5개 이하이면 생략**합니다. 후보가 없으면 항상 생략합니다.
 
 ## 크롤링 대상과 파서
 
