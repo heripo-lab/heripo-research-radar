@@ -66,10 +66,10 @@ Powered by LLM Newsletter Kit
 ## 설치
 
 ```bash
-npm install @heripo/research-radar '@llm-newsletter-kit/core@~3.0.0'
+npm install @heripo/research-radar '@llm-newsletter-kit/core@~3.0.5'
 ```
 
-**요구사항**: Node.js >= 24와 ESM 애플리케이션. 패키지는 `dist/index.js`, TypeScript 선언 파일(`dist/index.d.ts`), JavaScript 소스맵을 제공합니다. Core 엔진은 peer dependency이며 현재 지원 범위는 `~3.0.5`입니다. 이 패키지의 뉴스레터 생성 프롬프트가 3.0.5에 추가된 자가검증 재시도 상한에 의존하므로 3.0.5가 하한입니다.
+**요구사항**: Node.js 24.x에서는 24.15.0 이상, 또는 Node.js 26.0.0 이상과 ESM 애플리케이션이 필요합니다. Node.js 25는 지원하지 않습니다. 패키지는 `dist/index.js`, TypeScript 선언 파일(`dist/index.d.ts`), JavaScript 소스맵을 제공합니다. Core 엔진은 peer dependency이며 현재 지원 범위는 `~3.0.5`입니다. 이 패키지의 뉴스레터 생성 프롬프트가 3.0.5에 추가된 자가검증 재시도 상한에 의존하므로 3.0.5가 하한입니다.
 
 기사 분석에는 OpenAI API 키가 필요합니다. 콘텐츠 생성에는 선택한 프로바이더(OpenAI / Anthropic / Google)의 키가 필요하며, OpenAI를 선택하면 같은 키를 사용할 수 있습니다. 라이브러리에 키를 명시적으로 전달하므로 환경변수 로딩은 애플리케이션에서 처리하세요.
 
@@ -269,7 +269,7 @@ npm run format             # src/ 코드 포맷
 npm run format:check       # src/ 포맷 검사
 ```
 
-빌드는 ESM·타입 선언·JavaScript 소스맵을 생성하며 런타임 의존성은 외부 의존성으로 유지합니다. CI는 PR과 수동 실행 시 Node.js 24.x에서 `npm ci`, `format:check`, `lint:ci`, `typecheck`, `build`를 수행합니다. 포맷 스크립트 범위는 `src/`이며 README는 `npx prettier --check README.md README-ko.md`로 별도 검사합니다. `npm test` 스크립트는 없습니다.
+빌드는 ESM·타입 선언·JavaScript 소스맵을 생성하며 런타임 의존성은 외부 의존성으로 유지합니다. CI는 PR과 수동 실행 시 최소 지원 Node.js 버전(24.15.0), 최신 24.x, 최신 26.x에서 `npm ci`, `format:check`, `lint:ci`, `typecheck`, `build`를 수행합니다. 포맷 스크립트 범위는 `src/`이며 README는 `npx prettier --check README.md README-ko.md`로 별도 검사합니다. `npm test` 스크립트는 없습니다.
 
 유지보수용 `release`는 npm에 배포하며, `release:patch`, `release:minor`, `release:major`는 버전을 올린 뒤 배포합니다. 버전 훅은 먼저 빌드하고 커밋·태그를 push하며, `prepublishOnly`는 배포 전에 빌드합니다.
 

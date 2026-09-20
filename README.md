@@ -67,10 +67,10 @@ For academic publications:
 ## Installation
 
 ```bash
-npm install @heripo/research-radar '@llm-newsletter-kit/core@~3.0.0'
+npm install @heripo/research-radar '@llm-newsletter-kit/core@~3.0.5'
 ```
 
-**Requirements**: Node.js >= 24 and an ESM application. The package exports `dist/index.js` and TypeScript declarations (`dist/index.d.ts`), with a JavaScript sourcemap. The core engine is a peer dependency; the current supported range is `~3.0.5`. 3.0.5 is the floor because the newsletter generation prompt this package ships relies on the self-verification retry cap added there.
+**Requirements**: Node.js 24.15.0 or newer within 24.x, or >= 26.0.0, and an ESM application. Node.js 25 is not supported. The package exports `dist/index.js` and TypeScript declarations (`dist/index.d.ts`), with a JavaScript sourcemap. The core engine is a peer dependency; the current supported range is `~3.0.5`. 3.0.5 is the floor because the newsletter generation prompt this package ships relies on the self-verification retry cap added there.
 
 Article analysis requires an OpenAI API key. Content generation requires a key for the selected provider (OpenAI / Anthropic / Google); OpenAI can use the same key for both. Keys are passed explicitly to the library; load environment variables in your application.
 
@@ -270,7 +270,7 @@ npm run format             # format src/ with Prettier
 npm run format:check       # check src/ formatting
 ```
 
-The build emits ESM, declarations, and a JavaScript sourcemap; runtime dependencies remain external. CI runs `npm ci`, `format:check`, `lint:ci`, `typecheck`, and `build` on Node.js 24.x for pull requests and manual dispatch. Formatting scripts cover `src/`; to check the READMEs explicitly, run `npx prettier --check README.md README-ko.md`. There is no `npm test` script.
+The build emits ESM, declarations, and a JavaScript sourcemap; runtime dependencies remain external. CI runs `npm ci`, `format:check`, `lint:ci`, `typecheck`, and `build` on the minimum supported Node.js version (24.15.0), the latest 24.x, and the latest 26.x for pull requests and manual dispatch. Formatting scripts cover `src/`; to check the READMEs explicitly, run `npx prettier --check README.md README-ko.md`. There is no `npm test` script.
 
 For maintainers, `release` publishes to npm, while `release:patch`, `release:minor`, and `release:major` bump the version and publish. The version hooks build first and push commits/tags; `prepublishOnly` builds before publishing.
 
