@@ -53,14 +53,6 @@ export const extractNttId = (html: string): string => {
 };
 
 /**
- * Parses the list page from seamuse.go.kr (국립해양유산연구소).
- * The site uses client-side rendering — list data is fetched from a JSON API.
- * URL pattern: /news/notice/list/1 → API: POST /news/notice/listData/1
- *
- * @param listDataPath - API path segment (e.g., "/news/notice" or "/resources/academiccultural")
- * @param infoPathPrefix - Detail page path prefix (e.g., "/news/notice/info")
- */
-/**
  * Reads a JSON body without trusting that it is JSON.
  *
  * These parsers fetch their own API through the crawling fetch, which does not
@@ -77,6 +69,14 @@ async function readJson<T>(response: Response): Promise<T | null> {
   }
 }
 
+/**
+ * Parses the list page from seamuse.go.kr (국립해양유산연구소).
+ * The site uses client-side rendering — list data is fetched from a JSON API.
+ * URL pattern: /news/notice/list/1 → API: POST /news/notice/listData/1
+ *
+ * @param listDataPath - API path segment (e.g., "/news/notice" or "/resources/academiccultural")
+ * @param infoPathPrefix - Detail page path prefix (e.g., "/news/notice/info")
+ */
 export const parseSeamuseList = async (
   _html: string,
   listDataPath: string,

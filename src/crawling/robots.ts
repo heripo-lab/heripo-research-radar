@@ -3,10 +3,10 @@
  *
  * Applied at the fetch layer, the same seam the KRAS and excavation-report
  * adapters use, so core's crawling pipeline is untouched: a disallowed request
- * is answered with an empty document instead of being sent. Core treats a 4xx
- * list response as
- * a failed fetch, logs `crawl.list.fetch.failed`, and continues with an empty
- * page, so a blocked target yields no articles rather than breaking the run.
+ * is answered locally with an empty document instead of being sent, and the
+ * target simply yields no articles. The refusal is reported through
+ * `onBlocked`, not as a fetch failure — see {@link createRobotsGate} for why
+ * that distinction matters.
  */
 
 /** One `Allow:` or `Disallow:` line. */
