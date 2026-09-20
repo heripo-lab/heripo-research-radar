@@ -60,6 +60,23 @@ export const extractNttId = (html: string): string => {
  * @param listDataPath - API path segment (e.g., "/news/notice" or "/resources/academiccultural")
  * @param infoPathPrefix - Detail page path prefix (e.g., "/news/notice/info")
  */
+/**
+ * Reads a JSON body without trusting that it is JSON.
+ *
+ * These parsers fetch their own API through the crawling fetch, which does not
+ * always carry the API's answer: a request the origin's robots.txt disallows is
+ * answered locally with an empty document, and `response.json()` throws on it.
+ * A refusal should leave the target with nothing to report, not raise a parse
+ * error that reads like a broken parser.
+ */
+async function readJson<T>(response: Response): Promise<T | null> {
+  try {
+    return (await response.json()) as T;
+  } catch {
+    return null;
+  }
+}
+
 export const parseSeamuseList = async (
   _html: string,
   listDataPath: string,
@@ -79,10 +96,10 @@ export const parseSeamuseList = async (
     },
   );
 
-  const data: SeamuseListResponse = await response.json();
+  const data = await readJson<SeamuseListResponse>(response);
   const posts: ParsedTargetListItem[] = [];
 
-  for (const item of data.resultList) {
+  for (const item of data?.resultList ?? []) {
     posts.push({
       uniqId: String(item.nttId),
       title: item.nttSj?.trim() ?? '',
@@ -127,12 +144,12 @@ export const parseSeamuseDetail = async (
     },
   );
 
-  const data: SeamuseDetailResponse = await response.json();
-  const content = data.result.nttCn ?? '';
+  const data = await readJson<SeamuseDetailResponse>(response);
+  const content = data?.result?.nttCn ?? '';
 
   return {
     detailContent: new TurndownService().turndown(content),
-    hasAttachedFile: (data.files?.length ?? 0) > 0,
+    hasAttachedFile: (data?.files?.length ?? 0) > 0,
     hasAttachedImage: content.includes('<img'),
   };
 };
