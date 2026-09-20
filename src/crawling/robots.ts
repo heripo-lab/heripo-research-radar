@@ -3,7 +3,8 @@
  *
  * Applied at the fetch layer, the same seam the KRAS and excavation-report
  * adapters use, so core's crawling pipeline is untouched: a disallowed request
- * is answered with 403 instead of being sent. Core treats a 4xx list response as
+ * is answered with an empty document instead of being sent. Core treats a 4xx
+ * list response as
  * a failed fetch, logs `crawl.list.fetch.failed`, and continues with an empty
  * page, so a blocked target yields no articles rather than breaking the run.
  */
@@ -232,7 +233,7 @@ export type RobotsVerdict =
 export type RobotsGate = {
   /** Whether this URL may be requested, per its origin's robots.txt. */
   isAllowed: (url: string, userAgent?: string) => Promise<RobotsVerdict>;
-  /** Fetch that refuses disallowed requests with 403 instead of sending them. */
+  /** Fetch that answers disallowed requests locally instead of sending them. */
   fetch: typeof fetch;
 };
 
@@ -337,9 +338,27 @@ export function createRobotsGate(
 
     onBlocked?.({ url: requestUrl, userAgent, rule: verdict.rule });
 
+    // An empty document rather than a 4xx. A site's crawling policy is not a
+    // fault on our side, but core cannot tell the difference: it turns any
+    // non-2xx list response into a thrown error and logs
+    // `crawl.list.fetch.failed` at error level, which applications forward to
+    // their alerting. Fourteen targets are disallowed at all times, so every
+    // run raised fourteen alerts that no one could act on, and real fetch
+    // failures were buried among them.
+    //
+    // Answering 200 with no content makes the target yield nothing, which is
+    // what being disallowed means. The refusal is not hidden: it is still
+    // reported through `onBlocked`, which the provider logs as
+    // `crawl.robots.blocked`, and the health-check decides what to skip from
+    // `isAllowed` rather than from this status. Every parser in this package
+    // returns an empty list for this body.
     return new Response(
-      `Blocked by robots.txt (${verdict.rule}) - ${new URL(requestUrl).origin}/robots.txt`,
-      { status: 403, statusText: 'Blocked by robots.txt' },
+      `<!-- Blocked by robots.txt (${verdict.rule}) - ${new URL(requestUrl).origin}/robots.txt -->`,
+      {
+        status: 200,
+        statusText: 'Blocked by robots.txt',
+        headers: { 'content-type': 'text/html; charset=utf-8' },
+      },
     );
   };
 
@@ -348,7 +367,7 @@ export function createRobotsGate(
 
 /**
  * Wraps a fetch so that requests disallowed by the origin's robots.txt are
- * refused with 403 instead of sent. See {@link createRobotsGate}.
+ * answered with an empty document instead of sent. See {@link createRobotsGate}.
  */
 export function createRobotsAwareFetch(
   baseFetch: typeof fetch = fetch,
