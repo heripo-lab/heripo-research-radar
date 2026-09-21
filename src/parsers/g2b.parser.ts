@@ -119,6 +119,17 @@ export type G2bFetchOptions = {
    */
   maxPages?: number;
   /**
+   * Reports why a list request failed.
+   *
+   * The adapter answers a failure with 502, and core logs only
+   * `Request failed (status=502)` — the body, which names the actual cause,
+   * never reaches the log. Three different conditions produce that 502, and
+   * without this they are indistinguishable from the outside. A production
+   * incident where data.go.kr's gateway answered every path with HTTP 400 took
+   * days to identify for exactly this reason.
+   */
+  onError?: (reason: string) => void;
+  /**
    * Decides which notices are worth scoring.
    *
    * Omit it and {@link isHeritageBidCandidate} decides instead, which is how the
@@ -152,7 +163,14 @@ export const createG2bFetch = (
     rowsPerPage = 999,
     maxPages = 4,
     triage,
+    onError,
   } = options;
+
+  const fail = (reason: string): Response => {
+    onError?.(reason);
+
+    return new Response(reason, { status: 502, statusText: 'Bad Gateway' });
+  };
 
   /** Notices from the most recent list call, keyed by `<bidNtceNo>:<bidNtceOrd>`. */
   const noticeCache = new Map<string, G2bNotice>();
@@ -258,10 +276,7 @@ export const createG2bFetch = (
       const failure = pages.find((result) => typeof result === 'string');
 
       if (typeof failure === 'string') {
-        return new Response(failure, {
-          status: 502,
-          statusText: 'Bad Gateway',
-        });
+        return fail(failure);
       }
 
       const collected = pages.flat() as G2bNotice[];

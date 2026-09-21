@@ -69,7 +69,16 @@ export class CrawlingProvider implements CoreCrawlingProvider {
         createGojobsFetch(withKras, { apiKey: publicDataApiKey ?? '' }),
         { apiKey: publicDataApiKey ?? '' },
       ),
-      { apiKey: publicDataApiKey ?? '', triage: bidTriage },
+      {
+        apiKey: publicDataApiKey ?? '',
+        triage: bidTriage,
+        onError: (reason) => {
+          logger?.error({
+            event: 'crawl.g2b.list.failed',
+            data: { reason },
+          });
+        },
+      },
     );
 
     // When the application supplies excavation reports, that board is served
