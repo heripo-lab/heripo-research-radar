@@ -75,6 +75,15 @@ export const maximumImportanceScoreByDomain: Record<string, number> = {
  */
 export const robotsExemptOrigins: readonly string[] = [
   'http://www.yngogo.or.kr',
+  // data.go.kr open APIs. robots.txt governs crawlers reading a site's
+  // documents; these are authorised API calls made with a registered service
+  // key, and the terms that bind them are the service's own. The host does not
+  // publish a robots.txt at all: its gateway answers any unknown path — that
+  // one included — with HTTP 400 and `NO_OPENAPI_SERVICE_ERROR`, so every run
+  // was spending a request to be told the file does not exist. The adapters
+  // rewrite 나라일터/알리오/나라장터 board URLs to this origin and the gate sits
+  // inside them, which is how an API call ended up being asked about at all.
+  'https://apis.data.go.kr',
 ];
 
 /**

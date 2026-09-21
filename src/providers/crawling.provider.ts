@@ -66,10 +66,35 @@ export class CrawlingProvider implements CoreCrawlingProvider {
     // stay configured and simply collect nothing.
     const withPublicJobs = createG2bFetch(
       createAlioFetch(
-        createGojobsFetch(withKras, { apiKey: publicDataApiKey ?? '' }),
-        { apiKey: publicDataApiKey ?? '' },
+        createGojobsFetch(withKras, {
+          apiKey: publicDataApiKey ?? '',
+          onError: (reason) => {
+            logger?.error({
+              event: 'crawl.gojobs.list.failed',
+              data: { reason },
+            });
+          },
+        }),
+        {
+          apiKey: publicDataApiKey ?? '',
+          onError: (reason) => {
+            logger?.error({
+              event: 'crawl.alio.list.failed',
+              data: { reason },
+            });
+          },
+        },
       ),
-      { apiKey: publicDataApiKey ?? '', triage: bidTriage },
+      {
+        apiKey: publicDataApiKey ?? '',
+        triage: bidTriage,
+        onError: (reason) => {
+          logger?.error({
+            event: 'crawl.g2b.list.failed',
+            data: { reason },
+          });
+        },
+      },
     );
 
     // When the application supplies excavation reports, that board is served
