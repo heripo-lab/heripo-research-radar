@@ -35,6 +35,9 @@ function toIsoDate(compact: string): string {
     : '';
 }
 
+/** `resultCode` the service returns on success. */
+const SUCCESS_RESULT_CODE = '00';
+
 export type GojobsFetchOptions = {
   /** data.go.kr service key, already URL-encoded as the portal supplies it. */
   apiKey: string;
@@ -57,7 +60,8 @@ export type GojobsFetchOptions = {
    * health-check allows a fetch.
    * @default 3000
    */
-  rowsPerPage?: number;
+  rowsPerPage?: number; /** Reports why a list request failed; core only sees the 502. */
+  onError?: (reason: string) => void;
 };
 
 /**
@@ -75,7 +79,7 @@ export const createGojobsFetch = (
   baseFetch: typeof fetch = fetch,
   options: GojobsFetchOptions,
 ): typeof fetch => {
-  const { apiKey, windowDays = 7, rowsPerPage = 3000 } = options;
+  const { apiKey, windowDays = 7, rowsPerPage = 3000, onError } = options;
 
   return async (input, init) => {
     const requestUrl =
@@ -110,11 +114,40 @@ export const createGojobsFetch = (
       const end = new Date();
       const begin = new Date(end.getTime() - windowDays * 24 * 60 * 60 * 1000);
 
-      return baseFetch(
+      const response = await baseFetch(
         `${API_BASE}/getList?serviceKey=${apiKey}&numOfRows=${rowsPerPage}` +
           `&pageNo=1&Begin_de=${toApiDate(begin)}&End_de=${toApiDate(end)}`,
         init,
       );
+
+      if (!response.ok) {
+        return response;
+      }
+
+      // data.go.kr answers its own errors with HTTP 200 and a result code, so a
+      // rejected key or a service outage arrives looking like a successful
+      // response with no postings in it. Passing that through made the board
+      // report zero vacancies and the run look healthy, which is how two days
+      // of an empty 나라일터 went unnoticed. Fail instead, the same way the
+      // 나라장터 adapter does.
+      const xml = await response.text();
+      const resultCode = /<resultCode>\s*([^<]*)<\/resultCode>/.exec(xml)?.[1];
+
+      if (
+        resultCode !== undefined &&
+        resultCode.trim() !== SUCCESS_RESULT_CODE
+      ) {
+        const reason = `나라일터 list returned resultCode ${resultCode.trim()}`;
+
+        onError?.(reason);
+
+        return new Response(reason, { status: 502, statusText: 'Bad Gateway' });
+      }
+
+      return new Response(xml, {
+        status: 200,
+        headers: { 'content-type': 'application/xml' },
+      });
     }
 
     if (url.pathname === '/apmView.do') {

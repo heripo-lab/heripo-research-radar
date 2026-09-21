@@ -59,6 +59,19 @@ type AlioDetailResponse = {
   result?: AlioRecruitment;
 };
 
+/** `resultCode` this service returns on success. */
+const SUCCESS_RESULT_CODE = 200;
+
+function parseResultCode(body: string): number | null {
+  try {
+    const parsed = JSON.parse(body) as { resultCode?: unknown };
+
+    return typeof parsed.resultCode === 'number' ? parsed.resultCode : null;
+  } catch {
+    return null;
+  }
+}
+
 export type AlioFetchOptions = {
   /** data.go.kr service key, already URL-encoded as the portal supplies it. */
   apiKey: string;
@@ -71,7 +84,8 @@ export type AlioFetchOptions = {
    * below 나라일터.
    * @default 3000
    */
-  rowsPerPage?: number;
+  rowsPerPage?: number; /** Reports why a list request failed; core only sees the 502. */
+  onError?: (reason: string) => void;
 };
 
 /**
@@ -88,7 +102,7 @@ export const createAlioFetch = (
   baseFetch: typeof fetch = fetch,
   options: AlioFetchOptions,
 ): typeof fetch => {
-  const { apiKey, rowsPerPage = 3000 } = options;
+  const { apiKey, rowsPerPage = 3000, onError } = options;
 
   return async (input, init) => {
     const requestUrl =
@@ -116,11 +130,34 @@ export const createAlioFetch = (
     }
 
     if (url.pathname === '/recruit.do') {
-      return baseFetch(
+      const response = await baseFetch(
         `${API_BASE}/list?serviceKey=${apiKey}&resultType=json` +
           `&numOfRows=${rowsPerPage}&pageNo=1&ongoingYn=Y`,
         init,
       );
+
+      if (!response.ok) {
+        return response;
+      }
+
+      // Same reasoning as the 나라일터 adapter: data.go.kr answers its own
+      // errors with HTTP 200 and a result code, and passing one through turns a
+      // rejected key or an outage into a board that simply has no postings.
+      const body = await response.text();
+      const resultCode = parseResultCode(body);
+
+      if (resultCode !== null && resultCode !== SUCCESS_RESULT_CODE) {
+        const reason = `알리오 list returned resultCode ${resultCode}`;
+
+        onError?.(reason);
+
+        return new Response(reason, { status: 502, statusText: 'Bad Gateway' });
+      }
+
+      return new Response(body, {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
     }
 
     if (url.pathname === '/recruitview.do') {
