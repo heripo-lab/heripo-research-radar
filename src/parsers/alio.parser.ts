@@ -5,6 +5,7 @@ import {
 } from '@llm-newsletter-kit/core';
 
 import { isHeritageJobCandidate } from '~/crawling/heritage-job-filter';
+import { describeOpenDataError } from '~/crawling/open-data-error';
 
 const API_BASE = 'https://apis.data.go.kr/1051000/recruitment';
 const SITE_BASE = 'https://job.alio.go.kr';
@@ -137,7 +138,19 @@ export const createAlioFetch = (
       );
 
       if (!response.ok) {
-        return response;
+        // See the 나라일터 adapter: keep the upstream status, report the reason.
+        const body = await response.text();
+        const detail = describeOpenDataError(body);
+
+        onError?.(
+          `알리오 list failed with HTTP ${response.status}` +
+            (detail ? ` — ${detail}` : ''),
+        );
+
+        return new Response(body, {
+          status: response.status,
+          statusText: response.statusText,
+        });
       }
 
       // Same reasoning as the 나라일터 adapter: data.go.kr answers its own
