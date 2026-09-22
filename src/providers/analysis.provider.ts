@@ -7,7 +7,7 @@ import type {
 
 import type { ArticleRepository, TagRepository } from '../types/dependencies';
 
-import { maximumImportanceScoreByDomain } from '../config';
+import { llmConfig, maximumImportanceScoreByDomain } from '../config';
 import { toHeritageDomainTag } from '../prompts';
 
 export interface AnalysisModels {
@@ -33,10 +33,31 @@ export class AnalysisProvider implements CoreAnalysisProvider {
   };
 
   constructor(
+    openai: OpenAIProvider,
+    articleRepository: ArticleRepository,
+    tagRepository: TagRepository,
+  );
+  constructor(
     models: AnalysisModels,
+    articleRepository: ArticleRepository,
+    tagRepository: TagRepository,
+  );
+  constructor(
+    modelsOrOpenAI: AnalysisModels | OpenAIProvider,
     private readonly articleRepository: ArticleRepository,
     private readonly tagRepository: TagRepository,
   ) {
+    const models =
+      typeof modelsOrOpenAI === 'function'
+        ? {
+            classifyTags: modelsOrOpenAI(llmConfig.models.classifyTags),
+            analyzeImages: modelsOrOpenAI(llmConfig.models.analyzeImages),
+            determineImportance: modelsOrOpenAI(
+              llmConfig.models.determineImportance,
+            ),
+          }
+        : modelsOrOpenAI;
+
     this.classifyTagOptions = {
       model: models.classifyTags,
     };
