@@ -7,8 +7,14 @@ import type {
 
 import type { ArticleRepository, TagRepository } from '../types/dependencies';
 
-import { maximumImportanceScoreByDomain } from '../config';
+import { llmConfig, maximumImportanceScoreByDomain } from '../config';
 import { toHeritageDomainTag } from '../prompts';
+
+export interface AnalysisModels {
+  classifyTags: ReturnType<OpenAIProvider>;
+  analyzeImages: ReturnType<OpenAIProvider>;
+  determineImportance: ReturnType<OpenAIProvider>;
+}
 
 /**
  * Analysis provider implementation
@@ -27,20 +33,41 @@ export class AnalysisProvider implements CoreAnalysisProvider {
   };
 
   constructor(
-    private readonly openai: OpenAIProvider,
+    openai: OpenAIProvider,
+    articleRepository: ArticleRepository,
+    tagRepository: TagRepository,
+  );
+  constructor(
+    models: AnalysisModels,
+    articleRepository: ArticleRepository,
+    tagRepository: TagRepository,
+  );
+  constructor(
+    modelsOrOpenAI: AnalysisModels | OpenAIProvider,
     private readonly articleRepository: ArticleRepository,
     private readonly tagRepository: TagRepository,
   ) {
+    const models =
+      typeof modelsOrOpenAI === 'function'
+        ? {
+            classifyTags: modelsOrOpenAI(llmConfig.models.classifyTags),
+            analyzeImages: modelsOrOpenAI(llmConfig.models.analyzeImages),
+            determineImportance: modelsOrOpenAI(
+              llmConfig.models.determineImportance,
+            ),
+          }
+        : modelsOrOpenAI;
+
     this.classifyTagOptions = {
-      model: this.openai('gpt-5.6-luna'),
+      model: models.classifyTags,
     };
 
     this.analyzeImagesOptions = {
-      model: this.openai('gpt-5.6-terra'),
+      model: models.analyzeImages,
     };
 
     this.determineScoreOptions = {
-      model: this.openai('gpt-5.6-terra'),
+      model: models.determineImportance,
       minimumImportanceScoreRules: [
         // Korean Archaeological Society news: minimum score 6
         {

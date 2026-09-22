@@ -2,6 +2,7 @@
 export {
   generateNewsletter,
   type ContentGenerationConfig,
+  type NewsletterModelConfig,
   type NewsletterGeneratorDependencies,
   type PreviewNewsletterOptions,
 } from './newsletter-generator';

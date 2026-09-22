@@ -24,7 +24,7 @@
 - 엄격한 타입 시스템의 TypeScript
 - 교체 가능한 Provider 패턴 (Crawling/Analysis/Content/Email)
 - 문화유산 기관, 박물관, 학회 등 활성 크롤링 타겟 74개 (robots.txt로 런타임 필터링)
-- 멀티 LLM 프로바이더: OpenAI GPT-5 (분석) + 선택 가능한 콘텐츠 생성 (OpenAI / Anthropic / Google)
+- 모든 LLM 작업에 OpenAI GPT-6 기본값 적용 및 작업별 모델 재정의 지원
 - 재시도, 체인 옵션, 미리보기 이메일 내장
 
 **링크**: [라이브 서비스](https://heripo.app/research-radar/subscribe) • [뉴스레터 예시](https://heripo.app/research-radar-newsletter-example.html) • [Core 엔진](https://github.com/heripo-lab/llm-newsletter-kit-core)
@@ -98,7 +98,6 @@ export async function runNewsletter(repositories: {
   const newsletterId = await generateNewsletter({
     ...repositories,
     openAIApiKey: apiKey,
-    contentGeneration: { provider: 'openai', apiKey },
     logger: console,
   });
 
@@ -162,18 +161,33 @@ export async function runNewsletter(repositories: {
 
 ## 설정과 모델
 
-아래 기본값은 현재 코드의 설정이며 프로바이더 추천 목록이 아닙니다. 이 패키지는 AI SDK 7과 OpenAI·Anthropic·Google SDK 어댑터를 사용합니다.
+아래 기본값은 현재 코드의 설정이며 프로바이더 추천 목록이 아닙니다. `openAIApiKey`는 필수이며 모든 기본 모델에 사용됩니다.
 
-| 단계        | 프로바이더 | 기본 모델                |
-| ----------- | ---------- | ------------------------ |
-| 태그 분류   | OpenAI     | `gpt-5.6-luna`           |
-| 이미지 분석 | OpenAI     | `gpt-5.6-terra`          |
-| 중요도 평가 | OpenAI     | `gpt-5.6-terra`          |
-| 콘텐츠 생성 | OpenAI     | `gpt-5.6-sol`            |
-| 콘텐츠 생성 | Anthropic  | `claude-sonnet-4-6`      |
-| 콘텐츠 생성 | Google     | `gemini-3.1-pro-preview` |
+| 단계               | 프로바이더 | 기본 모델    |
+| ------------------ | ---------- | ------------ |
+| 나라장터 공고 선별 | OpenAI     | `gpt-6-luna` |
+| 태그 분류          | OpenAI     | `gpt-6-luna` |
+| 이미지 분석        | OpenAI     | `gpt-6-sol`  |
+| 중요도 평가        | OpenAI     | `gpt-6-sol`  |
+| 뉴스레터 생성      | OpenAI     | `gpt-6-sol`  |
 
-`contentGeneration: { provider, apiKey, model? }`로 콘텐츠 생성 프로바이더를 선택합니다. `model`은 해당 프로바이더의 기본값을 덮어씁니다. 분석 모델은 [analysis.provider.ts](./src/providers/analysis.provider.ts)에 설정되어 있습니다.
+`models`로 각 작업의 모델을 독립적으로 덮어쓸 수 있습니다. 모든 값은 OpenAI 모델 ID입니다.
+
+```typescript
+await generateNewsletter({
+  ...repositories,
+  openAIApiKey,
+  models: {
+    heritageBidTriage: 'gpt-6-luna',
+    classifyTags: 'gpt-6-luna',
+    analyzeImages: 'gpt-6-sol',
+    determineImportance: 'gpt-6-sol',
+    generateNewsletter: 'gpt-6-sol',
+  },
+});
+```
+
+Anthropic·Google로 뉴스레터를 생성하는 기존 `contentGeneration: { provider, apiKey, model? }` 경로도 호환성을 위해 유지합니다. 두 설정을 함께 전달하면 `models.generateNewsletter`가 우선합니다.
 
 [src/config/index.ts](./src/config/index.ts)에는 한국어 출력(`outputLanguage: '한국어'`), 문화유산 분야(`expertField: ['문화유산']`), 브랜드명, `subscribePageUrl`, LLM `maxRetries: 5`, 체인 `stopAfterAttempt: 3`, 생성 `temperature: 0.3`이 정의되어 있습니다. 발행 설정은 `minimumArticleCountForIssue: 5`, `priorityArticleScoreThreshold: 8`이며 core 엔진에서 판정합니다. 잠금 파일의 core 3.0.6 구현은 중요도 8 이상 기사가 없을 때 후보가 **5개 이하이면 생략**합니다. 후보가 없으면 항상 생략합니다.
 
@@ -378,7 +392,7 @@ export const newsletterConfig: NewsletterConfig = {
 - 한국 문화유산 사이트를 내 도메인의 소스로 교체
 - `src/parsers/`에 파서 구현
 
-**4. 콘텐츠 생성 LLM 프로바이더 변경** (옵션):
+**4. 콘텐츠 생성 LLM 프로바이더 변경** (레거시 호환):
 
 콘텐츠 생성은 **3개 내장 프로바이더**를 지원합니다 — `contentGeneration.provider`만 바꾸면 됩니다:
 
@@ -395,7 +409,7 @@ const contentGeneration: ContentGenerationConfig = {
 };
 ```
 
-기본 모델: openai=`gpt-5.6-sol`, anthropic=`claude-sonnet-4-6`, google=`gemini-3.1-pro-preview`
+호환 경로 기본 모델: openai=`gpt-6-sol`, anthropic=`claude-sonnet-4-6`, google=`gemini-3.1-pro-preview`
 
 분석 프로바이더를 변경하려면 호환되는 AI SDK 프로바이더에 맞춰 `src/providers/analysis.provider.ts`의 프로바이더 타입·모델과 `src/newsletter-generator.ts`의 생성 코드를 함께 변경하세요. 분석 provider의 도메인별 최소 점수 규칙, 설정의 출력 언어·전문 분야, 패키지 메타데이터, GitHub Actions 러너·Slack 설정도 포크에 맞게 조정하세요.
 

@@ -1,7 +1,9 @@
 /**
- * Uses OpenAI for article analysis and a configurable provider (OpenAI / Anthropic / Google) for content generation.
+ * Uses the required OpenAI key for every default model. Each task accepts an
+ * OpenAI model-ID override, while the compatibility content-generation option
+ * can still select Anthropic or Google.
  *
- * Content generation provider is selected via `contentGeneration.provider` in dependencies.
+ * `models.generateNewsletter` takes precedence over `contentGeneration`.
  */
 import type {
   AppLogger,
@@ -57,7 +59,7 @@ export interface PreviewNewsletterOptions {
  * Each provider uses a sensible default model that can be overridden.
  *
  * Default models:
- * - openai: `gpt-5.6-sol`
+ * - openai: `gpt-6-sol`
  * - anthropic: `claude-sonnet-4-6`
  * - google: `gemini-3.1-pro-preview`
  */
@@ -67,14 +69,37 @@ export type ContentGenerationConfig =
   | { provider: 'google'; apiKey: string; model?: string };
 
 /**
+ * OpenAI model IDs used by each LLM task.
+ *
+ * Omitted values use the defaults from `llmConfig.models`. Content generation
+ * can still use a non-OpenAI provider through the legacy `contentGeneration`
+ * option; `models.generateNewsletter` takes precedence when both are supplied.
+ */
+export interface NewsletterModelConfig {
+  heritageBidTriage?: string;
+  classifyTags?: string;
+  analyzeImages?: string;
+  determineImportance?: string;
+  generateNewsletter?: string;
+}
+
+/**
  * Newsletter generator dependencies interface
  */
 export interface NewsletterGeneratorDependencies {
-  /** OpenAI API key (used for article analysis: tag classification, image analysis, importance scoring) */
+  /** OpenAI API key used by every default model. */
   openAIApiKey: string;
 
-  /** Content generation LLM configuration (provider + API key + optional model) */
-  contentGeneration: ContentGenerationConfig;
+  /** OpenAI model overrides for every LLM task (optional). */
+  models?: NewsletterModelConfig;
+
+  /**
+   * Non-OpenAI content generation configuration (optional).
+   *
+   * Prefer `models.generateNewsletter`, which uses the required `openAIApiKey`.
+   * This remains available for Anthropic/Google compatibility.
+   */
+  contentGeneration?: ContentGenerationConfig;
 
   /** Task management repository */
   taskRepository: TaskRepository;
@@ -171,7 +196,7 @@ function createContentGenerationModel(
   switch (config.provider) {
     case 'openai': {
       const provider = createOpenAI({ apiKey: config.apiKey });
-      return provider(config.model ?? 'gpt-5.6-sol');
+      return provider(config.model ?? 'gpt-6-sol');
     }
     case 'anthropic': {
       const provider = createAnthropic({ apiKey: config.apiKey });
@@ -190,6 +215,10 @@ function createNewsletterGenerator(
   const openai = createOpenAI({
     apiKey: dependencies.openAIApiKey,
   });
+  const modelIds = {
+    ...llmConfig.models,
+    ...dependencies.models,
+  };
 
   const dateService = new DateService(dependencies.publishDate);
 
@@ -205,7 +234,7 @@ function createNewsletterGenerator(
     // reach per-article scoring is decided here, 100 titles per request. The
     // deterministic filter stays behind it as the fallback.
     createHeritageBidTriage({
-      model: openai('gpt-5.6-luna'),
+      model: openai(modelIds.heritageBidTriage),
       onFallback: (reason, batchSize) => {
         dependencies.logger?.info({
           event: 'crawl.g2b.triage.fallback',
@@ -216,7 +245,11 @@ function createNewsletterGenerator(
   );
 
   const analysisProvider = new AnalysisProvider(
-    openai,
+    {
+      classifyTags: openai(modelIds.classifyTags),
+      analyzeImages: openai(modelIds.analyzeImages),
+      determineImportance: openai(modelIds.determineImportance),
+    },
     dependencies.articleRepository,
     dependencies.tagRepository,
   );
@@ -242,9 +275,11 @@ function createNewsletterGenerator(
     resolvedBrandName = '한국고고학회 뉴스레터';
   }
 
-  const contentModel = createContentGenerationModel(
-    dependencies.contentGeneration,
-  );
+  const contentModel = dependencies.models?.generateNewsletter
+    ? openai(modelIds.generateNewsletter)
+    : dependencies.contentGeneration
+      ? createContentGenerationModel(dependencies.contentGeneration)
+      : openai(modelIds.generateNewsletter);
 
   const contentGenerateProvider = new ContentGenerateProvider(
     contentModel,
