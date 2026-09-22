@@ -6,6 +6,7 @@ import {
 import * as cheerio from 'cheerio';
 
 import { isHeritageJobCandidate } from '~/crawling/heritage-job-filter';
+import { describeOpenDataError } from '~/crawling/open-data-error';
 
 const API_BASE = 'https://apis.data.go.kr/1760000/PblJobService';
 const SITE_BASE = 'https://www.gojobs.go.kr';
@@ -121,7 +122,21 @@ export const createGojobsFetch = (
       );
 
       if (!response.ok) {
-        return response;
+        // Core logs the status; the gateway's own explanation is in the body and
+        // would otherwise be dropped. Keep the status so the log still shows what
+        // the service answered, and report the reason alongside it.
+        const body = await response.text();
+        const detail = describeOpenDataError(body);
+
+        onError?.(
+          `나라일터 list failed with HTTP ${response.status}` +
+            (detail ? ` — ${detail}` : ''),
+        );
+
+        return new Response(body, {
+          status: response.status,
+          statusText: response.statusText,
+        });
       }
 
       // data.go.kr answers its own errors with HTTP 200 and a result code, so a

@@ -6,6 +6,7 @@ import {
 
 import { isHeritageBidCandidate } from '~/crawling/heritage-job-filter';
 import type { HeritageBidTriage } from '~/crawling/heritage-triage';
+import { describeOpenDataError } from '~/crawling/open-data-error';
 
 const API_BASE = 'https://apis.data.go.kr/1230000/ad/BidPublicInfoService';
 const SITE_BASE = 'https://www.g2b.go.kr';
@@ -228,7 +229,12 @@ export const createG2bFetch = (
             );
 
             if (!response.ok) {
-              return `나라장터 ${operation} list failed with HTTP ${response.status}`;
+              const detail = describeOpenDataError(await response.text());
+
+              return (
+                `나라장터 ${operation} list failed with HTTP ${response.status}` +
+                (detail ? ` — ${detail}` : '')
+              );
             }
 
             const body = (await response.json()) as G2bListResponse;
