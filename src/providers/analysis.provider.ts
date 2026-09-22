@@ -10,6 +10,12 @@ import type { ArticleRepository, TagRepository } from '../types/dependencies';
 import { maximumImportanceScoreByDomain } from '../config';
 import { toHeritageDomainTag } from '../prompts';
 
+export interface AnalysisModels {
+  classifyTags: ReturnType<OpenAIProvider>;
+  analyzeImages: ReturnType<OpenAIProvider>;
+  determineImportance: ReturnType<OpenAIProvider>;
+}
+
 /**
  * Analysis provider implementation
  * - LLM-based article analysis
@@ -27,20 +33,20 @@ export class AnalysisProvider implements CoreAnalysisProvider {
   };
 
   constructor(
-    private readonly openai: OpenAIProvider,
+    models: AnalysisModels,
     private readonly articleRepository: ArticleRepository,
     private readonly tagRepository: TagRepository,
   ) {
     this.classifyTagOptions = {
-      model: this.openai('gpt-5.6-luna'),
+      model: models.classifyTags,
     };
 
     this.analyzeImagesOptions = {
-      model: this.openai('gpt-5.6-terra'),
+      model: models.analyzeImages,
     };
 
     this.determineScoreOptions = {
-      model: this.openai('gpt-5.6-terra'),
+      model: models.determineImportance,
       minimumImportanceScoreRules: [
         // Korean Archaeological Society news: minimum score 6
         {

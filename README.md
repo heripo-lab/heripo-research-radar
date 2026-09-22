@@ -24,7 +24,7 @@ Previously reported service metrics were $0.2–1 per issue and 15% CTR. These a
 - Type-safe TypeScript with strict interfaces
 - Provider pattern for swapping components (Crawling/Analysis/Content/Email)
 - 74 active crawling targets across heritage agencies, museums, academic societies, filtered at runtime by robots.txt
-- Multi LLM providers: OpenAI GPT-5 (analysis) + selectable content generation (OpenAI / Anthropic / Google)
+- OpenAI GPT-6 defaults for every LLM task, with per-task model overrides
 - Built-in retries, chain options, preview emails
 
 **Links**: [Live service](https://heripo.app/research-radar/subscribe) • [Newsletter example](https://heripo.app/research-radar-newsletter-example.html) • [Core engine](https://github.com/heripo-lab/llm-newsletter-kit-core)
@@ -72,7 +72,7 @@ npm install @heripo/research-radar '@llm-newsletter-kit/core@~3.0.6'
 
 **Requirements**: Node.js 24.15.0 or newer within 24.x, or >= 26.0.0, and an ESM application. Node.js 25 is not supported. The package exports `dist/index.js` and TypeScript declarations (`dist/index.d.ts`), with a JavaScript sourcemap. The core engine is a peer dependency; the current supported range is `~3.0.6`. The floor moved to 3.0.6 because the 나라장터 target runs its triage inside a crawl fetch that core times out, and before 3.0.6 core classified a timeout as non-retryable, so that target failed on the first attempt every run. 3.0.5 remains required for the self-verification retry cap the generation prompt relies on.
 
-Article analysis requires an OpenAI API key. Content generation requires a key for the selected provider (OpenAI / Anthropic / Google); OpenAI can use the same key for both. Keys are passed explicitly to the library; load environment variables in your application.
+An OpenAI API key is always required and supplies all default models. The optional compatibility path for Anthropic or Google newsletter generation additionally requires that provider's key. Keys are passed explicitly to the library; load environment variables in your application.
 
 ## Quick Start
 
@@ -99,7 +99,6 @@ export async function runNewsletter(repositories: {
   const newsletterId = await generateNewsletter({
     ...repositories,
     openAIApiKey: apiKey,
-    contentGeneration: { provider: 'openai', apiKey },
     logger: console,
   });
 
@@ -163,18 +162,33 @@ Uses the **Provider-Service pattern** from `@llm-newsletter-kit/core`. See [core
 
 ## Configuration and models
 
-Defaults below describe the checked-in code, not provider recommendations. This package uses AI SDK 7 and the OpenAI, Anthropic, and Google SDK adapters.
+Defaults below describe the checked-in code, not provider recommendations. `openAIApiKey` is required and supplies every default model.
 
-| Stage              | Provider  | Default model            |
-| ------------------ | --------- | ------------------------ |
-| Tag classification | OpenAI    | `gpt-5.6-luna`           |
-| Image analysis     | OpenAI    | `gpt-5.6-terra`          |
-| Importance scoring | OpenAI    | `gpt-5.6-terra`          |
-| Content generation | OpenAI    | `gpt-5.6-sol`            |
-| Content generation | Anthropic | `claude-sonnet-4-6`      |
-| Content generation | Google    | `gemini-3.1-pro-preview` |
+| Stage                 | Provider | Default model |
+| --------------------- | -------- | ------------- |
+| Heritage bid triage   | OpenAI   | `gpt-6-luna`  |
+| Tag classification    | OpenAI   | `gpt-6-luna`  |
+| Image analysis        | OpenAI   | `gpt-6-sol`   |
+| Importance scoring    | OpenAI   | `gpt-6-sol`   |
+| Newsletter generation | OpenAI   | `gpt-6-sol`   |
 
-Select content generation with `contentGeneration: { provider, apiKey, model? }`. `model` overrides that provider's default. Analysis models are configured in [analysis.provider.ts](./src/providers/analysis.provider.ts).
+Override any task independently with `models`. Every value is an OpenAI model ID:
+
+```typescript
+await generateNewsletter({
+  ...repositories,
+  openAIApiKey,
+  models: {
+    heritageBidTriage: 'gpt-6-luna',
+    classifyTags: 'gpt-6-luna',
+    analyzeImages: 'gpt-6-sol',
+    determineImportance: 'gpt-6-sol',
+    generateNewsletter: 'gpt-6-sol',
+  },
+});
+```
+
+The optional `contentGeneration: { provider, apiKey, model? }` compatibility path still supports Anthropic and Google for newsletter generation. `models.generateNewsletter` takes precedence when both are supplied.
 
 [src/config/index.ts](./src/config/index.ts) defines Korean output (`outputLanguage: '한국어'`), the cultural heritage domain (`expertField: ['문화유산']`), brand name, `subscribePageUrl`, LLM `maxRetries: 5`, chain `stopAfterAttempt: 3`, and generation `temperature: 0.3`. Publication settings are `minimumArticleCountForIssue: 5` and `priorityArticleScoreThreshold: 8`; the core engine evaluates them. In the locked core 3.0.6 implementation, the count check skips **5 or fewer** candidates unless at least one has importance score >= 8. An empty candidate list is always skipped.
 
@@ -379,7 +393,7 @@ export const newsletterConfig: NewsletterConfig = {
 - Replace Korean heritage sites with your domain sources
 - Implement parsers in `src/parsers/`
 
-**4. Switch content generation LLM provider** (optional):
+**4. Switch content generation LLM provider** (legacy compatibility):
 
 Content generation supports **3 built-in providers** — just change `contentGeneration.provider`:
 
@@ -396,7 +410,7 @@ const contentGeneration: ContentGenerationConfig = {
 };
 ```
 
-Default models: openai=`gpt-5.6-sol`, anthropic=`claude-sonnet-4-6`, google=`gemini-3.1-pro-preview`
+Compatibility defaults: openai=`gpt-6-sol`, anthropic=`claude-sonnet-4-6`, google=`gemini-3.1-pro-preview`
 
 To change analysis providers, update both `src/providers/analysis.provider.ts` (provider type and models) and `src/newsletter-generator.ts` (provider construction), using a compatible AI SDK provider. Also adapt domain-specific minimum-score rules in the analysis provider, output language and expert fields in config, package metadata, and the GitHub Actions runner/Slack settings for your fork.
 

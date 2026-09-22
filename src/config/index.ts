@@ -90,6 +90,13 @@ export const robotsExemptOrigins: readonly string[] = [
  * LLM configuration
  */
 export const llmConfig = {
+  models: {
+    heritageBidTriage: 'gpt-6-luna',
+    classifyTags: 'gpt-6-luna',
+    analyzeImages: 'gpt-6-sol',
+    determineImportance: 'gpt-6-sol',
+    generateNewsletter: 'gpt-6-sol',
+  },
   maxRetries: 5,
   chainStopAfterAttempt: 3,
   generation: {
