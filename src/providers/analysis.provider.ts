@@ -69,7 +69,16 @@ export class AnalysisProvider implements CoreAnalysisProvider {
     this.determineScoreOptions = {
       model: models.determineImportance,
       minimumImportanceScoreRules: [
-        // Korean Archaeological Society news: minimum score 6
+        // Archaeology-only news boards: minimum score 6. Everything they carry
+        // concerns the field, so the floor keeps routine-looking posts from
+        // being scored as if they came from a general board.
+        //
+        // The association's 사업공고 and 입찰공고 boards deliberately carry no
+        // floor. They are tender boards, and tenders are judged by what the
+        // work is: a 지표조사 발주 is archaeology news, while the 전기·통신·소방
+        // 공사 and 감리용역 that appear alongside it are construction. A floor of
+        // 6 cannot express the 1 that policy calls for, so it would pin exactly
+        // the notices the importance prompt is meant to drop.
         {
           targetUrl: 'https://www.kras.or.kr/?r=kras&m=bbs&bid=notice',
           minScore: 6,
@@ -108,14 +117,6 @@ export class AnalysisProvider implements CoreAnalysisProvider {
         },
         {
           targetUrl: 'https://www.kaah.kr/placeopen',
-          minScore: 6,
-        },
-        {
-          targetUrl: 'https://www.kaah.kr/bussopen',
-          minScore: 6,
-        },
-        {
-          targetUrl: 'https://www.kaah.kr/ipcopen',
           minScore: 6,
         },
         {
