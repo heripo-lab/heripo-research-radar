@@ -322,7 +322,7 @@ npm run format             # src/ 코드 포맷
 npm run format:check       # src/ 포맷 검사
 ```
 
-빌드는 ESM·타입 선언·JavaScript 소스맵을 생성하며 런타임 의존성은 외부 의존성으로 유지합니다. CI는 PR과 수동 실행 시 최소 지원 Node.js 버전(24.15.0), 최신 24.x, 최신 26.x에서 `npm ci`, `format:check`, `lint:ci`, `typecheck`, `build`를 수행합니다. 포맷 스크립트 범위는 `src/`이며 README는 `npx prettier --check README.md README-ko.md`로 별도 검사합니다. `npm test`는 Node의 실험적 모듈 모킹과 설치된 AI SDK 테스트 도구를 사용하며 LLM 호출·크롤링·이메일 발송을 하지 않습니다.
+빌드는 ESM·타입 선언·JavaScript 소스맵을 생성하며 런타임 의존성은 외부 의존성으로 유지합니다. CI는 PR과 수동 실행 시 최소 지원 Node.js 버전(24.15.0), 최신 24.x, 최신 26.x에서 `npm ci`, `format:check`, `lint:ci`, `typecheck`, `npm test`, `build`를 수행합니다. 포맷 스크립트 범위는 `src/`이며 README는 `npx prettier --check README.md README-ko.md`로 별도 검사합니다. `npm test`는 Node의 실험적 모듈 모킹과 설치된 AI SDK 테스트 도구를 사용하며 LLM 호출·크롤링·이메일 발송을 하지 않습니다.
 
 유지보수용 `release`는 npm에 배포하며, `release:patch`, `release:minor`, `release:major`는 버전을 올린 뒤 배포합니다. 버전 훅은 먼저 빌드하고 커밋·태그를 push하며, `prepublishOnly`는 배포 전에 빌드합니다.
 
