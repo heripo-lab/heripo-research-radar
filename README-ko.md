@@ -73,6 +73,22 @@ npm install @heripo/research-radar '@llm-newsletter-kit/core@~3.0.6'
 
 기사 분석에는 OpenAI API 키가 필요합니다. 콘텐츠 생성에는 선택한 프로바이더(OpenAI / Anthropic / Google)의 키가 필요하며, OpenAI를 선택하면 같은 키를 사용할 수 있습니다. 라이브러리에 키를 명시적으로 전달하므로 환경변수 로딩은 애플리케이션에서 처리하세요.
 
+### 전이 의존성 보안
+
+이 저장소의 `package-lock.json`은 개발과 CI에서 audit한 의존성 버전을 고정합니다. 소비자는 자신의 잠금 파일을 사용하므로 이 라이브러리 업데이트만으로 기존의 취약한 전이 의존성이 교체된다고 보장할 수 없습니다. 현재 AI SDK와 Cheerio의 의존성 범위는 여전히 `undici` 7.29.0을 허용합니다.
+
+npm 애플리케이션에서는 다음 설정을 **애플리케이션 루트의 `package.json`**에 병합해 수정된 undici 7.x를 요구하세요. 설치된 라이브러리의 overrides는 npm이 무시합니다([npm overrides 문서](https://docs.npmjs.com/cli/v11/configuring-npm/package-json/#overrides)). 이 선택자는 jsdom이 사용하는 undici 8.x에는 적용되지 않습니다.
+
+```json
+{
+  "overrides": {
+    "undici@>=7.0.0 <7.30.0": "^7.30.0"
+  }
+}
+```
+
+`npm install` 실행 후 `npm ls undici`와 `npm audit`으로 확인하고 애플리케이션의 갱신된 잠금 파일을 커밋하세요. 애플리케이션이 undici 7.x를 직접 의존성으로 선언했다면 해당 범위도 `^7.30.0`으로 올리세요. 이 저장소의 audit 통과는 소비자의 의존성 트리에 대한 보안 보장이 아닙니다.
+
 ## 빠른 시작
 
 저장소 인터페이스 4개를 구현한 뒤 아래 애플리케이션 함수를 호출하세요. 예제의 저장소 구현은 호출자가 제공하며, 패키지에 데이터베이스 어댑터가 포함되어 있지는 않습니다.
