@@ -187,7 +187,7 @@ export async function runNewsletter(repositories: {
 | 중요도 평가        | OpenAI     | `gpt-6-sol`  |
 | 뉴스레터 생성      | OpenAI     | `gpt-6-sol`  |
 
-`models`로 각 작업의 모델을 독립적으로 덮어쓸 수 있습니다. 모든 값은 OpenAI 모델 ID입니다.
+`models`로 각 작업의 모델을 독립적으로 덮어쓸 수 있습니다. 각 값은 OpenAI 모델 ID 문자열 또는 설치된 `ai` 패키지의 공개 타입인 `LanguageModel`을 받습니다. 문자열은 `openAIApiKey`를 사용하고, 프로바이더 모델 객체는 그대로 전달되어 자체 프로바이더 설정을 사용합니다. 생략하거나 `undefined`로 전달한 필드는 `llmConfig.models`의 기본값을 유지합니다.
 
 ```typescript
 await generateNewsletter({
@@ -203,7 +203,29 @@ await generateNewsletter({
 });
 ```
 
-Anthropic·Google로 뉴스레터를 생성하는 기존 `contentGeneration: { provider, apiKey, model? }` 경로도 호환성을 위해 유지합니다. 두 설정을 함께 전달하면 `models.generateNewsletter`가 우선합니다.
+모델 ID 문자열과 프로바이더 객체를 함께 사용할 수 있습니다:
+
+```typescript
+import { createAnthropic } from '@ai-sdk/anthropic';
+import { createGoogleGenerativeAI } from '@ai-sdk/google';
+
+const anthropic = createAnthropic({ apiKey: anthropicApiKey });
+const google = createGoogleGenerativeAI({ apiKey: googleApiKey });
+
+await generateNewsletter({
+  ...repositories,
+  openAIApiKey,
+  models: {
+    heritageBidTriage: 'gpt-6-luna',
+    classifyTags: google('gemini-3.1-pro-preview'),
+    analyzeImages: google('gemini-3.1-pro-preview'),
+    determineImportance: anthropic('claude-sonnet-4-6'),
+    generateNewsletter: anthropic('claude-sonnet-4-6'),
+  },
+});
+```
+
+Anthropic·Google로 뉴스레터를 생성하는 기존 `contentGeneration: { provider, apiKey, model? }` 경로도 호환성을 위해 유지합니다. 두 설정을 함께 전달하면 `models.generateNewsletter`가 우선합니다. `models.generateNewsletter`를 생략하거나 `undefined`로 전달하면 기존 `contentGeneration`의 프로바이더·모델 선택을 사용합니다. 두 설정 모두 없으면 `llmConfig.models.generateNewsletter`를 사용합니다. 모든 단계에 모델 객체를 전달해도 `openAIApiKey`는 계속 필수입니다.
 
 [src/config/index.ts](./src/config/index.ts)에는 한국어 출력(`outputLanguage: '한국어'`), 문화유산 분야(`expertField: ['문화유산']`), 브랜드명, `subscribePageUrl`, LLM `maxRetries: 5`, 체인 `stopAfterAttempt: 3`, 생성 `temperature: 0.3`이 정의되어 있습니다. 발행 설정은 `minimumArticleCountForIssue: 5`, `priorityArticleScoreThreshold: 8`이며 core 엔진에서 판정합니다. 잠금 파일의 core 3.0.6 구현은 중요도 8 이상 기사가 없을 때 후보가 **5개 이하이면 생략**합니다. 후보가 없으면 항상 생략합니다.
 
@@ -292,14 +314,15 @@ npm run build              # dist/ 정리 및 Rollup으로 빌드 (ESM + types)
 npm run lint               # 소스 파일 린트
 npm run lint:fix           # 린트 및 자동 수정
 npm run lint:ci            # CI용 quiet 린트
-npm run typecheck          # TypeScript 타입 체크
+npm run typecheck          # 소스와 테스트 TypeScript 타입 체크
+npm test                   # 외부 호출 없는 모델 설정 회귀 테스트
 
 # 포맷팅
 npm run format             # src/ 코드 포맷
 npm run format:check       # src/ 포맷 검사
 ```
 
-빌드는 ESM·타입 선언·JavaScript 소스맵을 생성하며 런타임 의존성은 외부 의존성으로 유지합니다. CI는 PR과 수동 실행 시 최소 지원 Node.js 버전(24.15.0), 최신 24.x, 최신 26.x에서 `npm ci`, `format:check`, `lint:ci`, `typecheck`, `build`를 수행합니다. 포맷 스크립트 범위는 `src/`이며 README는 `npx prettier --check README.md README-ko.md`로 별도 검사합니다. `npm test` 스크립트는 없습니다.
+빌드는 ESM·타입 선언·JavaScript 소스맵을 생성하며 런타임 의존성은 외부 의존성으로 유지합니다. CI는 PR과 수동 실행 시 최소 지원 Node.js 버전(24.15.0), 최신 24.x, 최신 26.x에서 `npm ci`, `format:check`, `lint:ci`, `typecheck`, `build`를 수행합니다. 포맷 스크립트 범위는 `src/`이며 README는 `npx prettier --check README.md README-ko.md`로 별도 검사합니다. `npm test`는 Node의 실험적 모듈 모킹과 설치된 AI SDK 테스트 도구를 사용하며 LLM 호출·크롤링·이메일 발송을 하지 않습니다.
 
 유지보수용 `release`는 npm에 배포하며, `release:patch`, `release:minor`, `release:major`는 버전을 올린 뒤 배포합니다. 버전 훅은 먼저 빌드하고 커밋·태그를 push하며, `prepublishOnly`는 배포 전에 빌드합니다.
 
@@ -427,7 +450,7 @@ const contentGeneration: ContentGenerationConfig = {
 
 호환 경로 기본 모델: openai=`gpt-6-sol`, anthropic=`claude-sonnet-4-6`, google=`gemini-3.1-pro-preview`
 
-분석 프로바이더를 변경하려면 호환되는 AI SDK 프로바이더에 맞춰 `src/providers/analysis.provider.ts`의 프로바이더 타입·모델과 `src/newsletter-generator.ts`의 생성 코드를 함께 변경하세요. 분석 provider의 도메인별 최소 점수 규칙, 설정의 출력 언어·전문 분야, 패키지 메타데이터, GitHub Actions 러너·Slack 설정도 포크에 맞게 조정하세요.
+분석 프로바이더를 변경하려면 호환되는 AI SDK 모델 객체를 `models.classifyTags`, `models.analyzeImages`, `models.determineImportance`로 전달하세요. 분석 provider의 도메인별 최소 점수 규칙, 설정의 출력 언어·전문 분야, 패키지 메타데이터, GitHub Actions 러너·Slack 설정도 포크에 맞게 조정하세요.
 
 **검색 키워드**: `heripo`, `김홍연`, `#D2691E`, `openai`, `gpt-5`, `contentGeneration`
 

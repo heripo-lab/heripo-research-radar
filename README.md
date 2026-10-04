@@ -188,7 +188,7 @@ Defaults below describe the checked-in code, not provider recommendations. `open
 | Importance scoring    | OpenAI   | `gpt-6-sol`   |
 | Newsletter generation | OpenAI   | `gpt-6-sol`   |
 
-Override any task independently with `models`. Every value is an OpenAI model ID:
+Override any task independently with `models`. Each value accepts an OpenAI model ID string or the installed `ai` package's public `LanguageModel` type. Strings use `openAIApiKey`; provider model objects are passed through unchanged and use their own provider configuration. Omitted or `undefined` fields retain the defaults in `llmConfig.models`:
 
 ```typescript
 await generateNewsletter({
@@ -204,7 +204,29 @@ await generateNewsletter({
 });
 ```
 
-The optional `contentGeneration: { provider, apiKey, model? }` compatibility path still supports Anthropic and Google for newsletter generation. `models.generateNewsletter` takes precedence when both are supplied.
+Mix model ID strings and provider objects in the same configuration:
+
+```typescript
+import { createAnthropic } from '@ai-sdk/anthropic';
+import { createGoogleGenerativeAI } from '@ai-sdk/google';
+
+const anthropic = createAnthropic({ apiKey: anthropicApiKey });
+const google = createGoogleGenerativeAI({ apiKey: googleApiKey });
+
+await generateNewsletter({
+  ...repositories,
+  openAIApiKey,
+  models: {
+    heritageBidTriage: 'gpt-6-luna',
+    classifyTags: google('gemini-3.1-pro-preview'),
+    analyzeImages: google('gemini-3.1-pro-preview'),
+    determineImportance: anthropic('claude-sonnet-4-6'),
+    generateNewsletter: anthropic('claude-sonnet-4-6'),
+  },
+});
+```
+
+The optional `contentGeneration: { provider, apiKey, model? }` compatibility path still supports Anthropic and Google for newsletter generation. `models.generateNewsletter` takes precedence when both are supplied. If `models.generateNewsletter` is omitted or `undefined`, the existing `contentGeneration` provider/model selection applies; without either option, generation uses `llmConfig.models.generateNewsletter`. `openAIApiKey` remains required even when supplying model objects for every stage.
 
 [src/config/index.ts](./src/config/index.ts) defines Korean output (`outputLanguage: '한국어'`), the cultural heritage domain (`expertField: ['문화유산']`), brand name, `subscribePageUrl`, LLM `maxRetries: 5`, chain `stopAfterAttempt: 3`, and generation `temperature: 0.3`. Publication settings are `minimumArticleCountForIssue: 5` and `priorityArticleScoreThreshold: 8`; the core engine evaluates them. In the locked core 3.0.6 implementation, the count check skips **5 or fewer** candidates unless at least one has importance score >= 8. An empty candidate list is always skipped.
 
@@ -293,14 +315,15 @@ npm run build              # clean dist/ and build with Rollup (ESM + types)
 npm run lint               # lint source files
 npm run lint:fix           # lint with autofix
 npm run lint:ci            # quiet CI lint
-npm run typecheck          # TypeScript type-check
+npm run typecheck          # TypeScript type-check (source and tests)
+npm test                   # offline model configuration regression tests
 
 # formatting
 npm run format             # format src/ with Prettier
 npm run format:check       # check src/ formatting
 ```
 
-The build emits ESM, declarations, and a JavaScript sourcemap; runtime dependencies remain external. CI runs `npm ci`, `format:check`, `lint:ci`, `typecheck`, and `build` on the minimum supported Node.js version (24.15.0), the latest 24.x, and the latest 26.x for pull requests and manual dispatch. Formatting scripts cover `src/`; to check the READMEs explicitly, run `npx prettier --check README.md README-ko.md`. There is no `npm test` script.
+The build emits ESM, declarations, and a JavaScript sourcemap; runtime dependencies remain external. CI runs `npm ci`, `format:check`, `lint:ci`, `typecheck`, and `build` on the minimum supported Node.js version (24.15.0), the latest 24.x, and the latest 26.x for pull requests and manual dispatch. Formatting scripts cover `src/`; to check the READMEs explicitly, run `npx prettier --check README.md README-ko.md`. `npm test` uses Node's experimental module mocking and the installed AI SDK test utilities; it makes no LLM, crawling, or email requests.
 
 For maintainers, `release` publishes to npm, while `release:patch`, `release:minor`, and `release:major` bump the version and publish. The version hooks build first and push commits/tags; `prepublishOnly` builds before publishing.
 
@@ -428,7 +451,7 @@ const contentGeneration: ContentGenerationConfig = {
 
 Compatibility defaults: openai=`gpt-6-sol`, anthropic=`claude-sonnet-4-6`, google=`gemini-3.1-pro-preview`
 
-To change analysis providers, update both `src/providers/analysis.provider.ts` (provider type and models) and `src/newsletter-generator.ts` (provider construction), using a compatible AI SDK provider. Also adapt domain-specific minimum-score rules in the analysis provider, output language and expert fields in config, package metadata, and the GitHub Actions runner/Slack settings for your fork.
+To change analysis providers, pass compatible AI SDK model objects through `models.classifyTags`, `models.analyzeImages`, and `models.determineImportance`. Also adapt domain-specific minimum-score rules in the analysis provider, output language and expert fields in config, package metadata, and the GitHub Actions runner/Slack settings for your fork.
 
 **Search keywords**: `heripo`, `kimhongyeon`, `#D2691E`, `openai`, `gpt-5`, `contentGeneration`
 
