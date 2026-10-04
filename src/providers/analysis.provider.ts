@@ -4,6 +4,7 @@ import type {
   AnalysisProvider as CoreAnalysisProvider,
   UnscoredArticle,
 } from '@llm-newsletter-kit/core';
+import type { LanguageModel } from 'ai';
 
 import type { ArticleRepository, TagRepository } from '../types/dependencies';
 
@@ -11,9 +12,9 @@ import { llmConfig, maximumImportanceScoreByDomain } from '../config';
 import { toHeritageDomainTag } from '../prompts';
 
 export interface AnalysisModels {
-  classifyTags: ReturnType<OpenAIProvider>;
-  analyzeImages: ReturnType<OpenAIProvider>;
-  determineImportance: ReturnType<OpenAIProvider>;
+  classifyTags: LanguageModel;
+  analyzeImages: LanguageModel;
+  determineImportance: LanguageModel;
 }
 
 /**
@@ -22,10 +23,10 @@ export interface AnalysisModels {
  * - Tag classification, image analysis, importance scoring
  */
 export class AnalysisProvider implements CoreAnalysisProvider {
-  classifyTagOptions: { model: ReturnType<OpenAIProvider> };
-  analyzeImagesOptions: { model: ReturnType<OpenAIProvider> };
+  classifyTagOptions: { model: LanguageModel };
+  analyzeImagesOptions: { model: LanguageModel };
   determineScoreOptions: {
-    model: ReturnType<OpenAIProvider>;
+    model: LanguageModel;
     minimumImportanceScoreRules: Array<{
       targetUrl: string;
       minScore: number;

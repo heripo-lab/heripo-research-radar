@@ -34,6 +34,7 @@
     "lint:fix": "eslint --fix ./src",
     "lint:ci": "eslint --quiet ./src",
     "typecheck": "tsc --noEmit",
+    "test": "node --experimental-test-module-mocks --import tsx --test test/*.test.ts",
     "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,css,md,mdx}\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx,json,css,md,mdx}\"",
     "dev:crawler": "tsx watch --env-file-if-exists=dev-tools/crawler-debugger/.env dev-tools/crawler-debugger/server.ts",

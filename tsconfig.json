@@ -14,9 +14,6 @@
       "test/*": ["./test/*"]
     }
   },
-  "include": ["src/**/*", "vitest.config.ts", "vitest.setup.ts"],
-  "exclude": [
-    "node_modules",
-    "**/__tests__/*"
-  ]
+  "include": ["src/**/*", "test/**/*", "vitest.config.ts", "vitest.setup.ts"],
+  "exclude": ["node_modules", "**/__tests__/*"]
 }
