@@ -74,6 +74,22 @@ npm install @heripo/research-radar '@llm-newsletter-kit/core@~3.0.6'
 
 An OpenAI API key is always required and supplies all default models. The optional compatibility path for Anthropic or Google newsletter generation additionally requires that provider's key. Keys are passed explicitly to the library; load environment variables in your application.
 
+### Transitive dependency security
+
+This repository's `package-lock.json` resolves the audited dependencies for development and CI. Consumers use their own lockfiles, so upgrading this library alone does not guarantee that an existing vulnerable transitive dependency is replaced. The current AI SDK and Cheerio dependency ranges still allow `undici` 7.29.0.
+
+For npm applications, merge the following into the **application's root `package.json`** to require a patched undici 7.x version. Overrides declared by an installed library are ignored by npm ([npm overrides documentation](https://docs.npmjs.com/cli/v11/configuring-npm/package-json/#overrides)). The selector leaves undici 8.x, used by jsdom, unchanged.
+
+```json
+{
+  "overrides": {
+    "undici@>=7.0.0 <7.30.0": "^7.30.0"
+  }
+}
+```
+
+Run `npm install`, inspect `npm ls undici`, and run `npm audit`, then commit the application's updated lockfile. If your application directly depends on undici 7.x, update that direct dependency to `^7.30.0` as well. A clean audit of this repository does not certify a consumer's dependency graph.
+
 ## Quick Start
 
 Implement the four repository interfaces for your storage layer, then call this application-level wrapper. The repositories in this example are supplied by the caller; no database adapter is bundled.
