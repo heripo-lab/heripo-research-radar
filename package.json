@@ -65,7 +65,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@llm-newsletter-kit/core": "^3.0.7",
+    "@llm-newsletter-kit/core": "^3.0.8",
     "@trivago/prettier-plugin-sort-imports": "^6.0.2",
     "@types/express": "^5.0.6",
     "@types/jsdom": "^30.0.0",
