@@ -7,9 +7,6 @@ import { Agent, fetch as undiciFetch } from 'undici';
 import { robotsExemptOrigins } from '~/config';
 import { createCrawlingTargetGroups } from '~/config/crawling-targets';
 import { createRobotsGate } from '~/crawling/robots';
-import { createAlioFetch } from '~/parsers/alio.parser';
-import { createG2bFetch } from '~/parsers/g2b.parser';
-import { createGojobsFetch } from '~/parsers/gojobs.parser';
 import { createKrasFetch } from '~/parsers/kras.parser';
 
 /**
@@ -116,29 +113,49 @@ const robotsGate = createRobotsGate(proxyFetch ?? unsafeFetch, {
 // Same composition as CrawlingProvider: robots.txt outermost, then the KRAS
 // detail adapter. Without the adapter, KRAS detail pages parse to an empty
 // body and the checks fail for a reason production never hits.
-// The two job boards are served from data.go.kr open APIs. Without a key they
-// answer with an empty list, which would read as a parser failure, so they are
-// skipped instead — see the check loop below.
+const checkFetch = createKrasFetch(robotsGate.fetch);
+
+// Probe the open APIs directly: adapters parse/filter/paginate responses and
+// can turn HTTP 200 into 502. Health checks only care about upstream HTTP 200.
 const PUBLIC_DATA_API_KEY = process.env.PUBLIC_DATA_API_KEY ?? '';
-const PUBLIC_JOB_TARGET_IDS = [
+const PUBLIC_DATA_TARGET_IDS = new Set([
   '나라일터_채용공고',
   '알리오_공공기관_채용공고',
   '나라장터_입찰공고',
-];
+]);
 
-// No `triage` is passed here on purpose: the 나라장터 adapter falls back to the
-// deterministic filter, so this check makes no LLM calls. It answers whether a
-// source still fetches and parses, and it runs daily in CI where there is no
-// model key and no budget for one.
-const checkFetch = createG2bFetch(
-  createAlioFetch(
-    createGojobsFetch(createKrasFetch(robotsGate.fetch), {
-      apiKey: PUBLIC_DATA_API_KEY,
-    }),
-    { apiKey: PUBLIC_DATA_API_KEY },
-  ),
-  { apiKey: PUBLIC_DATA_API_KEY },
-);
+function publicDataProbeUrls(targetId: string): string[] {
+  const end = new Date();
+  const begin = new Date(end.getTime() - 24 * 60 * 60 * 1000);
+  const query = `serviceKey=${PUBLIC_DATA_API_KEY}&numOfRows=1&pageNo=1`;
+
+  switch (targetId) {
+    case '나라일터_채용공고':
+      return [
+        `https://apis.data.go.kr/1760000/PblJobService/getList?${query}` +
+          `&Begin_de=${begin.toISOString().slice(0, 10)}&End_de=${end.toISOString().slice(0, 10)}`,
+      ];
+    case '알리오_공공기관_채용공고':
+      return [
+        `https://apis.data.go.kr/1051000/recruitment/list?${query}&resultType=json&ongoingYn=Y`,
+      ];
+    case '나라장터_입찰공고': {
+      // This API interprets its timezone-less query dates as Korean time.
+      const toKstDateTime = (date: Date) =>
+        new Date(date.getTime() + 9 * 60 * 60 * 1000)
+          .toISOString()
+          .replace(/[-:T]/g, '')
+          .slice(0, 12);
+      return ['Servc', 'Cnstwk'].map(
+        (operation) =>
+          `https://apis.data.go.kr/1230000/ad/BidPublicInfoService/getBidPblancListInfo${operation}?${query}` +
+          `&type=json&inqryDiv=1&inqryBgnDt=${toKstDateTime(begin)}&inqryEndDt=${toKstDateTime(end)}`,
+      );
+    }
+    default:
+      return [];
+  }
+}
 
 const crawlingTargetGroups = createCrawlingTargetGroups(checkFetch);
 
@@ -170,6 +187,8 @@ interface TargetCheckResult {
   groupName: string;
   targetName: string;
   url: string;
+  /** Set only for public-data API probes; no parser metrics are collected. */
+  apiHttpStatus: string | null;
   listItemCount: number;
   listErrors: string[];
   detailUrl: string;
@@ -262,6 +281,7 @@ async function checkTarget(
     groupName,
     targetName: target.name,
     url: target.url,
+    apiHttpStatus: null,
     listItemCount: 0,
     listErrors: [],
     detailUrl: '',
@@ -275,48 +295,65 @@ async function checkTarget(
   };
 
   try {
-    // Step 1: Fetch and parse list
-    const listHtml = await fetchHtml(target.url);
-    const items = await target.parseList(listHtml);
-
-    result.listItemCount = items.length;
-    result.listErrors = validateListResult(items);
-
-    // Step 2: Fetch and parse a detail item.
-    //
-    // Normally the first one, but a board's newest post can be unreadable for
-    // reasons that say nothing about the parser — KRAS answers 401 for a
-    // members-only post (`🔒 비밀글입니다.`). Fall through to the next few items
-    // so one such post at the top does not fail the target every day.
-    const candidates = items
-      .filter((item) => item.detailUrl?.startsWith('http'))
-      .slice(0, DETAIL_CHECK_ATTEMPTS);
-
-    if (candidates.length > 0) {
-      for (const [index, item] of candidates.entries()) {
-        try {
-          const detailHtml = await fetchHtml(item.detailUrl);
-          const detail = await target.parseDetail(detailHtml);
-
-          result.detailUrl = item.detailUrl;
-          result.detailItemIndex = index + 1;
-          result.detailContentLength = detail.detailContent?.trim().length ?? 0;
-          result.detailErrors = validateDetailResult(detail);
-          break;
-        } catch (err) {
-          const message = err instanceof Error ? err.message : String(err);
-          result.detailSkipped.push(`#${index + 1}: ${message}`);
-
-          // Every candidate failed — report against the first, as before.
-          if (index === candidates.length - 1) {
-            result.detailUrl = candidates[0].detailUrl;
-            result.detailItemIndex = 1;
-            throw err;
-          }
+    const probeUrls = publicDataProbeUrls(String(target.id));
+    if (probeUrls.length > 0) {
+      for (const url of probeUrls) {
+        const response = await (proxyFetch ?? unsafeFetch)(url, {
+          signal: AbortSignal.timeout(30_000),
+        });
+        // Release the connection without reading or validating the payload.
+        await response.body?.cancel();
+        if (response.status !== 200) {
+          const operation = new URL(url).pathname.split('/').pop();
+          throw new Error(`${operation}: HTTP ${response.status}`);
         }
       }
-    } else if (result.listErrors.length === 0) {
-      result.detailErrors.push('Skipped: no valid detailUrl in list results');
+      result.apiHttpStatus = `HTTP 200 (${probeUrls.length} endpoint${probeUrls.length > 1 ? 's' : ''})`;
+    } else {
+      // Step 1: Fetch and parse list
+      const listHtml = await fetchHtml(target.url);
+      const items = await target.parseList(listHtml);
+
+      result.listItemCount = items.length;
+      result.listErrors = validateListResult(items);
+
+      // Step 2: Fetch and parse a detail item.
+      //
+      // Normally the first one, but a board's newest post can be unreadable for
+      // reasons that say nothing about the parser — KRAS answers 401 for a
+      // members-only post (`🔒 비밀글입니다.`). Fall through to the next few items
+      // so one such post at the top does not fail the target every day.
+      const candidates = items
+        .filter((item) => item.detailUrl?.startsWith('http'))
+        .slice(0, DETAIL_CHECK_ATTEMPTS);
+
+      if (candidates.length > 0) {
+        for (const [index, item] of candidates.entries()) {
+          try {
+            const detailHtml = await fetchHtml(item.detailUrl);
+            const detail = await target.parseDetail(detailHtml);
+
+            result.detailUrl = item.detailUrl;
+            result.detailItemIndex = index + 1;
+            result.detailContentLength =
+              detail.detailContent?.trim().length ?? 0;
+            result.detailErrors = validateDetailResult(detail);
+            break;
+          } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            result.detailSkipped.push(`#${index + 1}: ${message}`);
+
+            // Every candidate failed — report against the first, as before.
+            if (index === candidates.length - 1) {
+              result.detailUrl = candidates[0].detailUrl;
+              result.detailItemIndex = 1;
+              throw err;
+            }
+          }
+        }
+      } else if (result.listErrors.length === 0) {
+        result.detailErrors.push('Skipped: no valid detailUrl in list results');
+      }
     }
   } catch (err) {
     result.thrownError = err instanceof Error ? err.message : String(err);
@@ -402,7 +439,7 @@ async function main() {
 
       if (
         !PUBLIC_DATA_API_KEY &&
-        PUBLIC_JOB_TARGET_IDS.includes(String(target.id))
+        PUBLIC_DATA_TARGET_IDS.has(String(target.id))
       ) {
         skippedTargets.push({
           groupName: group.name,
@@ -417,10 +454,9 @@ async function main() {
 
       // A board its own robots.txt disallows is policy, not a parser
       // regression, so it must not fail the run.
-      const verdict = await robotsGate.isAllowed(
-        target.url,
-        getRandomUserAgent(),
-      );
+      const verdict = PUBLIC_DATA_TARGET_IDS.has(String(target.id))
+        ? { allowed: true as const }
+        : await robotsGate.isAllowed(target.url, getRandomUserAgent());
 
       if (!verdict.allowed) {
         skippedTargets.push({
@@ -461,7 +497,7 @@ async function main() {
             ? ` — detail from item #${result.detailItemIndex}, skipped ${result.detailSkipped.join('; ')}`
             : '';
         console.log(
-          `PASS (${result.listItemCount} items, ${result.detailContentLength} chars, ${result.durationMs}ms)${fellThrough}`,
+          `PASS (${result.apiHttpStatus ?? `${result.listItemCount} items, ${result.detailContentLength} chars`}, ${result.durationMs}ms)${fellThrough}`,
         );
       } else {
         console.log('FAIL');
@@ -490,8 +526,9 @@ async function main() {
     allResults.map((r) => ({
       Group: r.groupName,
       Target: r.targetName,
-      Items: r.listItemCount,
-      'Detail (chars)': r.detailContentLength,
+      'API HTTP': r.apiHttpStatus ?? '—',
+      Items: r.apiHttpStatus ? '—' : r.listItemCount,
+      'Detail (chars)': r.apiHttpStatus ? '—' : r.detailContentLength,
       Status: r.status.toUpperCase(),
       'Duration (ms)': r.durationMs,
       Errors: [r.thrownError ?? '', ...r.listErrors, ...r.detailErrors]

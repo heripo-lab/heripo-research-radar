@@ -381,16 +381,18 @@ npm run health-check:proxy  # 같은 .env 로딩 및 --proxy 전달
 npm run health-check -- --skip-khs-excavation  # 국가유산청 발굴조사 보고서/현장공개 제외
 ```
 
-**타겟별 검증 항목**:
+**크롤링 타겟별 검증 항목**:
 
 - `parseList()`: 비어있지 않은 배열인지, 첫 항목의 title/date가 비어있지 않고 detailUrl이 `http`로 시작하는지 확인
 - `parseDetail()`: 첫 상세 항목을 조회하여 양끝 공백을 제거한 `detailContent`가 20자 이상인지 확인
+
+공공정보 API(알리오·나라일터·나라장터)는 `PUBLIC_DATA_API_KEY`를 포함해 목록 엔드포인트에 `numOfRows=1`로 직접 요청하고 HTTP 200 응답 여부만 확인합니다. 나라장터는 용역·공사 엔드포인트를 각각 확인합니다. 응답 본문·결과 코드·목록·상세 내용은 검증하지 않으며, 키가 없으면 세 타겟을 건너뜁니다.
 
 정확한 ID 또는 이름으로 제외하려면 `--skip-target=<id-or-name>` 또는 `--skip-target <id-or-name>`을 반복해서 사용하세요. `npm run health-check -- --help`로 크롤링 없이 옵션을 볼 수 있습니다. 대상별 첫 항목을 검사하는 실제 사이트 스모크 체크이며 전체 기사 검증이나 LLM 분석을 수행하지는 않습니다. 검사 대상 중 하나라도 실패하면 종료 코드 1을 반환합니다.
 
 **출력**: 콘솔 테이블 요약 + CI 연동을 위한 compact 텍스트 서머리
 
-**CI**: [.github/workflows/parser-health-check.yml](./.github/workflows/parser-health-check.yml)은 매일 UTC 08:00(KST 17:00) 또는 수동으로 실행되며, `org-linux` 러너와 30분 작업 제한을 사용합니다. 국가유산청 발굴조사 보고서·현장공개 2개를 제외합니다. 헬스체크는 운영과 동일하게 robots.txt 게이트와 KRAS 상세 어댑터를 조합하므로, 거부되는 게시판은 실패가 아니라 건너뜀으로 보고됩니다. 현재 설정에서는 16개 건너뜀, 55개 검사입니다. 상세 검사는 목록의 최대 3개 항목까지 시도하므로, 맨 위 글 하나가 읽히지 않아도 타깃이 실패하지 않습니다. Slack 알림에는 `SLACK_BOT_TOKEN` secret과 `SLACK_ALERT_DEV_CHANNEL` 저장소 변수가 필요합니다. 포크에서 그대로 실행하려면 같은 러너 및 알림 구성이 필요합니다. CLI는 관련 환경변수가 있으면 GitHub Actions 출력과 작업 요약도 기록합니다.
+**CI**: [.github/workflows/parser-health-check.yml](./.github/workflows/parser-health-check.yml)은 매일 UTC 08:00(KST 17:00) 또는 수동으로 실행되며, `org-linux` 러너와 30분 작업 제한을 사용합니다. 국가유산청 발굴조사 보고서·현장공개 2개를 제외합니다. 크롤링 타겟의 헬스체크는 운영과 동일하게 robots.txt 게이트와 KRAS 상세 어댑터를 조합하므로, 거부되는 게시판은 실패가 아니라 건너뜀으로 보고됩니다. 현재 설정에서는 16개 건너뜀, 55개 검사입니다. 상세 검사는 목록의 최대 3개 항목까지 시도하므로, 맨 위 글 하나가 읽히지 않아도 타깃이 실패하지 않습니다. Slack 알림에는 `SLACK_BOT_TOKEN` secret과 `SLACK_ALERT_DEV_CHANNEL` 저장소 변수가 필요합니다. 포크에서 그대로 실행하려면 같은 러너 및 알림 구성이 필요합니다. CLI는 관련 환경변수가 있으면 GitHub Actions 출력과 작업 요약도 기록합니다.
 
 ## 🤝 기여하기
 
