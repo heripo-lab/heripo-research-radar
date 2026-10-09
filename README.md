@@ -382,16 +382,18 @@ npm run health-check:proxy  # Load the same .env and pass --proxy
 npm run health-check -- --skip-khs-excavation  # Skip KHS excavation report/site-open targets
 ```
 
-**What it checks per target**:
+**What it checks per crawling target**:
 
 - `parseList()`: Non-empty array; checks the first item for non-empty title/date and a detailUrl starting with `http`
 - `parseDetail()`: Fetches the first detail item and checks trimmed `detailContent` length >= 20
+
+For the public-data APIs (ALIO, 나라일터, 나라장터), it sends the configured `PUBLIC_DATA_API_KEY` directly to each list endpoint with `numOfRows=1` and checks only for HTTP 200. 나라장터 probes both service and construction endpoints. Response bodies, result codes, list contents, and details are not validated. These three targets are skipped when the key is missing.
 
 Use repeatable `--skip-target=<id-or-name>` or `--skip-target <id-or-name>` to exclude targets by exact ID or name. `npm run health-check -- --help` lists options without crawling. This is a live-site smoke check of the first item per target, not full article validation; it does not invoke LLM analysis. The script exits with code 1 if any checked target fails.
 
 **Output**: Console table summary + compact text summary for CI integrations.
 
-**CI**: [.github/workflows/parser-health-check.yml](./.github/workflows/parser-health-check.yml) runs daily at 08:00 UTC (17:00 KST), or manually, on an `org-linux` runner with a 30-minute job timeout. It skips the two KHS excavation report/site-open targets. The health-check composes the same fetch as production — robots.txt gate, then the KRAS detail adapter — so disallowed boards are reported as skipped rather than failed: 16 skipped and 55 checked with the current configuration. The detail check tries up to three list items, so one unreadable post at the top of a board does not fail the target. Slack notifications require the `SLACK_BOT_TOKEN` secret and `SLACK_ALERT_DEV_CHANNEL` repository variable. Forks need a matching runner and notification configuration to use this workflow unchanged. The CLI also writes GitHub Actions outputs and a job summary when their environment variables are present.
+**CI**: [.github/workflows/parser-health-check.yml](./.github/workflows/parser-health-check.yml) runs daily at 08:00 UTC (17:00 KST), or manually, on an `org-linux` runner with a 30-minute job timeout. It skips the two KHS excavation report/site-open targets. For crawling targets, the health-check composes the same fetch as production — robots.txt gate, then the KRAS detail adapter — so disallowed boards are reported as skipped rather than failed: 16 skipped and 55 checked with the current configuration. The detail check tries up to three list items, so one unreadable post at the top of a board does not fail the target. Slack notifications require the `SLACK_BOT_TOKEN` secret and `SLACK_ALERT_DEV_CHANNEL` repository variable. Forks need a matching runner and notification configuration to use this workflow unchanged. The CLI also writes GitHub Actions outputs and a job summary when their environment variables are present.
 
 ## 🤝 Contributing
 
