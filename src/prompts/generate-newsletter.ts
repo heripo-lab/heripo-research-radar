@@ -174,20 +174,13 @@ ${LEADING_CATEGORIES.map((c, i) => `   ${i + 1}) ${c}`).join('\n')}
    각 분류는 Heading 2(\`##\`)를 쓴다. 분류 안에서는 중요한 것부터 배치한다.
    같은 내용이 여러 출처에서 왔다면 가장 자세한 것을 기준으로 한 번만 쓴다.
 
-3. **마무리**: 마지막 섹션은 반드시 \`## 📌 마무리\`로 쓴다. 두 부분으로 구성한다.
+3. **마무리**: 생성하는 본문의 마지막 섹션은 \`## 📌 마무리\`로 쓴다.
 
-   가. 오늘 다룬 주요 소식을 한 문단으로 정리한다. 행사명 뒤에 날짜를 괄호로 덧붙인다.
-       (예: "국립김해박물관 가야 특별전 개막(9.18.), 백제학회 학술대회(9.18.) 등을 다루었습니다.")
-
-   나. 이어서 \`**임박한 주요 일정 및 마감:**\` 줄을 넣고, 날짜순 글머리 목록을 만든다.
-       한 줄에 한 날짜씩 묶고, 같은 날 여러 건이면 \` / \`로 잇는다.
-       형식: \`- **2026년 9월 18일(금):** 국립김해박물관 특별전 개막 / 백제학회 학술대회\`
-       마감 시각이 있으면 날짜 뒤에 붙인다. (예: \`- **2026년 9월 21일(월) 18:00:** …\`)
-       본문에서 다룬 일정만 넣는다. 날짜가 없는 소식은 넣지 않는다.
-       **\`${TRAILING_CATEGORY}\` 섹션의 입찰 마감은 이 목록에 넣지 않는다.** 마감 일시는
-       그 섹션의 표에 이미 있고, 목록까지 입찰로 채우면 학술대회·채용·전시 일정이 묻힌다.
-       학술대회, 채용 접수, 전시 개막·종료, 신청 마감 같은 나머지 일정만 넣는다.
-
+   오늘 다룬 주요 소식을 한 문단으로 정리한다. 행사명 뒤에 날짜를 괄호로 덧붙인다.
+   (예: "국립김해박물관 가야 특별전 개막(9.18.), 백제학회 학술대회(9.18.) 등을 다루었습니다.")
+   일정·마감의 요약 목록이나 별도 마감 섹션은 만들지 않는다. 원문에서 검증된 향후 7일 이내
+   마감은 생성 후 코드가 링크를 포함한 한 표로 모은다. 본문 개별 기사에 필요한 날짜는 그대로 쓴다.
+   구독·소개·공유 문구와 구독 링크도 쓰지 않는다. 마감 표 뒤에 코드가 한 번만 넣는다.
    다음 호 예고나 문의처는 쓰지 않는다.`;
 }
 
@@ -231,23 +224,8 @@ ${common}`;
 export const generateNewsletterPrompt: PromptBuilder<GenerateNewsletterPromptContext> =
   {
     system: (context) => {
-      const {
-        newsletterBrandName,
-        expertFields,
-        outputLanguage,
-        dateService,
-        subscribePageUrl,
-      } = context;
-
-      const subscribeRule = subscribePageUrl
-        ? `\n\n## 공유 안내\n\n\`## 📌 마무리\` 섹션 **뒤에**, 본문 맨 마지막 줄로 링크를 한 번만 넣는다. 브리핑이나 본문 중간에는 넣지 않는다.
-
-이 글을 읽는 사람은 **이미 구독자**다. 구독을 권하지 말고, 동료에게 **소개·공유**해달라고 청한다.
-("구독해보세요", "정기 수신을 신청하세요" 같은 표현은 쓰지 않는다.)
-
-형식: 공유를 청하는 한 문장 + \`[${newsletterBrandName} 구독하기](${subscribePageUrl})\` 링크.
-(예: "이 소식이 도움이 되셨다면 동료 연구자에게도 소개해주시면 좋겠습니다. [${newsletterBrandName} 구독하기](${subscribePageUrl})")`
-        : '';
+      const { newsletterBrandName, expertFields, outputLanguage, dateService } =
+        context;
 
       return `당신은 "${newsletterBrandName}"의 뉴스레터 편집자다. 독자는 ${expertFields.join(', ')} 분야의 연구자, 기관 담당자, 현장 전문가다.
 
@@ -259,7 +237,7 @@ ${VOICE_RULES}
 
 ${structure(context)}
 
-${EDITORIAL_RULES}${subscribeRule}
+${EDITORIAL_RULES}
 
 ${LENGTH_CONTROL}
 

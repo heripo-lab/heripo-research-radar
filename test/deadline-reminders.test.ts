@@ -140,7 +140,20 @@ test('both branding modes append reminders once to HTML and saved Markdown witho
     };
     await provider.saveNewsletter({ newsletter, usedArticles: [] });
     assert.equal(newsletter.content, '오늘 생성한 본문');
-    assert.equal(saved?.content, `오늘 생성한 본문\n\n${markdown}`);
+    assert.ok(
+      saved?.content.startsWith(
+        `오늘 생성한 본문\n\n<!-- research-radar-deadline-reminders -->\n${markdown}`,
+      ),
+    );
+    assert.ok(
+      saved!.content.indexOf('이 소식이 도움이') >
+        saved!.content.indexOf('다가오는 마감'),
+    );
+    assert.ok(
+      saved!.htmlBody.indexOf('이 소식이 도움이') >
+        saved!.htmlBody.indexOf('다가오는 마감'),
+    );
+    assert.equal(saved!.htmlBody.split('이 소식이 도움이').length, 2);
     assert.equal(saved?.htmlBody.split('다가오는 마감').length, 2);
     assert.ok(
       saved?.htmlBody.indexOf('다가오는 마감')! >

@@ -206,8 +206,17 @@ in `templateOptions.deadlineRemindersMarkdown`. It emits a date-ordered section
 of at most five active deadlines within seven days, preserving supplied times
 without inventing 23:59. The provider appends it to saved Markdown and HTML after
 generation, so reminders add no LLM context. The host owns D-7/D-1 scheduling,
-precise expiration/timezone checks, repeat suppression and exclusion of actions
-already covered in this issue. Empty sections are omitted.
+repeat suppression and publication history. Empty sections are omitted.
+
+Prefer `templateOptions.verifiedDeadlineReminders` with freshly verified historical
+actions. The provider merges these with source-grounded deadlines from articles
+actually linked in the generated body, sorts them, and displays at most five
+active deadlines within seven days in one linked section. Fresh verification
+takes precedence over a collected G2B revision's cached date. The older
+`deadlineRemindersMarkdown` option remains available for pre-rendered sections.
+The generation prompt no longer produces a separate closing schedule list.
+The colleague-sharing notice follows the highlighted deadline section in both
+saved Markdown and HTML; no eligible deadlines means no empty section.
 
 ### Optional generation settings
 

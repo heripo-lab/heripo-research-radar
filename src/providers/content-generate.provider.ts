@@ -14,9 +14,17 @@ import type {
   NewsletterTemplateOptions,
 } from '../types/dependencies';
 
+import { JSDOM } from 'jsdom';
+import juice from 'juice';
+
 import { createNewsletterHtmlTemplate } from '~/templates/newsletter-html';
 
 import { llmConfig, newsletterConfig } from '../config';
+import {
+  escapeLabel,
+  renderVerifiedDeadlineReminders,
+} from '../deadlines/reminders';
+import { collectNewsletterDeadlines } from '../deadlines/section';
 
 /**
  * Content generation provider implementation
@@ -42,7 +50,7 @@ export class ContentGenerateProvider implements CoreContentGenerateProvider {
     model: LanguageModel,
     private readonly articleRepository: ArticleRepository,
     private readonly newsletterRepository: NewsletterRepository,
-    templateOptions?: NewsletterTemplateOptions,
+    private readonly templateOptions?: NewsletterTemplateOptions,
     brandName?: string,
   ) {
     this.model = model;
@@ -118,16 +126,55 @@ export class ContentGenerateProvider implements CoreContentGenerateProvider {
     newsletter: Newsletter;
     usedArticles: ArticleForGenerateContent[];
   }): Promise<{ id: string | number }> {
-    return this.newsletterRepository.saveNewsletter(
-      this.deadlineRemindersMarkdown
-        ? {
-            ...input,
-            newsletter: {
-              ...input.newsletter,
-              content: `${input.newsletter.content}\n\n${this.deadlineRemindersMarkdown}`,
-            },
-          }
-        : input,
+    const { newsletter, usedArticles } = input;
+    // Reject conflicting model output before any persistence, rather than
+    // silently publishing a second schedule block or misplaced sharing link.
+    if (
+      /^\s*(?:\*\*임박한 주요 일정 및 마감:|##\s+⏰\s*다가오는 마감)/m.test(
+        newsletter.content,
+      )
+    )
+      throw new Error('Generated body contains an additional deadline summary');
+    if (newsletter.content.includes(this.subscribePageUrl))
+      throw new Error(
+        'Generated body contains the sharing link before the closing block',
+      );
+    const reminders = collectNewsletterDeadlines(
+      newsletter.content,
+      usedArticles,
+      this.templateOptions?.verifiedDeadlineReminders ?? [],
     );
+    const markdown =
+      this.templateOptions?.verifiedDeadlineReminders !== undefined
+        ? renderVerifiedDeadlineReminders(reminders, newsletter.date)
+        : this.deadlineRemindersMarkdown ||
+          renderVerifiedDeadlineReminders(reminders, newsletter.date);
+    const share = `이 소식이 도움이 되셨다면 동료 연구자에게도 소개해주시면 좋겠습니다. [${escapeLabel(this.newsletterBrandName)} 구독하기](${this.subscribePageUrl})`;
+    // Render only the closing block with the original stylesheet. Keep core's
+    // already-rendered article body, separators, title and announcements intact.
+    const closingDocument = new JSDOM(
+      juice(
+        createNewsletterHtmlTemplate({
+          ...this.templateOptions,
+          deadlineRemindersMarkdown: markdown,
+          shareNoticeMarkdown: share,
+        }),
+      ),
+    ).window.document;
+    const dom = new JSDOM(newsletter.htmlBody);
+    const document = dom.window.document;
+    const closing = document.querySelector('[data-research-radar-closing]');
+    if (!closing) throw new Error('Newsletter closing block not found');
+    closing.outerHTML = closingDocument.querySelector(
+      '[data-research-radar-closing]',
+    )!.outerHTML;
+    return this.newsletterRepository.saveNewsletter({
+      ...input,
+      newsletter: {
+        ...newsletter,
+        content: `${newsletter.content}${markdown ? `\n\n<!-- research-radar-deadline-reminders -->\n${markdown}` : ''}\n\n<!-- research-radar-share-notice -->\n${share}`,
+        htmlBody: dom.serialize(),
+      },
+    });
   }
 }

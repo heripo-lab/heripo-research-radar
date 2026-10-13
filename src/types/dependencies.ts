@@ -10,6 +10,8 @@ import type {
   UrlString,
 } from '@llm-newsletter-kit/core';
 
+import type { VerifiedDeadlineReminder } from '../deadlines/reminders';
+
 /**
  * Repository interface for task management
  */
@@ -145,6 +147,12 @@ interface BaseNewsletterTemplateOptions {
    * Appended to saved Markdown and HTML after generation; never fed to the LLM.
    */
   deadlineRemindersMarkdown?: string;
+
+  /** Freshly verified historical actions, merged with deadlines from included articles. */
+  verifiedDeadlineReminders?: VerifiedDeadlineReminder[];
+
+  /** Deterministic colleague-sharing notice, placed after the unified deadline section. */
+  shareNoticeMarkdown?: string;
 
   /**
    * Markdown content for KRAS news section.

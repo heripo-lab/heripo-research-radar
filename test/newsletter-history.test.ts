@@ -170,7 +170,11 @@ for (const exhausted of [false, true]) {
     } else {
       assert.equal(await engine.generate(), 'issue');
       assert.equal(saved[0].title, newTitle);
-      assert.equal(saved[0].content, `${content}\n\n${reminder}`);
+      assert.ok(
+        saved[0].content.startsWith(
+          `${content}\n\n<!-- research-radar-deadline-reminders -->\n${reminder}`,
+        ),
+      );
       assert.ok(
         !JSON.stringify(model.doGenerateCalls).includes('지난 호에서 안내한'),
       );

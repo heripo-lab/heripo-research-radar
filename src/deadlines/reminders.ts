@@ -13,7 +13,7 @@ export interface VerifiedDeadlineReminder {
   verificationStatus: 'verified';
 }
 
-function escapeLabel(value: string): string {
+export function escapeLabel(value: string): string {
   return value
     .replace(/\s+/g, ' ')
     .replace(/&/g, '&amp;')
@@ -26,6 +26,7 @@ function escapeLabel(value: string): string {
 export function renderVerifiedDeadlineReminders(
   reminders: VerifiedDeadlineReminder[],
   publicationDate: IsoDateString,
+  now = new Date(),
 ): string {
   const date = new DateService(publicationDate).getPublicationISODateString();
   const publicationMs = Date.parse(`${date}T00:00:00Z`);
@@ -63,6 +64,24 @@ export function renderVerifiedDeadlineReminders(
           return [];
         if (deadline.timeZone)
           new Intl.DateTimeFormat('en', { timeZone: deadline.timeZone });
+        if (deadline.time) {
+          const parts = new Intl.DateTimeFormat('en', {
+            timeZone: deadline.timeZone ?? 'Asia/Seoul',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hourCycle: 'h23',
+          }).formatToParts(now);
+          const values = Object.fromEntries(
+            parts.map(({ type, value }) => [type, value]),
+          );
+          const localNow = `${values.year}-${values.month}-${values.day} ${values.hour}:${values.minute}:${values.second}`;
+          const closes = `${deadline.date} ${deadline.time.length === 5 ? `${deadline.time}:00` : deadline.time}`;
+          if (closes <= localNow) return [];
+        }
       } catch {
         return [];
       }
@@ -94,7 +113,7 @@ export function renderVerifiedDeadlineReminders(
       : '';
     const label = d.title.includes(d.kind) ? d.title : `${d.title} · ${d.kind}`;
     lines.push(
-      `| [${escapeLabel(label)}](${url}) | ${d.date}${time} · ${days ? `D-${days}` : '오늘 마감'} |`,
+      `| [${escapeLabel(label)}](${url}) | **${d.date}${time} · ${days ? `D-${days}` : '오늘 마감'}** |`,
     );
     if (lines.length === 5) break;
   }
