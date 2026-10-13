@@ -97,6 +97,96 @@ test('fresh G2B verification supersedes a cached revision without claiming anoth
   assert.equal(distinct.length, 2);
 });
 
+for (const cancelled of [false, true]) {
+  test(`renamed G2B ${cancelled ? 'cancellations' : 'extensions'} replace only the same notice action`, () => {
+    const url = (notice: string, revision: string) =>
+      `https://www.g2b.go.kr/link/PNPE027_01/single/?bidPbancNo=${notice}&bidPbancOrd=${revision}` as const;
+    const bid = {
+      ...deadline,
+      title: '발굴조사 용역',
+      kind: '입찰서 제출',
+      date: '2026-10-17',
+      evidence: '입찰서 제출은 2026-10-17 마감입니다.',
+    };
+    const registration = {
+      ...bid,
+      kind: '참가 등록',
+      date: '2026-10-18',
+      evidence: '참가 등록은 2026-10-18 마감입니다.',
+    };
+    const current = {
+      ...article,
+      title: bid.title,
+      url: url('R26BK00123', '001'),
+      detailContent: `${bid.evidence}\n${registration.evidence}`,
+      deadlines: [bid, registration],
+    };
+    const separateNotice = {
+      ...current,
+      id: 2,
+      url: url('R26BK00999', '001'),
+      deadlines: [bid],
+    };
+    const latest = {
+      deadline: {
+        ...bid,
+        title: cancelled ? '발굴조사 용역 취소' : '발굴조사 용역 정정',
+        kind: '입찰서  제출',
+        date: cancelled ? null : '2026-10-20',
+        status: cancelled ? ('cancelled' as const) : ('active' as const),
+        evidence: cancelled
+          ? '입찰서 제출이 취소되었습니다.'
+          : '입찰서 제출은 2026-10-20 마감입니다.',
+      },
+      url: url('R26BK00123', '002'),
+      verificationStatus: 'verified' as const,
+    };
+    const merged = collectNewsletterDeadlines(
+      `[기사](${current.url})\n[별도 공고](${separateNotice.url})`,
+      [current, separateNotice],
+      [latest],
+    );
+    assert.deepEqual(merged, [
+      latest,
+      {
+        deadline: registration,
+        url: current.url,
+        verificationStatus: 'verified',
+      },
+      {
+        deadline: bid,
+        url: separateNotice.url,
+        verificationStatus: 'verified',
+      },
+    ]);
+    const markdown = renderVerifiedDeadlineReminders(
+      merged.filter((item) => item.url !== separateNotice.url),
+      '2026-10-13',
+      new Date('2026-10-13T00:00:00Z'),
+    );
+    assert.ok(!markdown.includes('2026-10-17'));
+    assert.ok(markdown.includes('참가 등록'));
+    assert.equal(markdown.includes('2026-10-20'), !cancelled);
+    assert.ok(!markdown.includes('발굴조사 용역 취소'));
+  });
+}
+
+test('non-G2B actions with distinct titles retain their separate identities', () => {
+  const other = {
+    deadline: { ...deadline, title: '별도 학술대회', date: '2026-10-20' },
+    url: article.url,
+    verificationStatus: 'verified' as const,
+  };
+  assert.deepEqual(
+    collectNewsletterDeadlines(
+      '[기사](https://example.com/a)',
+      [article],
+      [other],
+    ),
+    [other, { deadline, url: article.url, verificationStatus: 'verified' }],
+  );
+});
+
 test('current and historical deadlines share one linked card, followed by exactly one sharing notice', async () => {
   let saved: Newsletter | undefined;
   const unexpected = async () => {

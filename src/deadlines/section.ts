@@ -68,12 +68,16 @@ export function collectNewsletterDeadlines(
       .map((link) => canonicalSourceUrl(link.getAttribute('href')!))
       .filter(Boolean),
   );
-  const identity = (item: VerifiedDeadlineReminder) =>
-    JSON.stringify([
-      sourceKey(item.url),
-      normalize(item.deadline.title),
+  const identity = (item: VerifiedDeadlineReminder) => {
+    const source = sourceKey(item.url);
+    // G2B revisions can rename a notice. Match its action by kind, never by
+    // the display title; retain distinct kinds within the same notice.
+    return JSON.stringify([
+      source,
+      source?.startsWith('g2b:') ? null : normalize(item.deadline.title),
       normalize(item.deadline.kind),
     ]);
+  };
   const result = verified.filter(
     (item) => item.verificationStatus === 'verified' && sourceKey(item.url),
   );
