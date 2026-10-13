@@ -1,6 +1,7 @@
 import type { ArticleDeadline, UrlString } from '@llm-newsletter-kit/core';
 import type { LanguageModelUsage } from 'ai';
 
+import { isArticleDeadlineGrounded } from '@llm-newsletter-kit/core';
 import * as cheerio from 'cheerio';
 import { createHash } from 'node:crypto';
 
@@ -274,7 +275,10 @@ export async function refreshResearchRadarDeadlines(
   try {
     const extracted =
       config.previous?.sourceHash === source.sourceHash &&
-      config.previous.deadlines.length
+      config.previous.deadlines.length &&
+      config.previous.deadlines.every((deadline) =>
+        isArticleDeadlineGrounded(deadline, source.article),
+      )
         ? { deadlines: config.previous.deadlines, usage: undefined }
         : await extractResearchRadarDeadlines({
             model: config.model,

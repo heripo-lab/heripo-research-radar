@@ -362,3 +362,41 @@ test('the default 나라장터 fetch preserves the uncached-detail fallback with
   );
   assert.equal(calls, 1);
 });
+
+test('unchanged source hashes cannot reuse legacy deadlines with invented dates or times', async () => {
+  const response = krasFetch(deadline.evidence);
+  const current = await fetchResearchRadarDeadlineSource({
+    source,
+    ...response,
+  });
+  assert.equal(current.status, 'fetched');
+  if (current.status !== 'fetched') throw Error('Expected fetched source');
+  const invented = {
+    ...deadline,
+    date: '2026-11-27',
+    time: '18:00',
+    timeZone: 'Asia/Seoul',
+  };
+  const model = deadlineModel([deadline]);
+  const repaired = await refreshResearchRadarDeadlines({
+    source,
+    model,
+    ...krasFetch(deadline.evidence),
+    previous: { sourceHash: current.sourceHash, deadlines: [invented] },
+    maxRetries: 0,
+  });
+  assert.equal(repaired.status, 'verified');
+  if (repaired.status !== 'verified')
+    throw Error('Expected repaired extraction');
+  assert.deepEqual(repaired.deadlines, [deadline]);
+  assert.equal(model.doGenerateCalls.length, 1);
+  const rejected = await refreshResearchRadarDeadlines({
+    source,
+    model: deadlineModel([invented]),
+    ...krasFetch(deadline.evidence),
+    maxRetries: 0,
+  });
+  assert.equal(rejected.status, 'unverified');
+  if (rejected.status !== 'unverified') throw Error('Expected held reminder');
+  assert.equal(rejected.reason, 'no-supported-deadlines');
+});

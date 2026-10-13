@@ -185,6 +185,10 @@ notice number's revisions and returns the latest revision's URL. No daily list,
 triage, scoring or persistence runs. `fetchResearchRadarDeadlineSource()` is
 available separately for source-only reads (`status: 'fetched'`).
 
+Dates and times must match their verbatim evidence. Even an unchanged source
+hash cannot reuse a cache that fails the current grounding rules; it is extracted
+again. Unsupported values hold the reminder.
+
 - `status: 'verified'` includes the fresh article, deadlines, `sourceHash`,
   `checkedAt` and model usage. Explicit extensions use the new date; explicit
   cancellations have `status: 'cancelled'`. Passing `previous: { sourceHash,

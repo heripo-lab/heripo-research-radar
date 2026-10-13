@@ -182,6 +182,9 @@ model, customFetch?, publicDataApiKey? })`를 호출하세요. 기존 수집과 
 않습니다. 원문 읽기만 필요하면 `fetchResearchRadarDeadlineSource()`를 쓸 수
 있으며 성공 상태는 `status: 'fetched'`입니다.
 
+날짜·시각은 인용 근거의 실제 표기와 대조합니다. 원문 해시가 같아도 이전 캐시의
+근거가 현재 검증 기준을 통과하지 못하면 다시 추출하며, 지원되지 않는 값은 재안내를 보류합니다.
+
 - `status: 'verified'`는 최신 기사·마감, `sourceHash`, `checkedAt`, 모델 사용량을
   반환합니다. 명시적 연장은 변경 날짜로, 명시적 취소는 `status: 'cancelled'`로
   추출합니다. 성공한 재확인의 `previous: { sourceHash, deadlines }`를 전달하면
