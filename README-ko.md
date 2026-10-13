@@ -66,10 +66,10 @@ Powered by LLM Newsletter Kit
 ## 설치
 
 ```bash
-npm install @heripo/research-radar '@llm-newsletter-kit/core@~3.0.6'
+npm install @heripo/research-radar '@llm-newsletter-kit/core@~3.1.0'
 ```
 
-**요구사항**: Node.js 24.x에서는 24.15.0 이상, 또는 Node.js 26.0.0 이상과 ESM 애플리케이션이 필요합니다. Node.js 25는 지원하지 않습니다. 패키지는 `dist/index.js`, TypeScript 선언 파일(`dist/index.d.ts`), JavaScript 소스맵을 제공합니다. Core 엔진은 peer dependency이며 현재 지원 범위는 `~3.0.6`입니다. 나라장터 타깃은 core가 타임아웃을 거는 크롤링 fetch 안에서 선별을 수행하는데, 3.0.6 이전의 core는 타임아웃을 재시도 대상에서 제외했기 때문에 이 타깃이 매 실행 첫 시도에서 실패했습니다. 그래서 하한이 3.0.6입니다. 생성 프롬프트가 의존하는 자가검증 재시도 상한(3.0.5 추가)도 여전히 필요합니다.
+**요구사항**: Node.js 24.x에서는 24.15.0 이상, 또는 Node.js 26.0.0 이상과 ESM 애플리케이션이 필요합니다. Node.js 25는 지원하지 않습니다. 패키지는 `dist/index.js`, TypeScript 선언 파일(`dist/index.d.ts`), JavaScript 소스맵을 제공합니다. Core 엔진은 peer dependency이며 현재 지원 범위는 `~3.1.0`입니다. 최근 제목 중복 방지와 원문 근거 기반 마감일 추출을 위해 core 3.1.0 이상이 필요합니다. 이 버전에는 Radar가 의존하는 크롤링 타임아웃 재시도 처리와 생성 자가검증 재시도 상한도 포함됩니다.
 
 기사 분석에는 OpenAI API 키가 필요합니다. 콘텐츠 생성에는 선택한 프로바이더(OpenAI / Anthropic / Google)의 키가 필요하며, OpenAI를 선택하면 같은 키를 사용할 수 있습니다. 라이브러리에 키를 명시적으로 전달하므로 환경변수 로딩은 애플리케이션에서 처리하세요.
 
@@ -148,12 +148,10 @@ export async function runNewsletter(repositories: {
 
 후보 기사 선정은 저장소 구현의 책임입니다. 이미 발행한 기사를 제외할 수 있도록 필요에 따라 `usedArticles` 연결 정보를 저장하세요. 회차는 파이프라인 시작 전에 초기화되며, 동시 실행 조정은 애플리케이션이나 DB에서 처리해야 합니다. `TaskService`의 실행 상태 관리는 인스턴스 내부에 한정되므로 다른 프로세스나 별도의 `generateNewsletter()` 호출까지 잠그지는 않습니다.
 
-### 최근 제목과 원문 마감 추출 (로컬 코어 개발)
+### 최근 제목과 원문 마감 추출
 
-이 API는 아직 릴리즈하지 않은 형제 core의 변경이 필요합니다. 검증 전에
-`npm run dev:link-core`로 `../llm-newsletter-kit-core`를 빌드하고 연결하세요.
-manifest의 배포 버전 범위는 유지하며 `npm ci`를 실행하면 연결이 사라집니다.
-core 릴리즈와 의존성 최저 버전 갱신 전에는 이 브랜치를 배포하지 않습니다.
+이 API는 배포된 core 3.1.0 패키지를 사용합니다. 피어 의존성 범위는
+`~3.1.0`이며 `npm ci`로 로컬 core 연결 없이 잠금 파일의 패키지를 설치합니다.
 
 - 선택적 `NewsletterRepository.findRecentPublishedTitles({ fromInclusive, toExclusive })`를
   구현하면 제목 중복 방지를 켭니다. Radar는 발행일 직전 7일의 날짜 범위를
@@ -290,7 +288,7 @@ await generateNewsletter({
 
 Anthropic·Google로 뉴스레터를 생성하는 기존 `contentGeneration: { provider, apiKey, model? }` 경로도 호환성을 위해 유지합니다. 두 설정을 함께 전달하면 `models.generateNewsletter`가 우선합니다. `models.generateNewsletter`를 생략하거나 `undefined`로 전달하면 기존 `contentGeneration`의 프로바이더·모델 선택을 사용합니다. 두 설정 모두 없으면 `llmConfig.models.generateNewsletter`를 사용합니다. 모든 단계에 모델 객체를 전달해도 `openAIApiKey`는 계속 필수입니다.
 
-[src/config/index.ts](./src/config/index.ts)에는 한국어 출력(`outputLanguage: '한국어'`), 문화유산 분야(`expertField: ['문화유산']`), 브랜드명, `subscribePageUrl`, LLM `maxRetries: 5`, 체인 `stopAfterAttempt: 3`, 생성 `temperature: 0.3`이 정의되어 있습니다. 발행 설정은 `minimumArticleCountForIssue: 5`, `priorityArticleScoreThreshold: 8`이며 core 엔진에서 판정합니다. 잠금 파일의 core 3.0.6 구현은 중요도 8 이상 기사가 없을 때 후보가 **5개 이하이면 생략**합니다. 후보가 없으면 항상 생략합니다.
+[src/config/index.ts](./src/config/index.ts)에는 한국어 출력(`outputLanguage: '한국어'`), 문화유산 분야(`expertField: ['문화유산']`), 브랜드명, `subscribePageUrl`, LLM `maxRetries: 5`, 체인 `stopAfterAttempt: 3`, 생성 `temperature: 0.3`이 정의되어 있습니다. 발행 설정은 `minimumArticleCountForIssue: 5`, `priorityArticleScoreThreshold: 8`이며 core 엔진에서 판정합니다. 잠금 파일의 core 3.1.0 구현은 중요도 8 이상 기사가 없을 때 후보가 **5개 이하이면 생략**합니다. 후보가 없으면 항상 생략합니다.
 
 ## 크롤링 대상과 파서
 
