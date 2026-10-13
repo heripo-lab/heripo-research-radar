@@ -217,6 +217,8 @@ normalized `kind`; distinct action kinds remain separate. The older
 The generation prompt no longer produces a separate closing schedule list.
 The colleague-sharing notice follows the highlighted deadline section in both
 saved Markdown and HTML; no eligible deadlines means no empty section.
+Set `templateOptions.shareNoticeMarkdown` to customize this notice in both
+formats, omit it for the default, or pass an empty string to suppress it.
 
 ### Optional generation settings
 

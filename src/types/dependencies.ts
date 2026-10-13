@@ -151,7 +151,10 @@ interface BaseNewsletterTemplateOptions {
   /** Freshly verified historical actions, merged with deadlines from included articles. */
   verifiedDeadlineReminders?: VerifiedDeadlineReminder[];
 
-  /** Deterministic colleague-sharing notice, placed after the unified deadline section. */
+  /**
+   * Custom colleague-sharing Markdown, placed after the unified deadline section
+   * in both saved Markdown and HTML. Omit for the default; use '' to suppress it.
+   */
   shareNoticeMarkdown?: string;
 
   /**

@@ -311,6 +311,80 @@ test('an issue without eligible deadlines has no empty card and still ends with 
   );
 });
 
+for (const isKrasNewsletter of [false, true]) {
+  for (const shareNoticeMarkdown of [
+    '함께 읽을 동료에게 전달해주세요. [소식 공유 안내](https://example.com/share)',
+    '',
+  ]) {
+    test(`saved sharing notices respect ${shareNoticeMarkdown ? 'custom text' : 'explicit suppression'} in ${isKrasNewsletter ? 'KRAS' : 'Radar'} mode`, async () => {
+      let saved: Newsletter | undefined;
+      const unexpected = async () => {
+        throw new Error('Unexpected external effect');
+      };
+      const provider = new ContentGenerateProvider(
+        new MockLanguageModelV4(),
+        {
+          findByUrls: unexpected,
+          saveCrawledArticles: unexpected,
+          findUnscoredArticles: unexpected,
+          updateAnalysis: unexpected,
+          findCandidatesForNewsletter: unexpected,
+        },
+        {
+          getNextIssueOrder: async () => 1,
+          saveNewsletter: async ({ newsletter }) => {
+            saved = newsletter;
+            return { id: 1 };
+          },
+        },
+        {
+          isKrasNewsletter,
+          shareNoticeMarkdown,
+          verifiedDeadlineReminders: [],
+        },
+      );
+      await provider.saveNewsletter({
+        newsletter: {
+          title: '학술대회 연구 발표 신청 안내',
+          content: '[학술대회](https://example.com/a)',
+          htmlBody: provider.htmlTemplate.html,
+          date: '2026-10-13',
+          issueOrder: 1,
+        },
+        usedArticles: [article],
+      });
+      const document = new JSDOM(saved!.htmlBody).window.document;
+      const closing = document.querySelector('[data-research-radar-closing]')!;
+      const card = closing.querySelector(
+        '[data-research-radar-unified-deadlines]',
+      )!;
+      assert.ok(card);
+      assert.ok(!closing.textContent.includes('이 소식이 도움이 되셨다면'));
+      assert.ok(!saved!.content.includes('이 소식이 도움이 되셨다면'));
+      assert.equal(
+        saved!.content.includes('<!-- research-radar-share-notice -->'),
+        Boolean(shareNoticeMarkdown),
+      );
+      if (shareNoticeMarkdown) {
+        assert.ok(saved!.content.endsWith(shareNoticeMarkdown));
+        const share = closing.querySelector(
+          'a[href="https://example.com/share"]',
+        )!;
+        assert.ok(share);
+        assert.equal(
+          closing.querySelectorAll('a[href="https://example.com/share"]')
+            .length,
+          1,
+        );
+        assert.ok(card.compareDocumentPosition(share) & 4);
+      } else {
+        assert.equal(closing.querySelectorAll(':scope > p').length, 0);
+        assert.ok(!saved!.content.includes(provider.subscribePageUrl));
+      }
+    });
+  }
+}
+
 test('generation instructions delegate deadline summaries and sharing to deterministic composition', () => {
   const prompt = researchRadarPromptProvider.contentGenerate!
     .generateNewsletter!.system!({

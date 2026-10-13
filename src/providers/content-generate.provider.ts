@@ -149,7 +149,9 @@ export class ContentGenerateProvider implements CoreContentGenerateProvider {
         ? renderVerifiedDeadlineReminders(reminders, newsletter.date)
         : this.deadlineRemindersMarkdown ||
           renderVerifiedDeadlineReminders(reminders, newsletter.date);
-    const share = `이 소식이 도움이 되셨다면 동료 연구자에게도 소개해주시면 좋겠습니다. [${escapeLabel(this.newsletterBrandName)} 구독하기](${this.subscribePageUrl})`;
+    const share =
+      this.templateOptions?.shareNoticeMarkdown ??
+      `이 소식이 도움이 되셨다면 동료 연구자에게도 소개해주시면 좋겠습니다. [${escapeLabel(this.newsletterBrandName)} 구독하기](${this.subscribePageUrl})`;
     // Render only the closing block with the original stylesheet. Keep core's
     // already-rendered article body, separators, title and announcements intact.
     const closingDocument = new JSDOM(
@@ -172,7 +174,7 @@ export class ContentGenerateProvider implements CoreContentGenerateProvider {
       ...input,
       newsletter: {
         ...newsletter,
-        content: `${newsletter.content}${markdown ? `\n\n<!-- research-radar-deadline-reminders -->\n${markdown}` : ''}\n\n<!-- research-radar-share-notice -->\n${share}`,
+        content: `${newsletter.content}${markdown ? `\n\n<!-- research-radar-deadline-reminders -->\n${markdown}` : ''}${share ? `\n\n<!-- research-radar-share-notice -->\n${share}` : ''}`,
         htmlBody: dom.serialize(),
       },
     });
