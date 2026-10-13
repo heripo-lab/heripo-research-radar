@@ -149,6 +149,34 @@ All interfaces are exported from the package root and defined in [src/types/depe
 
 Candidate selection belongs to your repository. Persist `usedArticles` associations as needed to exclude previously published content. Issue numbering is initialized before the pipeline starts; coordinate concurrent runs in your application or database. `TaskService` tracks an active task within one service instance, not across processes or separate `generateNewsletter()` calls.
 
+### Recent titles and source deadlines (local core development)
+
+These APIs require the unreleased sibling core changes. Run `npm run dev:link-core`
+to build and link `../llm-newsletter-kit-core` before validation. The manifests
+remain on the published versions; `npm ci` removes the link. Do not release this
+branch until core is released and the dependency floor is updated.
+
+- Implement optional `NewsletterRepository.findRecentPublishedTitles({ fromInclusive, toExclusive })`
+  to enable the title guard. Radar supplies the seven calendar days before the
+  publication date (exclusive). Return titles only from actually published issues
+  of the same newsletter/audience. Drafts and failed sends are excluded. The core
+  compares normalized titles and allows at most two title-only repairs.
+- Pass `extractDeadlineOptions: {}` to extract deadlines during article analysis
+  with the importance model, or `{ model }` for a separate OpenAI ID/AI SDK model.
+  Persist `article.deadlines` in `updateAnalysis`: `[]` means extracted without
+  supported deadlines; `undefined` means not extracted/failed. Clear the cache
+  when the source changes. Omit the option to keep existing analysis calls.
+- `extractResearchRadarDeadlines({ model, article: { title, detailContent } })`
+  provides the same original-source extraction for host-managed backfill and
+  verification. It does not fetch URLs or activate reminders.
+
+The host activates reminders only after an article is actually included in a
+published issue. Core's `usedArticles` is the candidate array, including articles
+the editor may omit; it is not evidence of actual inclusion. The host selects
+actually included articles from the preceding 60 days for the one-time backfill,
+stores deadlines separately, and selects only imminent reminders for each issue.
+Historical issue bodies are not passed into generation.
+
 ### Optional generation settings
 
 | Option                   | Behavior                                                                                                                                             |

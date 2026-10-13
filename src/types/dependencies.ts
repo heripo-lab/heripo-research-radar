@@ -219,6 +219,16 @@ export interface WelcomeTemplateOptions {
  */
 export interface NewsletterRepository {
   /**
+   * Titles of actually published issues in [fromInclusive, toExclusive).
+   * Scope the query to this newsletter/audience; exclude drafts and failed sends.
+   * Providing this method enables the preceding seven calendar days title guard.
+   */
+  findRecentPublishedTitles?(range: {
+    fromInclusive: IsoDateString;
+    toExclusive: IsoDateString;
+  }): Promise<string[]>;
+
+  /**
    * Get the next issue order number
    * @returns Next issue order
    */

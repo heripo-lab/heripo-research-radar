@@ -148,6 +148,32 @@ export async function runNewsletter(repositories: {
 
 후보 기사 선정은 저장소 구현의 책임입니다. 이미 발행한 기사를 제외할 수 있도록 필요에 따라 `usedArticles` 연결 정보를 저장하세요. 회차는 파이프라인 시작 전에 초기화되며, 동시 실행 조정은 애플리케이션이나 DB에서 처리해야 합니다. `TaskService`의 실행 상태 관리는 인스턴스 내부에 한정되므로 다른 프로세스나 별도의 `generateNewsletter()` 호출까지 잠그지는 않습니다.
 
+### 최근 제목과 원문 마감 추출 (로컬 코어 개발)
+
+이 API는 아직 릴리즈하지 않은 형제 core의 변경이 필요합니다. 검증 전에
+`npm run dev:link-core`로 `../llm-newsletter-kit-core`를 빌드하고 연결하세요.
+manifest의 배포 버전 범위는 유지하며 `npm ci`를 실행하면 연결이 사라집니다.
+core 릴리즈와 의존성 최저 버전 갱신 전에는 이 브랜치를 배포하지 않습니다.
+
+- 선택적 `NewsletterRepository.findRecentPublishedTitles({ fromInclusive, toExclusive })`를
+  구현하면 제목 중복 방지를 켭니다. Radar는 발행일 직전 7일의 날짜 범위를
+  전달하며 발행일 자체는 제외합니다. 같은 뉴스레터·독자 대상의 실제 발행
+  제목만 반환하고 초안·발송 실패는 제외하세요. core는 정규화한 제목을 비교하고
+  최대 두 번 제목만 다시 생성합니다.
+- `extractDeadlineOptions: {}`를 전달하면 중요도 모델로 기사 분석 중 마감을
+  추출하며, `{ model }`로 별도의 OpenAI 모델 ID/AI SDK 모델을 지정할 수 있습니다.
+  `updateAnalysis`에서 `article.deadlines`를 저장하세요. `[]`는 근거 있는 마감 없음,
+  `undefined`는 미추출·실패입니다. 원문이 바뀌면 캐시를 지워야 합니다.
+  옵션을 생략하면 기존 분석 호출을 유지합니다.
+- `extractResearchRadarDeadlines({ model, article: { title, detailContent } })`는
+  호스트의 백필·검증에도 같은 원문 추출을 제공합니다. URL 조회나 재안내 활성화는 하지 않습니다.
+
+재안내는 실제 발행한 뉴스레터에 포함된 기사만 호스트에서 활성화합니다.
+core의 `usedArticles`는 편집 과정에서 빠진 기사도 포함하는 후보 배열이므로
+실제 게재의 근거가 아닙니다. 호스트는 최근 60일 실제 게재 기사만 일회성
+백필 대상으로 선정하고, 마감을 별도로 저장한 뒤 임박한 재안내만 골라 전달합니다.
+과거 뉴스레터 본문 전체는 생성 컨텍스트에 넣지 않습니다.
+
 ### 선택적 생성 설정
 
 | 옵션                     | 동작                                                                                                                                     |

@@ -2,7 +2,11 @@ import type { PromptProvider } from '@llm-newsletter-kit/core';
 
 import { classifyTagsPrompt } from './classify-tags';
 import { determineImportancePrompt } from './determine-importance';
-import { generateNewsletterPrompt } from './generate-newsletter';
+import { extractDeadlinesPrompt } from './extract-deadlines';
+import {
+  generateNewsletterPrompt,
+  rewriteTitlePrompt,
+} from './generate-newsletter';
 
 /**
  * Research Radar's LLM prompt overrides.
@@ -36,9 +40,11 @@ export const researchRadarPromptProvider: PromptProvider = {
   analysis: {
     classifyTags: classifyTagsPrompt,
     determineImportance: determineImportancePrompt,
+    extractDeadlines: extractDeadlinesPrompt,
   },
   contentGenerate: {
     generateNewsletter: generateNewsletterPrompt,
+    rewriteTitle: rewriteTitlePrompt,
   },
 };
 

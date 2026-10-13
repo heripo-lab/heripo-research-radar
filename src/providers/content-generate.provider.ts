@@ -2,6 +2,7 @@ import type {
   ArticleForGenerateContent,
   ContentGenerateProvider as CoreContentGenerateProvider,
   HtmlTemplate,
+  IsoDateString,
   Newsletter,
   UrlString,
 } from '@llm-newsletter-kit/core';
@@ -28,6 +29,8 @@ export class ContentGenerateProvider implements CoreContentGenerateProvider {
 
   readonly model: LanguageModel;
 
+  readonly fetchRecentTitles?: CoreContentGenerateProvider['fetchRecentTitles'];
+
   /** HTML template with markers for title and content injection */
   htmlTemplate: HtmlTemplate;
 
@@ -42,6 +45,20 @@ export class ContentGenerateProvider implements CoreContentGenerateProvider {
     brandName?: string,
   ) {
     this.model = model;
+    if (newsletterRepository.findRecentPublishedTitles) {
+      const findTitles =
+        newsletterRepository.findRecentPublishedTitles.bind(
+          newsletterRepository,
+        );
+      this.fetchRecentTitles = (publicationDate) => {
+        const start = new Date(`${publicationDate}T00:00:00Z`);
+        start.setUTCDate(start.getUTCDate() - 7);
+        return findTitles({
+          fromInclusive: start.toISOString().slice(0, 10) as IsoDateString,
+          toExclusive: publicationDate,
+        });
+      };
+    }
     this.newsletterBrandName = brandName ?? newsletterConfig.brandName;
     this.htmlTemplate = {
       html: createNewsletterHtmlTemplate(templateOptions),

@@ -94,6 +94,14 @@ export interface NewsletterGeneratorDependencies {
   models?: NewsletterModelConfig;
 
   /**
+   * Opt in to original-article deadline extraction. An omitted model reuses the
+   * importance model; a string is resolved through the supplied OpenAI key.
+   * Repositories must persist deadlines, including an empty array. Omit to keep
+   * the existing analysis calls. This does not activate reminders on candidates.
+   */
+  extractDeadlineOptions?: { model?: string | LanguageModel };
+
+  /**
    * Non-OpenAI content generation configuration (optional).
    *
    * Prefer `models.generateNewsletter`. String IDs use `openAIApiKey`; model
@@ -251,6 +259,13 @@ function createNewsletterGenerator(
       classifyTags: resolveModel('classifyTags'),
       analyzeImages: resolveModel('analyzeImages'),
       determineImportance: resolveModel('determineImportance'),
+      extractDeadlines: dependencies.extractDeadlineOptions
+        ? dependencies.extractDeadlineOptions.model === undefined
+          ? resolveModel('determineImportance')
+          : typeof dependencies.extractDeadlineOptions.model === 'string'
+            ? openai(dependencies.extractDeadlineOptions.model)
+            : dependencies.extractDeadlineOptions.model
+        : undefined,
     },
     dependencies.articleRepository,
     dependencies.tagRepository,

@@ -36,3 +36,8 @@ export * from './config';
 
 // LLM prompt overrides export
 export { researchRadarPromptProvider } from './prompts';
+
+export {
+  extractResearchRadarDeadlines,
+  type ResearchRadarDeadlineExtractionConfig,
+} from './deadlines/extract';
