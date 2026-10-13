@@ -115,21 +115,28 @@ for (const exhausted of [false, true]) {
       ],
     });
     const saved: Newsletter[] = [];
-    const provider = new ContentGenerateProvider(model, articles, {
-      getNextIssueOrder: async () => 1,
-      findRecentPublishedTitles: async (range) => {
-        assert.deepEqual(range, {
-          fromInclusive: '2026-10-06',
-          toExclusive: '2026-10-13',
-        });
-        return [oldTitle];
+    const reminder =
+      '## ⏰ 다가오는 마감\n\n지난 호에서 안내한 학술대회 사전 등록 마감';
+    const provider = new ContentGenerateProvider(
+      model,
+      articles,
+      {
+        getNextIssueOrder: async () => 1,
+        findRecentPublishedTitles: async (range) => {
+          assert.deepEqual(range, {
+            fromInclusive: '2026-10-06',
+            toExclusive: '2026-10-13',
+          });
+          return [oldTitle];
+        },
+        saveNewsletter: async ({ newsletter, usedArticles }) => {
+          saved.push(newsletter);
+          assert.deepEqual(usedArticles, [article]);
+          return { id: 'issue' };
+        },
       },
-      saveNewsletter: async ({ newsletter, usedArticles }) => {
-        saved.push(newsletter);
-        assert.deepEqual(usedArticles, [article]);
-        return { id: 'issue' };
-      },
-    });
+      { deadlineRemindersMarkdown: reminder },
+    );
     await provider.initializeIssueOrder();
     const engine = new GenerateNewsletter({
       contentOptions: { outputLanguage: '한국어', expertField: ['문화유산'] },
@@ -163,7 +170,10 @@ for (const exhausted of [false, true]) {
     } else {
       assert.equal(await engine.generate(), 'issue');
       assert.equal(saved[0].title, newTitle);
-      assert.equal(saved[0].content, content);
+      assert.equal(saved[0].content, `${content}\n\n${reminder}`);
+      assert.ok(
+        !JSON.stringify(model.doGenerateCalls).includes('지난 호에서 안내한'),
+      );
       assert.ok(
         saved[0].htmlBody.includes('발굴 유물 연구보고서가 공개되었습니다.'),
       );

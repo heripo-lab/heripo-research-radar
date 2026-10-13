@@ -506,6 +506,18 @@ ${options.heripolabNewsMarkdown}
 
             {{NEWSLETTER_CONTENT}}
 
+            ${
+              options?.deadlineRemindersMarkdown
+                ? safeMarkdown2Html(options.deadlineRemindersMarkdown, {
+                    window: new JSDOM('').window,
+                    linkTargetBlank: true,
+                    fixMalformedUrls: true,
+                    fixBoldSyntax: true,
+                    convertStrikethrough: true,
+                  })
+                : ''
+            }
+
             <hr style="border: 0; border-top: 2px solid #D2691E; margin: 32px 0;">
             
             ${

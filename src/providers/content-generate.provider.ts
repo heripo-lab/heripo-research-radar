@@ -26,6 +26,7 @@ import { llmConfig, newsletterConfig } from '../config';
  */
 export class ContentGenerateProvider implements CoreContentGenerateProvider {
   private _issueOrder: number | null = null;
+  private readonly deadlineRemindersMarkdown: string;
 
   readonly model: LanguageModel;
 
@@ -45,6 +46,8 @@ export class ContentGenerateProvider implements CoreContentGenerateProvider {
     brandName?: string,
   ) {
     this.model = model;
+    this.deadlineRemindersMarkdown =
+      templateOptions?.deadlineRemindersMarkdown?.trim() ?? '';
     if (newsletterRepository.findRecentPublishedTitles) {
       const findTitles =
         newsletterRepository.findRecentPublishedTitles.bind(
@@ -115,6 +118,16 @@ export class ContentGenerateProvider implements CoreContentGenerateProvider {
     newsletter: Newsletter;
     usedArticles: ArticleForGenerateContent[];
   }): Promise<{ id: string | number }> {
-    return this.newsletterRepository.saveNewsletter(input);
+    return this.newsletterRepository.saveNewsletter(
+      this.deadlineRemindersMarkdown
+        ? {
+            ...input,
+            newsletter: {
+              ...input.newsletter,
+              content: `${input.newsletter.content}\n\n${this.deadlineRemindersMarkdown}`,
+            },
+          }
+        : input,
+    );
   }
 }

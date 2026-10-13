@@ -177,6 +177,34 @@ actually included articles from the preceding 60 days for the one-time backfill,
 stores deadlines separately, and selects only imminent reminders for each issue.
 Historical issue bodies are not passed into generation.
 
+Before reminding, call `refreshResearchRadarDeadlines({ source: { title, url,
+targetUrl }, model, customFetch?, publicDataApiKey? })`. It fetches the registered
+detail through the same adapters and robots rules as crawling, with a 15-second
+total network budget. Job APIs fetch one posting; 나라장터 queries only that
+notice number's revisions and returns the latest revision's URL. No daily list,
+triage, scoring or persistence runs. `fetchResearchRadarDeadlineSource()` is
+available separately for source-only reads (`status: 'fetched'`).
+
+- `status: 'verified'` includes the fresh article, deadlines, `sourceHash`,
+  `checkedAt` and model usage. Explicit extensions use the new date; explicit
+  cancellations have `status: 'cancelled'`. Passing `previous: { sourceHash,
+deadlines }` from a successful refresh skips extraction only if a fresh fetch
+  has the same hash. Invalidate this cache when extraction policy changes.
+- `status: 'unverified'` includes a reason, without deadlines. Missing dates,
+  access failures, unsupported boards and extraction failures hold reminders;
+  they never cancel a stored action. Even a verified source does not confirm all
+  past actions: the host must match each action and hold unmatched ones. A
+  separate announcement at another URL is outside this targeted check.
+
+Pass host-selected verified actions to
+`renderVerifiedDeadlineReminders(reminders, publicationDate)` and place its result
+in `templateOptions.deadlineRemindersMarkdown`. It emits a date-ordered section
+of at most five active deadlines within seven days, preserving supplied times
+without inventing 23:59. The provider appends it to saved Markdown and HTML after
+generation, so reminders add no LLM context. The host owns D-7/D-1 scheduling,
+precise expiration/timezone checks, repeat suppression and exclusion of actions
+already covered in this issue. Empty sections are omitted.
+
 ### Optional generation settings
 
 | Option                   | Behavior                                                                                                                                             |

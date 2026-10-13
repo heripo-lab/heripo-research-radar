@@ -141,6 +141,12 @@ export interface TagRepository {
  */
 interface BaseNewsletterTemplateOptions {
   /**
+   * Deterministic reminder section from renderVerifiedDeadlineReminders().
+   * Appended to saved Markdown and HTML after generation; never fed to the LLM.
+   */
+  deadlineRemindersMarkdown?: string;
+
+  /**
    * Markdown content for KRAS news section.
    * Converted to HTML and injected into the newsletter template.
    */

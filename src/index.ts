@@ -41,3 +41,18 @@ export {
   extractResearchRadarDeadlines,
   type ResearchRadarDeadlineExtractionConfig,
 } from './deadlines/extract';
+
+export {
+  fetchResearchRadarDeadlineSource,
+  refreshResearchRadarDeadlines,
+  type DeadlineVerificationFailure,
+  type ResearchRadarDeadlineSource,
+  type ResearchRadarDeadlineSourceOptions,
+  type ResearchRadarDeadlineSourceResult,
+  type ResearchRadarDeadlineRefreshConfig,
+  type ResearchRadarDeadlineRefreshResult,
+} from './deadlines/refresh';
+export {
+  renderVerifiedDeadlineReminders,
+  type VerifiedDeadlineReminder,
+} from './deadlines/reminders';

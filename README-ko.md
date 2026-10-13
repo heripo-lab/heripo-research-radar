@@ -174,6 +174,32 @@ core의 `usedArticles`는 편집 과정에서 빠진 기사도 포함하는 후�
 백필 대상으로 선정하고, 마감을 별도로 저장한 뒤 임박한 재안내만 골라 전달합니다.
 과거 뉴스레터 본문 전체는 생성 컨텍스트에 넣지 않습니다.
 
+재안내 직전에 `refreshResearchRadarDeadlines({ source: { title, url, targetUrl },
+model, customFetch?, publicDataApiKey? })`를 호출하세요. 기존 수집과 동일한
+어댑터·robots 규칙으로 등록된 상세 원문을 확인하며 전체 네트워크 제한 시간은
+15초입니다. 채용 API는 해당 공고만, 나라장터는 해당 공고번호의 차수만 조회하며
+최신 차수의 URL을 반환합니다. 일간 목록 수집·입찰 선별·점수 산정·저장은 실행하지
+않습니다. 원문 읽기만 필요하면 `fetchResearchRadarDeadlineSource()`를 쓸 수
+있으며 성공 상태는 `status: 'fetched'`입니다.
+
+- `status: 'verified'`는 최신 기사·마감, `sourceHash`, `checkedAt`, 모델 사용량을
+  반환합니다. 명시적 연장은 변경 날짜로, 명시적 취소는 `status: 'cancelled'`로
+  추출합니다. 성공한 재확인의 `previous: { sourceHash, deadlines }`를 전달하면
+  새로 조회한 원문 해시가 같을 때만 재추출을 생략합니다. 추출 정책을 바꾸면
+  이 캐시도 무효화하세요.
+- `status: 'unverified'`는 마감 없이 사유만 반환합니다. 날짜 소실, 접속 실패,
+  미지원 게시판, 추출 실패는 재안내 보류이며 저장한 행동을 취소하지 않습니다.
+  원문 확인이 성공해도 과거의 모든 행동이 확인된 것은 아니므로 호스트에서
+  각 행동을 대응시키고 빠진 행동은 보류해야 합니다. 다른 URL의 별도 공지는
+  이 단건 확인 범위에 포함하지 않습니다.
+
+호스트가 고른 검증된 행동을 `renderVerifiedDeadlineReminders(reminders,
+publicationDate)`에 전달하고 결과를 `templateOptions.deadlineRemindersMarkdown`에
+넣으세요. 7일 이내의 활성 마감만 최대 5건을 날짜순으로 표시하며 명시된 시각만
+쓰고 23:59를 만들지 않습니다. 생성 후 저장할 Markdown과 HTML에 붙이므로
+LLM 컨텍스트가 늘어나지 않습니다. D-7·D-1 선정, 정확한 만료 시각·시간대 확인,
+반복 방지, 이번 호에서 이미 다룬 행동 제외는 호스트 책임입니다. 빈 섹션은 생략합니다.
+
 ### 선택적 생성 설정
 
 | 옵션                     | 동작                                                                                                                                     |
