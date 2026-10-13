@@ -508,13 +508,16 @@ ${options.heripolabNewsMarkdown}
 
             ${
               options?.deadlineRemindersMarkdown
-                ? safeMarkdown2Html(options.deadlineRemindersMarkdown, {
-                    window: new JSDOM('').window,
-                    linkTargetBlank: true,
-                    fixMalformedUrls: true,
-                    fixBoldSyntax: true,
-                    convertStrikethrough: true,
-                  })
+                ? `<div data-research-radar-deadline-reminders="">${safeMarkdown2Html(
+                    options.deadlineRemindersMarkdown,
+                    {
+                      window: new JSDOM('').window,
+                      linkTargetBlank: true,
+                      fixMalformedUrls: true,
+                      fixBoldSyntax: true,
+                      convertStrikethrough: true,
+                    },
+                  )}</div>`
                 : ''
             }
 

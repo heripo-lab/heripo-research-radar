@@ -3,6 +3,8 @@ import type { ArticleDeadline, Newsletter } from '@llm-newsletter-kit/core';
 import type { VerifiedDeadlineReminder } from '../src/deadlines/reminders';
 
 import { MockLanguageModelV4 } from 'ai/test';
+import { JSDOM } from 'jsdom';
+import juice from 'juice';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
@@ -145,5 +147,15 @@ test('both branding modes append reminders once to HTML and saved Markdown witho
         saved?.htmlBody.indexOf('{{NEWSLETTER_CONTENT}}')!,
     );
     assert.ok(!provider.htmlTemplate.html.includes('23:59'));
+    const document = new JSDOM(juice(saved!.htmlBody)).window.document;
+    const sections = document.querySelectorAll(
+      '[data-research-radar-deadline-reminders]',
+    );
+    assert.equal(sections.length, 1);
+    assert.equal(
+      sections[0].querySelector('h2')?.textContent,
+      '⏰ 다가오는 마감',
+    );
+    assert.equal(sections[0].querySelectorAll('td a[href]').length, 1);
   }
 });
