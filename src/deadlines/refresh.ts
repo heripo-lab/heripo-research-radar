@@ -74,7 +74,7 @@ const failure = (reason: DeadlineVerificationFailure): UnverifiedSource => ({
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
-/** Fresh API/metadata titles catch cancellations stated only in the headline. */
+/** Fresh API, metadata and visible headings retain headline-only source changes. */
 function readTitle(body: string): string {
   try {
     const data: unknown = JSON.parse(body);
@@ -94,13 +94,30 @@ function readTitle(body: string): string {
     /* Ordinary HTML and XML sources. */
   }
   const $ = cheerio.load(body);
-  return (
-    (
-      $('meta[property="og:title"]').attr('content') ??
-      $('item title').first().text() ??
-      ''
-    ).trim() || $('title').first().text().trim()
-  );
+  // A site's metadata can stay generic while the visible post headline changes.
+  // Preserve both so a headline-only cancellation invalidates the source cache
+  // and reaches extraction, including titles outside the parser's body selector.
+  const headings = $(
+    'h1, h2, h3, h4, h5, h6, .board-view-top, .board-view-title, .view-title, .view_tit, .viewTitle, .bbs_title, .subject',
+  )
+    .filter(
+      (_, node) =>
+        !$(node).closest(
+          'header, nav, footer, aside, [hidden], [aria-hidden="true"]',
+        ).length,
+    )
+    .map((_, node) => $(node).text().replace(/\s+/g, ' ').trim())
+    .get();
+  return [
+    ...new Set(
+      [
+        $('meta[property="og:title"]').attr('content')?.trim(),
+        $('item title').first().text().trim(),
+        $('title').first().text().trim(),
+        ...headings,
+      ].filter(Boolean),
+    ),
+  ].join('\n');
 }
 
 /**

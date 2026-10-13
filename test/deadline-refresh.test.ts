@@ -400,3 +400,63 @@ test('unchanged source hashes cannot reuse legacy deadlines with invented dates 
   if (rejected.status !== 'unverified') throw Error('Expected held reminder');
   assert.equal(rejected.reason, 'no-supported-deadlines');
 });
+
+test('visible headline-only cancellation invalidates a cache even with unchanged generic metadata', async () => {
+  const source: ResearchRadarDeadlineSource = {
+    title: '학술대회 발표 신청',
+    targetUrl: 'https://www.kaah.kr/news',
+    url: 'https://www.kaah.kr/news/123',
+  };
+  const active: ArticleDeadline = {
+    ...deadline,
+    date: '2026-11-20',
+    evidence: '발표 신청은 2026-11-20까지 접수합니다.',
+  };
+  for (const tag of ['h1', 'div class="subject"']) {
+    const originalHeading = source.title;
+    const cancelledHeading = '학술대회 발표 신청 취소 안내';
+    const closing = tag.startsWith('div') ? 'div' : tag;
+    const fetchFor =
+      (heading: string): typeof fetch =>
+      async (input) =>
+        String(input).endsWith('/robots.txt')
+          ? new Response('User-agent: *\nAllow: /')
+          : new Response(
+              `<html><head><title>한국상고사학회</title><meta property="og:title" content="한국상고사학회"></head><body><header><h1>사이트 로고</h1></header><${tag}>${heading}</${closing}><div class="content">${active.evidence}</div></body></html>`,
+            );
+    const original = await fetchResearchRadarDeadlineSource({
+      source,
+      customFetch: fetchFor(originalHeading),
+    });
+    assert.equal(original.status, 'fetched');
+    if (original.status !== 'fetched') throw new Error('Expected source');
+    const cancelled: ArticleDeadline = {
+      ...active,
+      status: 'cancelled',
+      date: null,
+      evidence: cancelledHeading,
+    };
+    const model = deadlineModel([cancelled]);
+    const result = await refreshResearchRadarDeadlines({
+      source,
+      customFetch: fetchFor(cancelledHeading),
+      model,
+      previous: { sourceHash: original.sourceHash, deadlines: [active] },
+    });
+    assert.equal(result.status, 'verified');
+    if (result.status !== 'verified') throw new Error('Expected cancellation');
+    assert.notEqual(result.sourceHash, original.sourceHash);
+    assert.ok(result.article.title.includes(cancelledHeading));
+    assert.ok(!result.article.title.includes('사이트 로고'));
+    assert.deepEqual(result.deadlines, [cancelled]);
+    assert.equal(model.doGenerateCalls.length, 1);
+    const again = await refreshResearchRadarDeadlines({
+      source,
+      customFetch: fetchFor(cancelledHeading),
+      model,
+      previous: result,
+    });
+    assert.equal(again.status, 'verified');
+    assert.equal(model.doGenerateCalls.length, 1);
+  }
+});
