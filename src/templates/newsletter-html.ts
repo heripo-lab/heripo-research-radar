@@ -288,6 +288,15 @@ export const createNewsletterHtmlTemplate = (
           }
       }
       @media (prefers-color-scheme: dark) {
+          .deadline-reminders {
+              background-color: #2b221d !important;
+              border-color: #78513a !important;
+          }
+
+          .deadline-reminders td {
+              color: #eeeeee !important;
+          }
+
           body,
           .dark-mode-bg {
               background-color: #121212 !important;
@@ -505,6 +514,36 @@ ${options.heripolabNewsMarkdown}
             }
 
             {{NEWSLETTER_CONTENT}}
+
+            <div data-research-radar-closing="">
+
+            ${
+              options?.deadlineRemindersMarkdown
+                ? `<div data-research-radar-deadline-reminders="" data-research-radar-unified-deadlines="" class="deadline-reminders" style="background-color: #fff7ed; border: 1px solid #edc4a8; border-radius: 12px; padding: 20px; margin: 28px 0;">${safeMarkdown2Html(
+                    options.deadlineRemindersMarkdown,
+                    {
+                      window: new JSDOM('').window,
+                      linkTargetBlank: true,
+                      fixMalformedUrls: true,
+                      fixBoldSyntax: true,
+                      convertStrikethrough: true,
+                    },
+                  )}</div>`
+                : ''
+            }
+
+            ${
+              options?.shareNoticeMarkdown
+                ? safeMarkdown2Html(options.shareNoticeMarkdown, {
+                    window: new JSDOM('').window,
+                    linkTargetBlank: true,
+                    fixMalformedUrls: true,
+                    fixBoldSyntax: true,
+                    convertStrikethrough: true,
+                  })
+                : ''
+            }
+            </div>
 
             <hr style="border: 0; border-top: 2px solid #D2691E; margin: 32px 0;">
             

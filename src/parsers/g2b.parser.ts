@@ -95,6 +95,8 @@ type G2bListResponse = {
 export type G2bFetchOptions = {
   /** data.go.kr service key, already URL-encoded as the portal supplies it. */
   apiKey: string;
+  /** Query all revisions of one notice number for verification; no triage. */
+  refreshDetails?: boolean;
   /**
    * How many hours back to request.
    *
@@ -165,6 +167,7 @@ export const createG2bFetch = (
     maxPages = 4,
     triage,
     onError,
+    refreshDetails = false,
   } = options;
 
   const fail = (reason: string): Response => {
@@ -331,6 +334,58 @@ export const createG2bFetch = (
     }
 
     if (url.pathname === '/link/PNPE027_01/single/') {
+      if (refreshDetails) {
+        const number = url.searchParams.get('bidPbancNo') ?? '';
+        if (!apiKey || !/^[a-zA-Z0-9]{1,40}$/.test(number)) {
+          return fail(
+            '나라장터 detail requires a key and a valid notice number',
+          );
+        }
+
+        // Official reference v1.2: inqryDiv=2 selects bidNtceNo. Unlike the
+        // daily list query, this has no date window and never invokes triage.
+        // https://www.data.go.kr/data/15129394/openapi.do
+        const batches = await Promise.all(
+          OPERATIONS.map(async (operation) => {
+            const response = await baseFetch(
+              `${API_BASE}/getBidPblancListInfo${operation}?serviceKey=${apiKey}` +
+                `&numOfRows=999&pageNo=1&type=json&inqryDiv=2&bidNtceNo=${number}`,
+              init,
+            );
+            if (!response.ok) throw new Error('나라장터 detail HTTP failure');
+            const body = (await response.json()) as G2bListResponse;
+            const items = body.response?.body?.items ?? [];
+            if (
+              body.response?.header?.resultCode !== SUCCESS_RESULT_CODE ||
+              !Array.isArray(items) ||
+              Number(body.response?.body?.totalCount ?? items.length) >
+                items.length
+            ) {
+              throw new Error(
+                '나라장터 detail failed or returned incomplete revisions',
+              );
+            }
+            return items
+              .filter((notice) => notice.bidNtceNo === number)
+              .map((notice) => ({
+                ...notice,
+                businessDivision: operation === 'Servc' ? '용역' : '공사',
+              }));
+          }),
+        );
+        const revisions = batches.flat();
+        if (
+          revisions.some((notice) => !/^\d{1,3}$/.test(notice.bidNtceOrd ?? ''))
+        ) {
+          return fail('나라장터 detail has ambiguous revisions');
+        }
+        const latest = revisions.sort(
+          (a, b) => Number(b.bidNtceOrd) - Number(a.bidNtceOrd),
+        )[0];
+        return latest
+          ? jsonResponse({ item: latest })
+          : fail('나라장터 notice not found');
+      }
       const key = `${url.searchParams.get('bidPbancNo')}:${url.searchParams.get('bidPbancOrd')}`;
       const notice = noticeCache.get(key);
 

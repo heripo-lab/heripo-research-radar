@@ -67,10 +67,10 @@ For academic publications:
 ## Installation
 
 ```bash
-npm install @heripo/research-radar '@llm-newsletter-kit/core@~3.0.6'
+npm install @heripo/research-radar '@llm-newsletter-kit/core@~3.1.0'
 ```
 
-**Requirements**: Node.js 24.15.0 or newer within 24.x, or >= 26.0.0, and an ESM application. Node.js 25 is not supported. The package exports `dist/index.js` and TypeScript declarations (`dist/index.d.ts`), with a JavaScript sourcemap. The core engine is a peer dependency; the current supported range is `~3.0.6`. The floor moved to 3.0.6 because the 나라장터 target runs its triage inside a crawl fetch that core times out, and before 3.0.6 core classified a timeout as non-retryable, so that target failed on the first attempt every run. 3.0.5 remains required for the self-verification retry cap the generation prompt relies on.
+**Requirements**: Node.js 24.15.0 or newer within 24.x, or >= 26.0.0, and an ESM application. Node.js 25 is not supported. The package exports `dist/index.js` and TypeScript declarations (`dist/index.d.ts`), with a JavaScript sourcemap. The core engine is a peer dependency; the current supported range is `~3.1.0`. Core 3.1.0 is required for recent-title guarding and source-grounded deadline extraction. It also includes the crawl-timeout retry handling and generation self-verification retry cap required by Radar.
 
 An OpenAI API key is always required and supplies all default models. The optional compatibility path for Anthropic or Google newsletter generation additionally requires that provider's key. Keys are passed explicitly to the library; load environment variables in your application.
 
@@ -148,6 +148,80 @@ All interfaces are exported from the package root and defined in [src/types/depe
 |                        | `saveNewsletter({ newsletter, usedArticles })` | `Promise<{ id: string \| number }>`                                              |
 
 Candidate selection belongs to your repository. Persist `usedArticles` associations as needed to exclude previously published content. Issue numbering is initialized before the pipeline starts; coordinate concurrent runs in your application or database. `TaskService` tracks an active task within one service instance, not across processes or separate `generateNewsletter()` calls.
+
+### Recent titles and source deadlines
+
+These APIs use the published core 3.1.0 package. The peer dependency requires
+`~3.1.0`, and `npm ci` installs the locked package without a local core link.
+
+- Implement optional `NewsletterRepository.findRecentPublishedTitles({ fromInclusive, toExclusive })`
+  to enable the title guard. Radar supplies the seven calendar days before the
+  publication date (exclusive). Return titles only from actually published issues
+  of the same newsletter/audience. Drafts and failed sends are excluded. The core
+  compares normalized titles and allows at most two title-only repairs.
+- Pass `extractDeadlineOptions: {}` to extract deadlines during article analysis
+  with the importance model, or `{ model }` for a separate OpenAI ID/AI SDK model.
+  Persist `article.deadlines` in `updateAnalysis`: `[]` means extracted without
+  supported deadlines; `undefined` means not extracted/failed. Clear the cache
+  when the source changes. Omit the option to keep existing analysis calls.
+- `extractResearchRadarDeadlines({ model, article: { title, detailContent } })`
+  provides the same original-source extraction for host-managed backfill and
+  verification. It does not fetch URLs or activate reminders.
+
+The host activates reminders only after an article is actually included in a
+published issue. Core's `usedArticles` is the candidate array, including articles
+the editor may omit; it is not evidence of actual inclusion. The host selects
+actually included articles from the preceding 60 days for the one-time backfill,
+stores deadlines separately, and selects only imminent reminders for each issue.
+Historical issue bodies are not passed into generation.
+
+Before reminding, call `refreshResearchRadarDeadlines({ source: { title, url,
+targetUrl }, model, customFetch?, publicDataApiKey? })`. It fetches the registered
+detail through the same adapters and robots rules as crawling, with a 15-second
+total network budget. Job APIs fetch one posting; 나라장터 queries only that
+notice number's revisions and returns the latest revision's URL. No daily list,
+triage, scoring or persistence runs. `fetchResearchRadarDeadlineSource()` is
+available separately for source-only reads (`status: 'fetched'`).
+
+Dates and times must match their verbatim evidence. Even an unchanged source
+hash cannot reuse a cache that fails the current grounding rules; it is extracted
+again. Unsupported values hold the reminder.
+
+- `status: 'verified'` includes the fresh article, deadlines, `sourceHash`,
+  `checkedAt` and model usage. Explicit extensions use the new date; explicit
+  cancellations have `status: 'cancelled'`. Passing `previous: { sourceHash,
+deadlines }` from a successful refresh skips extraction only if a fresh fetch
+  has the same hash. Invalidate this cache when extraction policy changes.
+- `status: 'unverified'` includes a reason, without deadlines. Missing dates,
+  access failures, unsupported boards and extraction failures hold reminders;
+  they never cancel a stored action. Even a verified source does not confirm all
+  past actions: the host must match each action and hold unmatched ones. A
+  separate announcement at another URL is outside this targeted check.
+
+Pass host-selected verified actions to
+`renderVerifiedDeadlineReminders(reminders, publicationDate)` and place its result
+in `templateOptions.deadlineRemindersMarkdown`. It emits a date-ordered section
+of at most five active deadlines within seven days, preserving supplied times
+without inventing 23:59. The provider appends it to saved Markdown and HTML after
+generation, so reminders add no LLM context. The host owns D-7/D-1 scheduling,
+repeat suppression and publication history. Empty sections are omitted.
+
+Prefer `templateOptions.verifiedDeadlineReminders` with freshly verified historical
+actions. The provider merges these with source-grounded deadlines from articles
+actually linked in the generated body, sorts them, and displays at most five
+active deadlines within seven days in one linked section. For a refreshed source,
+only freshly verified actions are eligible: unmatched cached actions are held,
+never inferred to be active or cancelled from free-form `title` or `kind` labels.
+G2B revisions share a source identity by notice number. Pass each distinct action
+as a freshly verified result to retain multiple actions from that source. Other
+sources without supplied verification continue using grounded article deadlines.
+The older
+`deadlineRemindersMarkdown` option remains available for pre-rendered sections.
+The generation prompt no longer produces a separate closing schedule list.
+The colleague-sharing notice follows the highlighted deadline section in both
+saved Markdown and HTML; no eligible deadlines means no empty section.
+Set `templateOptions.shareNoticeMarkdown` to customize this notice in both
+formats, omit it for the default, or pass an empty string to suppress it.
 
 ### Optional generation settings
 
@@ -228,7 +302,7 @@ await generateNewsletter({
 
 The optional `contentGeneration: { provider, apiKey, model? }` compatibility path still supports Anthropic and Google for newsletter generation. `models.generateNewsletter` takes precedence when both are supplied. If `models.generateNewsletter` is omitted or `undefined`, the existing `contentGeneration` provider/model selection applies; without either option, generation uses `llmConfig.models.generateNewsletter`. `openAIApiKey` remains required even when supplying model objects for every stage.
 
-[src/config/index.ts](./src/config/index.ts) defines Korean output (`outputLanguage: '한국어'`), the cultural heritage domain (`expertField: ['문화유산']`), brand name, `subscribePageUrl`, LLM `maxRetries: 5`, chain `stopAfterAttempt: 3`, and generation `temperature: 0.3`. Publication settings are `minimumArticleCountForIssue: 5` and `priorityArticleScoreThreshold: 8`; the core engine evaluates them. In the locked core 3.0.6 implementation, the count check skips **5 or fewer** candidates unless at least one has importance score >= 8. An empty candidate list is always skipped.
+[src/config/index.ts](./src/config/index.ts) defines Korean output (`outputLanguage: '한국어'`), the cultural heritage domain (`expertField: ['문화유산']`), brand name, `subscribePageUrl`, LLM `maxRetries: 5`, chain `stopAfterAttempt: 3`, and generation `temperature: 0.3`. Publication settings are `minimumArticleCountForIssue: 5` and `priorityArticleScoreThreshold: 8`; the core engine evaluates them. In the locked core 3.1.0 implementation, the count check skips **5 or fewer** candidates unless at least one has importance score >= 8. An empty candidate list is always skipped.
 
 ## Crawling targets and parsers
 

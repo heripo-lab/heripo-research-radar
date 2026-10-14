@@ -15,6 +15,7 @@ export interface AnalysisModels {
   classifyTags: LanguageModel;
   analyzeImages: LanguageModel;
   determineImportance: LanguageModel;
+  extractDeadlines?: LanguageModel;
 }
 
 /**
@@ -25,6 +26,7 @@ export interface AnalysisModels {
 export class AnalysisProvider implements CoreAnalysisProvider {
   classifyTagOptions: { model: LanguageModel };
   analyzeImagesOptions: { model: LanguageModel };
+  extractDeadlineOptions?: CoreAnalysisProvider['extractDeadlineOptions'];
   determineScoreOptions: {
     model: LanguageModel;
     minimumImportanceScoreRules: Array<{
@@ -48,7 +50,7 @@ export class AnalysisProvider implements CoreAnalysisProvider {
     private readonly articleRepository: ArticleRepository,
     private readonly tagRepository: TagRepository,
   ) {
-    const models =
+    const models: AnalysisModels =
       typeof modelsOrOpenAI === 'function'
         ? {
             classifyTags: modelsOrOpenAI(llmConfig.models.classifyTags),
@@ -66,6 +68,10 @@ export class AnalysisProvider implements CoreAnalysisProvider {
     this.analyzeImagesOptions = {
       model: models.analyzeImages,
     };
+
+    if (models.extractDeadlines) {
+      this.extractDeadlineOptions = { model: models.extractDeadlines };
+    }
 
     this.determineScoreOptions = {
       model: models.determineImportance,

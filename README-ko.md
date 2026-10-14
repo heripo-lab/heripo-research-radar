@@ -66,10 +66,10 @@ Powered by LLM Newsletter Kit
 ## 설치
 
 ```bash
-npm install @heripo/research-radar '@llm-newsletter-kit/core@~3.0.6'
+npm install @heripo/research-radar '@llm-newsletter-kit/core@~3.1.0'
 ```
 
-**요구사항**: Node.js 24.x에서는 24.15.0 이상, 또는 Node.js 26.0.0 이상과 ESM 애플리케이션이 필요합니다. Node.js 25는 지원하지 않습니다. 패키지는 `dist/index.js`, TypeScript 선언 파일(`dist/index.d.ts`), JavaScript 소스맵을 제공합니다. Core 엔진은 peer dependency이며 현재 지원 범위는 `~3.0.6`입니다. 나라장터 타깃은 core가 타임아웃을 거는 크롤링 fetch 안에서 선별을 수행하는데, 3.0.6 이전의 core는 타임아웃을 재시도 대상에서 제외했기 때문에 이 타깃이 매 실행 첫 시도에서 실패했습니다. 그래서 하한이 3.0.6입니다. 생성 프롬프트가 의존하는 자가검증 재시도 상한(3.0.5 추가)도 여전히 필요합니다.
+**요구사항**: Node.js 24.x에서는 24.15.0 이상, 또는 Node.js 26.0.0 이상과 ESM 애플리케이션이 필요합니다. Node.js 25는 지원하지 않습니다. 패키지는 `dist/index.js`, TypeScript 선언 파일(`dist/index.d.ts`), JavaScript 소스맵을 제공합니다. Core 엔진은 peer dependency이며 현재 지원 범위는 `~3.1.0`입니다. 최근 제목 중복 방지와 원문 근거 기반 마감일 추출을 위해 core 3.1.0 이상이 필요합니다. 이 버전에는 Radar가 의존하는 크롤링 타임아웃 재시도 처리와 생성 자가검증 재시도 상한도 포함됩니다.
 
 기사 분석에는 OpenAI API 키가 필요합니다. 콘텐츠 생성에는 선택한 프로바이더(OpenAI / Anthropic / Google)의 키가 필요하며, OpenAI를 선택하면 같은 키를 사용할 수 있습니다. 라이브러리에 키를 명시적으로 전달하므로 환경변수 로딩은 애플리케이션에서 처리하세요.
 
@@ -147,6 +147,73 @@ export async function runNewsletter(repositories: {
 |                        | `saveNewsletter({ newsletter, usedArticles })` | `Promise<{ id: string \| number }>`                       |
 
 후보 기사 선정은 저장소 구현의 책임입니다. 이미 발행한 기사를 제외할 수 있도록 필요에 따라 `usedArticles` 연결 정보를 저장하세요. 회차는 파이프라인 시작 전에 초기화되며, 동시 실행 조정은 애플리케이션이나 DB에서 처리해야 합니다. `TaskService`의 실행 상태 관리는 인스턴스 내부에 한정되므로 다른 프로세스나 별도의 `generateNewsletter()` 호출까지 잠그지는 않습니다.
+
+### 최근 제목과 원문 마감 추출
+
+이 API는 배포된 core 3.1.0 패키지를 사용합니다. 피어 의존성 범위는
+`~3.1.0`이며 `npm ci`로 로컬 core 연결 없이 잠금 파일의 패키지를 설치합니다.
+
+- 선택적 `NewsletterRepository.findRecentPublishedTitles({ fromInclusive, toExclusive })`를
+  구현하면 제목 중복 방지를 켭니다. Radar는 발행일 직전 7일의 날짜 범위를
+  전달하며 발행일 자체는 제외합니다. 같은 뉴스레터·독자 대상의 실제 발행
+  제목만 반환하고 초안·발송 실패는 제외하세요. core는 정규화한 제목을 비교하고
+  최대 두 번 제목만 다시 생성합니다.
+- `extractDeadlineOptions: {}`를 전달하면 중요도 모델로 기사 분석 중 마감을
+  추출하며, `{ model }`로 별도의 OpenAI 모델 ID/AI SDK 모델을 지정할 수 있습니다.
+  `updateAnalysis`에서 `article.deadlines`를 저장하세요. `[]`는 근거 있는 마감 없음,
+  `undefined`는 미추출·실패입니다. 원문이 바뀌면 캐시를 지워야 합니다.
+  옵션을 생략하면 기존 분석 호출을 유지합니다.
+- `extractResearchRadarDeadlines({ model, article: { title, detailContent } })`는
+  호스트의 백필·검증에도 같은 원문 추출을 제공합니다. URL 조회나 재안내 활성화는 하지 않습니다.
+
+재안내는 실제 발행한 뉴스레터에 포함된 기사만 호스트에서 활성화합니다.
+core의 `usedArticles`는 편집 과정에서 빠진 기사도 포함하는 후보 배열이므로
+실제 게재의 근거가 아닙니다. 호스트는 최근 60일 실제 게재 기사만 일회성
+백필 대상으로 선정하고, 마감을 별도로 저장한 뒤 임박한 재안내만 골라 전달합니다.
+과거 뉴스레터 본문 전체는 생성 컨텍스트에 넣지 않습니다.
+
+재안내 직전에 `refreshResearchRadarDeadlines({ source: { title, url, targetUrl },
+model, customFetch?, publicDataApiKey? })`를 호출하세요. 기존 수집과 동일한
+어댑터·robots 규칙으로 등록된 상세 원문을 확인하며 전체 네트워크 제한 시간은
+15초입니다. 채용 API는 해당 공고만, 나라장터는 해당 공고번호의 차수만 조회하며
+최신 차수의 URL을 반환합니다. 일간 목록 수집·입찰 선별·점수 산정·저장은 실행하지
+않습니다. 원문 읽기만 필요하면 `fetchResearchRadarDeadlineSource()`를 쓸 수
+있으며 성공 상태는 `status: 'fetched'`입니다.
+
+날짜·시각은 인용 근거의 실제 표기와 대조합니다. 원문 해시가 같아도 이전 캐시의
+근거가 현재 검증 기준을 통과하지 못하면 다시 추출하며, 지원되지 않는 값은 재안내를 보류합니다.
+
+- `status: 'verified'`는 최신 기사·마감, `sourceHash`, `checkedAt`, 모델 사용량을
+  반환합니다. 명시적 연장은 변경 날짜로, 명시적 취소는 `status: 'cancelled'`로
+  추출합니다. 성공한 재확인의 `previous: { sourceHash, deadlines }`를 전달하면
+  새로 조회한 원문 해시가 같을 때만 재추출을 생략합니다. 추출 정책을 바꾸면
+  이 캐시도 무효화하세요.
+- `status: 'unverified'`는 마감 없이 사유만 반환합니다. 날짜 소실, 접속 실패,
+  미지원 게시판, 추출 실패는 재안내 보류이며 저장한 행동을 취소하지 않습니다.
+  원문 확인이 성공해도 과거의 모든 행동이 확인된 것은 아니므로 호스트에서
+  각 행동을 대응시키고 빠진 행동은 보류해야 합니다. 다른 URL의 별도 공지는
+  이 단건 확인 범위에 포함하지 않습니다.
+
+호스트가 고른 검증된 행동을 `renderVerifiedDeadlineReminders(reminders,
+publicationDate)`에 전달하고 결과를 `templateOptions.deadlineRemindersMarkdown`에
+넣으세요. 7일 이내의 활성 마감만 최대 5건을 날짜순으로 표시하며 명시된 시각만
+쓰고 23:59를 만들지 않습니다. 생성 후 저장할 Markdown과 HTML에 붙이므로
+LLM 컨텍스트가 늘어나지 않습니다. D-7·D-1 선정, 반복 방지와 발행 이력은
+호스트가 관리합니다. 빈 섹션은 생략합니다.
+
+새 연동에서는 원문을 재확인한 과거 행동을
+`templateOptions.verifiedDeadlineReminders`로 전달하세요. 생성 본문에 실제 링크가
+실린 기사의 원문 기반 마감과 합쳐 날짜순으로 향후 7일 이내 최대 5건을 링크가 있는
+한 섹션에 표시합니다. 재검증된 원문에서는 새로 확인한 행동만 표시 대상으로 삼고,
+대응되지 않은 캐시 마감은 보류합니다. 자유 문자열인 `title`·`kind`로 활성 상태나
+취소를 추측하지 않습니다. 나라장터 수정본은 공고번호로 같은 원문임을 판단합니다.
+같은 원문의 서로 다른 행동을 표시하려면 각 행동의 재검증 결과를 전달하세요.
+재검증 결과를 전달하지 않은 다른 원문은 기사에서 근거를 확인한 마감을 계속 사용합니다.
+기존 `deadlineRemindersMarkdown` 옵션도 유지합니다.
+프롬프트는 마무리에 별도 일정 목록을 만들지 않고, 동료 소개·공유 문구는 강조된
+마감 표 뒤에 한 번만 배치합니다. 표시할 마감이 없으면 빈 섹션을 만들지 않습니다.
+`templateOptions.shareNoticeMarkdown`을 지정하면 저장 Markdown과 HTML 모두에
+해당 문구를 씁니다. 생략하면 기본 안내를, 빈 문자열이면 안내를 표시하지 않습니다.
 
 ### 선택적 생성 설정
 
@@ -227,7 +294,7 @@ await generateNewsletter({
 
 Anthropic·Google로 뉴스레터를 생성하는 기존 `contentGeneration: { provider, apiKey, model? }` 경로도 호환성을 위해 유지합니다. 두 설정을 함께 전달하면 `models.generateNewsletter`가 우선합니다. `models.generateNewsletter`를 생략하거나 `undefined`로 전달하면 기존 `contentGeneration`의 프로바이더·모델 선택을 사용합니다. 두 설정 모두 없으면 `llmConfig.models.generateNewsletter`를 사용합니다. 모든 단계에 모델 객체를 전달해도 `openAIApiKey`는 계속 필수입니다.
 
-[src/config/index.ts](./src/config/index.ts)에는 한국어 출력(`outputLanguage: '한국어'`), 문화유산 분야(`expertField: ['문화유산']`), 브랜드명, `subscribePageUrl`, LLM `maxRetries: 5`, 체인 `stopAfterAttempt: 3`, 생성 `temperature: 0.3`이 정의되어 있습니다. 발행 설정은 `minimumArticleCountForIssue: 5`, `priorityArticleScoreThreshold: 8`이며 core 엔진에서 판정합니다. 잠금 파일의 core 3.0.6 구현은 중요도 8 이상 기사가 없을 때 후보가 **5개 이하이면 생략**합니다. 후보가 없으면 항상 생략합니다.
+[src/config/index.ts](./src/config/index.ts)에는 한국어 출력(`outputLanguage: '한국어'`), 문화유산 분야(`expertField: ['문화유산']`), 브랜드명, `subscribePageUrl`, LLM `maxRetries: 5`, 체인 `stopAfterAttempt: 3`, 생성 `temperature: 0.3`이 정의되어 있습니다. 발행 설정은 `minimumArticleCountForIssue: 5`, `priorityArticleScoreThreshold: 8`이며 core 엔진에서 판정합니다. 잠금 파일의 core 3.1.0 구현은 중요도 8 이상 기사가 없을 때 후보가 **5개 이하이면 생략**합니다. 후보가 없으면 항상 생략합니다.
 
 ## 크롤링 대상과 파서
 

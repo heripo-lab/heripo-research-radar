@@ -10,6 +10,8 @@ import type {
   UrlString,
 } from '@llm-newsletter-kit/core';
 
+import type { VerifiedDeadlineReminder } from '../deadlines/reminders';
+
 /**
  * Repository interface for task management
  */
@@ -141,6 +143,21 @@ export interface TagRepository {
  */
 interface BaseNewsletterTemplateOptions {
   /**
+   * Deterministic reminder section from renderVerifiedDeadlineReminders().
+   * Appended to saved Markdown and HTML after generation; never fed to the LLM.
+   */
+  deadlineRemindersMarkdown?: string;
+
+  /** Freshly verified historical actions, merged with deadlines from included articles. */
+  verifiedDeadlineReminders?: VerifiedDeadlineReminder[];
+
+  /**
+   * Custom colleague-sharing Markdown, placed after the unified deadline section
+   * in both saved Markdown and HTML. Omit for the default; use '' to suppress it.
+   */
+  shareNoticeMarkdown?: string;
+
+  /**
    * Markdown content for KRAS news section.
    * Converted to HTML and injected into the newsletter template.
    */
@@ -218,6 +235,16 @@ export interface WelcomeTemplateOptions {
  * Repository interface for newsletter management
  */
 export interface NewsletterRepository {
+  /**
+   * Titles of actually published issues in [fromInclusive, toExclusive).
+   * Scope the query to this newsletter/audience; exclude drafts and failed sends.
+   * Providing this method enables the preceding seven calendar days title guard.
+   */
+  findRecentPublishedTitles?(range: {
+    fromInclusive: IsoDateString;
+    toExclusive: IsoDateString;
+  }): Promise<string[]>;
+
   /**
    * Get the next issue order number
    * @returns Next issue order

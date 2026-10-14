@@ -79,7 +79,7 @@ const dependencies: NewsletterGeneratorDependencies = {
 async function configure(
   options: Pick<
     NewsletterGeneratorDependencies,
-    'models' | 'contentGeneration'
+    'models' | 'contentGeneration' | 'extractDeadlineOptions'
   > = {},
 ) {
   assert.equal(
@@ -223,4 +223,22 @@ test('public AnalysisProvider OpenAI factory overload remains compatible', () =>
     provider.determineScoreOptions.model,
     llmConfig.models.determineImportance,
   );
+});
+
+test('deadline extraction is opt in and resolves its model independently', async () => {
+  const deadlineModel = () =>
+    captured.analysisProvider.extractDeadlineOptions?.model;
+  await configure();
+  assert.equal(deadlineModel(), undefined);
+  const importance = new MockLanguageModelV4({ modelId: 'importance' });
+  await configure({
+    models: { determineImportance: importance },
+    extractDeadlineOptions: {},
+  });
+  assert.strictEqual(deadlineModel(), importance);
+  await configure({ extractDeadlineOptions: { model: 'deadline-model' } });
+  assertOpenAI(deadlineModel()!, 'deadline-model');
+  const deadline = new MockLanguageModelV4({ modelId: 'deadline' });
+  await configure({ extractDeadlineOptions: { model: deadline } });
+  assert.strictEqual(deadlineModel(), deadline);
 });
