@@ -130,7 +130,7 @@ export class ContentGenerateProvider implements CoreContentGenerateProvider {
     // Reject conflicting model output before any persistence, rather than
     // silently publishing a second schedule block or misplaced sharing link.
     if (
-      /^\s*(?:\*\*임박한 주요 일정 및 마감:|##\s+⏰\s*다가오는 마감)/m.test(
+      /^\s*(?:\*\*임박한 주요 일정 및 마감:|##\s+⏰\s*다가오는 (?:일정\s*·\s*마감|마감))/m.test(
         newsletter.content,
       )
     )

@@ -35,7 +35,19 @@ const deadline: ArticleDeadline = {
 function deadlineModel(deadlines: ArticleDeadline[]) {
   return new MockLanguageModelV4({
     doGenerate: {
-      content: [{ type: 'text', text: JSON.stringify({ deadlines }) }],
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify({
+            deadlines: deadlines.map((item) => ({
+              type: 'deadline',
+              endDate: null,
+              endTime: null,
+              ...item,
+            })),
+          }),
+        },
+      ],
       finishReason: { unified: 'stop', raw: undefined },
       usage: {
         inputTokens: { total: 1, noCache: 1, cacheRead: 0, cacheWrite: 0 },
@@ -459,4 +471,65 @@ test('visible headline-only cancellation invalidates a cache even with unchanged
     assert.equal(again.status, 'verified');
     assert.equal(model.doGenerateCalls.length, 1);
   }
+});
+
+test('source refresh includes events and invalidates deadline-only caches on opt-in', async () => {
+  const event: ArticleDeadline = {
+    ...deadline,
+    type: 'event',
+    title: '학술대회',
+    kind: '개최',
+    date: '2026-11-21',
+    endDate: '2026-11-22',
+    endTime: null,
+    evidence: '학술대회는 2026년 11월 21일부터 22일까지 개최합니다.',
+  };
+  const body = `${deadline.evidence}\n${event.evidence}`;
+  const model = deadlineModel([deadline, event]);
+  const first = await refreshResearchRadarDeadlines({
+    source,
+    model,
+    ...krasFetch(body),
+    maxRetries: 0,
+  });
+  assert.equal(first.status, 'verified');
+  if (first.status !== 'verified') throw new Error('Expected verification');
+  assert.deepEqual(first.deadlines, [deadline]);
+  // Legacy previous objects have no mode metadata and must not hide events.
+  const enabled = await refreshResearchRadarDeadlines({
+    source,
+    model,
+    ...krasFetch(body),
+    maxRetries: 0,
+    includeEvents: true,
+    previous: { sourceHash: first.sourceHash, deadlines: first.deadlines },
+  });
+  assert.equal(enabled.status, 'verified');
+  if (enabled.status !== 'verified') throw new Error('Expected verification');
+  assert.equal(enabled.includeEvents, true);
+  assert.equal(enabled.deadlines.length, 2);
+  assert.deepEqual(enabled.deadlines[1], event);
+  assert.equal(model.doGenerateCalls.length, 2);
+  const reused = await refreshResearchRadarDeadlines({
+    source,
+    model,
+    ...krasFetch(body),
+    maxRetries: 0,
+    includeEvents: true,
+    previous: enabled,
+  });
+  assert.equal(reused.status, 'verified');
+  assert.equal(model.doGenerateCalls.length, 2);
+  const disabled = await refreshResearchRadarDeadlines({
+    source,
+    model,
+    ...krasFetch(body),
+    maxRetries: 0,
+    previous: enabled,
+  });
+  assert.equal(disabled.status, 'verified');
+  if (disabled.status !== 'verified') throw new Error('Expected verification');
+  assert.deepEqual(disabled.deadlines, [deadline]);
+  assert.equal(model.doGenerateCalls.length, 3);
+  assert.deepEqual(enabled.deadlines[1], event); // Caller-owned cache remains intact.
 });

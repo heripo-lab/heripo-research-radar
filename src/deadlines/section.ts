@@ -74,8 +74,19 @@ export function collectNewsletterDeadlines(
     // cached actions can supplement a freshly verified source.
     return JSON.stringify([
       source,
+      item.deadline.type ?? 'deadline',
       source?.startsWith('g2b:') ? null : normalize(item.deadline.title),
       normalize(item.deadline.kind),
+      // Event occurrences may share a name and kind but have different periods.
+      // Deadline actions retain the existing identity across date extensions.
+      ...(item.deadline.type === 'event'
+        ? [
+            item.deadline.date,
+            item.deadline.time,
+            item.deadline.endDate ?? null,
+            item.deadline.endTime ?? null,
+          ]
+        : []),
     ]);
   };
   const result = verified.filter(

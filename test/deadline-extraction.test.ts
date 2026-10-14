@@ -18,7 +18,14 @@ test('extracts grounded Korean deadlines through the local core and preserves th
   const model = new MockLanguageModelV4({
     doGenerate: {
       content: [
-        { type: 'text', text: JSON.stringify({ deadlines: [deadline] }) },
+        {
+          type: 'text',
+          text: JSON.stringify({
+            deadlines: [
+              { type: 'deadline', endDate: null, endTime: null, ...deadline },
+            ],
+          }),
+        },
       ],
       finishReason: { unified: 'stop', raw: undefined },
       usage: {
@@ -90,4 +97,64 @@ test('empty originals need no model call', async () => {
     { deadlines: [], usage: undefined },
   );
   assert.equal(model.doGenerateCalls.length, 0);
+});
+
+test('explicit event opt-in extracts conference periods separately from registration deadlines', async () => {
+  const registration = {
+    type: 'deadline' as const,
+    title: '학술대회',
+    kind: '사전 등록',
+    date: '2026-11-13',
+    time: null,
+    timeZone: null,
+    endDate: null,
+    endTime: null,
+    status: 'active' as const,
+    evidence: '사전 등록은 2026-11-13 마감입니다.',
+  };
+  const event = {
+    ...registration,
+    type: 'event' as const,
+    kind: '개최',
+    date: '2026-11-21',
+    endDate: '2026-11-22',
+    evidence: '학술대회는 2026년 11월 21일부터 22일까지 개최합니다.',
+  };
+  for (const includeEvents of [false, true]) {
+    const model = new MockLanguageModelV4({
+      doGenerate: {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({ deadlines: [registration, event] }),
+          },
+        ],
+        finishReason: { unified: 'stop', raw: undefined },
+        warnings: [],
+        usage: {
+          inputTokens: { total: 1, noCache: 1, cacheRead: 0, cacheWrite: 0 },
+          outputTokens: { total: 1, text: 1, reasoning: 0 },
+        },
+      },
+    });
+    const result = await extractResearchRadarDeadlines({
+      model,
+      includeEvents,
+      maxRetries: 0,
+      article: {
+        title: '학술대회',
+        detailContent: `${registration.evidence}\n${event.evidence}`,
+      },
+    });
+    assert.equal(result.deadlines.length, includeEvents ? 2 : 1);
+    if (includeEvents)
+      assert.deepEqual(result.deadlines, [registration, event]);
+    else assert.ok(result.deadlines.every((item) => item.type !== 'event'));
+    const prompt = JSON.stringify(model.doGenerateCalls[0].prompt);
+    assert.ok(
+      prompt.includes(
+        includeEvents ? '발굴 현장 공개' : 'type: event를 반환하지 않는다',
+      ),
+    );
+  }
 });
