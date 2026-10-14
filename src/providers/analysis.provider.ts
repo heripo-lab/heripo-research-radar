@@ -16,6 +16,8 @@ export interface AnalysisModels {
   analyzeImages: LanguageModel;
   determineImportance: LanguageModel;
   extractDeadlines?: LanguageModel;
+  /** Event extraction is enabled only together with extractDeadlines. */
+  includeEvents?: boolean;
 }
 
 /**
@@ -70,7 +72,10 @@ export class AnalysisProvider implements CoreAnalysisProvider {
     };
 
     if (models.extractDeadlines) {
-      this.extractDeadlineOptions = { model: models.extractDeadlines };
+      this.extractDeadlineOptions = {
+        model: models.extractDeadlines,
+        includeEvents: models.includeEvents,
+      };
     }
 
     this.determineScoreOptions = {

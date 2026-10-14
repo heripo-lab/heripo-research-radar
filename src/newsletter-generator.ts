@@ -99,7 +99,11 @@ export interface NewsletterGeneratorDependencies {
    * Repositories must persist deadlines, including an empty array. Omit to keep
    * the existing analysis calls. This does not activate reminders on candidates.
    */
-  extractDeadlineOptions?: { model?: string | LanguageModel };
+  extractDeadlineOptions?: {
+    model?: string | LanguageModel;
+    /** Include conferences, public site visits and other dated attendance opportunities. */
+    includeEvents?: boolean;
+  };
 
   /**
    * Non-OpenAI content generation configuration (optional).
@@ -266,6 +270,7 @@ function createNewsletterGenerator(
             ? openai(dependencies.extractDeadlineOptions.model)
             : dependencies.extractDeadlineOptions.model
         : undefined,
+      includeEvents: dependencies.extractDeadlineOptions?.includeEvents,
     },
     dependencies.articleRepository,
     dependencies.tagRepository,

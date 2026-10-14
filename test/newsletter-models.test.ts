@@ -242,3 +242,14 @@ test('deadline extraction is opt in and resolves its model independently', async
   await configure({ extractDeadlineOptions: { model: deadline } });
   assert.strictEqual(deadlineModel(), deadline);
 });
+
+test('event extraction opt-in reaches the core analysis provider', async () => {
+  for (const includeEvents of [undefined, false, true]) {
+    await configure({ extractDeadlineOptions: { includeEvents } });
+    assert.equal(
+      captured.analysisProvider.extractDeadlineOptions?.includeEvents,
+      includeEvents,
+    );
+    assert.ok(captured.analysisProvider.extractDeadlineOptions?.model);
+  }
+});

@@ -48,6 +48,8 @@ export type ResearchRadarDeadlineRefreshResult =
   | (Omit<FetchedSource, 'status'> & {
       status: 'verified';
       deadlines: ArticleDeadline[];
+      /** Preserve this extraction scope when passing the result as previous. */
+      includeEvents?: boolean;
       usage: LanguageModelUsage | undefined;
     })
   | UnverifiedSource;
@@ -63,7 +65,12 @@ export type ResearchRadarDeadlineRefreshConfig =
   ResearchRadarDeadlineSourceOptions &
     Omit<ResearchRadarDeadlineExtractionConfig, 'article'> & {
       /** Cache only a successful extraction from this source. A fresh fetch is mandatory. */
-      previous?: { sourceHash: string; deadlines: ArticleDeadline[] };
+      previous?: {
+        sourceHash: string;
+        deadlines: ArticleDeadline[];
+        /** Missing metadata denotes a legacy deadline-only extraction. */
+        includeEvents?: boolean;
+      };
     };
 
 const failure = (reason: DeadlineVerificationFailure): UnverifiedSource => ({
@@ -293,6 +300,10 @@ export async function refreshResearchRadarDeadlines(
     const extracted =
       config.previous?.sourceHash === source.sourceHash &&
       config.previous.deadlines.length &&
+      Boolean(config.previous.includeEvents) ===
+        Boolean(config.includeEvents) &&
+      (config.includeEvents ||
+        config.previous.deadlines.every((item) => item.type !== 'event')) &&
       config.previous.deadlines.every((deadline) =>
         isArticleDeadlineGrounded(deadline, source.article),
       )
@@ -302,10 +313,16 @@ export async function refreshResearchRadarDeadlines(
             article: source.article,
             outputLanguage: config.outputLanguage,
             maxRetries: config.maxRetries,
+            includeEvents: config.includeEvents,
             promptBuilder: config.promptBuilder,
           });
     if (!extracted.deadlines.length) return failure('no-supported-deadlines');
-    return { ...source, status: 'verified', ...extracted };
+    return {
+      ...source,
+      status: 'verified',
+      ...extracted,
+      includeEvents: config.includeEvents ?? false,
+    };
   } catch {
     return failure('extraction-failed');
   }

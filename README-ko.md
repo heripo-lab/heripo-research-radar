@@ -66,10 +66,10 @@ Powered by LLM Newsletter Kit
 ## 설치
 
 ```bash
-npm install @heripo/research-radar '@llm-newsletter-kit/core@~3.1.0'
+npm install @heripo/research-radar '@llm-newsletter-kit/core@~3.1.1'
 ```
 
-**요구사항**: Node.js 24.x에서는 24.15.0 이상, 또는 Node.js 26.0.0 이상과 ESM 애플리케이션이 필요합니다. Node.js 25는 지원하지 않습니다. 패키지는 `dist/index.js`, TypeScript 선언 파일(`dist/index.d.ts`), JavaScript 소스맵을 제공합니다. Core 엔진은 peer dependency이며 현재 지원 범위는 `~3.1.0`입니다. 최근 제목 중복 방지와 원문 근거 기반 마감일 추출을 위해 core 3.1.0 이상이 필요합니다. 이 버전에는 Radar가 의존하는 크롤링 타임아웃 재시도 처리와 생성 자가검증 재시도 상한도 포함됩니다.
+**요구사항**: Node.js 24.x에서는 24.15.0 이상, 또는 Node.js 26.0.0 이상과 ESM 애플리케이션이 필요합니다. Node.js 25는 지원하지 않습니다. 패키지는 `dist/index.js`, TypeScript 선언 파일(`dist/index.d.ts`), JavaScript 소스맵을 제공합니다. Core 엔진은 peer dependency이며 현재 지원 범위는 `~3.1.1`입니다. 최근 제목 중복 방지와 원문 근거 기반 마감일 추출을 위해 core 3.1.1 이상이 필요합니다. 이 버전에는 Radar가 의존하는 크롤링 타임아웃 재시도 처리와 생성 자가검증 재시도 상한도 포함됩니다.
 
 기사 분석에는 OpenAI API 키가 필요합니다. 콘텐츠 생성에는 선택한 프로바이더(OpenAI / Anthropic / Google)의 키가 필요하며, OpenAI를 선택하면 같은 키를 사용할 수 있습니다. 라이브러리에 키를 명시적으로 전달하므로 환경변수 로딩은 애플리케이션에서 처리하세요.
 
@@ -150,8 +150,8 @@ export async function runNewsletter(repositories: {
 
 ### 최근 제목과 원문 마감 추출
 
-이 API는 배포된 core 3.1.0 패키지를 사용합니다. 피어 의존성 범위는
-`~3.1.0`이며 `npm ci`로 로컬 core 연결 없이 잠금 파일의 패키지를 설치합니다.
+이 API는 배포된 core 3.1.1 패키지를 사용합니다. 피어 의존성 범위는
+`~3.1.1`이며 `npm ci`로 로컬 core 연결 없이 잠금 파일의 패키지를 설치합니다.
 
 - 선택적 `NewsletterRepository.findRecentPublishedTitles({ fromInclusive, toExclusive })`를
   구현하면 제목 중복 방지를 켭니다. Radar는 발행일 직전 7일의 날짜 범위를
@@ -163,8 +163,16 @@ export async function runNewsletter(repositories: {
   `updateAnalysis`에서 `article.deadlines`를 저장하세요. `[]`는 근거 있는 마감 없음,
   `undefined`는 미추출·실패입니다. 원문이 바뀌면 캐시를 지워야 합니다.
   옵션을 생략하면 기존 분석 호출을 유지합니다.
+- `extractDeadlineOptions`에 `includeEvents: true`를 추가하면 학술대회·강연·발굴
+  현장 공개 일정도 추출합니다. 등록 마감과 개최 일정은 별도 항목이며, 행사는
+  `type: 'event'`, 시작 `date`·`time`, 선택적 종료 `endDate`·`endTime`을 보존합니다.
+  시각은 추측하지 않습니다. 기본값은 마감만 추출하며, 옵션을 꺼도 분석에서 기존
+  이벤트 캐시는 보존합니다. 과거 기사에 행사를 추가하려면 빈 배열을 포함한 기존
+  캐시를 재추출해야 합니다.
 - `extractResearchRadarDeadlines({ model, article: { title, detailContent } })`는
-  호스트의 백필·검증에도 같은 원문 추출을 제공합니다. URL 조회나 재안내 활성화는 하지 않습니다.
+  호스트의 백필·검증에도 같은 원문 추출을 제공합니다. 이 함수와
+  `refreshResearchRadarDeadlines()`에도 `includeEvents: true`를 전달하면 행사를
+  포함합니다. URL 조회나 재안내 활성화는 하지 않습니다.
 
 재안내는 실제 발행한 뉴스레터에 포함된 기사만 호스트에서 활성화합니다.
 core의 `usedArticles`는 편집 과정에서 빠진 기사도 포함하는 후보 배열이므로
@@ -186,8 +194,10 @@ model, customFetch?, publicDataApiKey? })`를 호출하세요. 기존 수집과 
 - `status: 'verified'`는 최신 기사·마감, `sourceHash`, `checkedAt`, 모델 사용량을
   반환합니다. 명시적 연장은 변경 날짜로, 명시적 취소는 `status: 'cancelled'`로
   추출합니다. 성공한 재확인의 `previous: { sourceHash, deadlines }`를 전달하면
-  새로 조회한 원문 해시가 같을 때만 재추출을 생략합니다. 추출 정책을 바꾸면
-  이 캐시도 무효화하세요.
+  새로 조회한 원문 해시와 행사 추출 모드가 같을 때만 재추출을 생략합니다.
+  반환된 `includeEvents`도 `previous`에 보존하세요. 모드 정보가 없으면 기존 마감
+  전용 캐시로 보므로, 행사 추출을 켜면 같은 원문도 다시 추출합니다. 다른 추출
+  정책을 바꾸면 이 캐시도 무효화하세요.
 - `status: 'unverified'`는 마감 없이 사유만 반환합니다. 날짜 소실, 접속 실패,
   미지원 게시판, 추출 실패는 재안내 보류이며 저장한 행동을 취소하지 않습니다.
   원문 확인이 성공해도 과거의 모든 행동이 확인된 것은 아니므로 호스트에서
@@ -294,7 +304,7 @@ await generateNewsletter({
 
 Anthropic·Google로 뉴스레터를 생성하는 기존 `contentGeneration: { provider, apiKey, model? }` 경로도 호환성을 위해 유지합니다. 두 설정을 함께 전달하면 `models.generateNewsletter`가 우선합니다. `models.generateNewsletter`를 생략하거나 `undefined`로 전달하면 기존 `contentGeneration`의 프로바이더·모델 선택을 사용합니다. 두 설정 모두 없으면 `llmConfig.models.generateNewsletter`를 사용합니다. 모든 단계에 모델 객체를 전달해도 `openAIApiKey`는 계속 필수입니다.
 
-[src/config/index.ts](./src/config/index.ts)에는 한국어 출력(`outputLanguage: '한국어'`), 문화유산 분야(`expertField: ['문화유산']`), 브랜드명, `subscribePageUrl`, LLM `maxRetries: 5`, 체인 `stopAfterAttempt: 3`, 생성 `temperature: 0.3`이 정의되어 있습니다. 발행 설정은 `minimumArticleCountForIssue: 5`, `priorityArticleScoreThreshold: 8`이며 core 엔진에서 판정합니다. 잠금 파일의 core 3.1.0 구현은 중요도 8 이상 기사가 없을 때 후보가 **5개 이하이면 생략**합니다. 후보가 없으면 항상 생략합니다.
+[src/config/index.ts](./src/config/index.ts)에는 한국어 출력(`outputLanguage: '한국어'`), 문화유산 분야(`expertField: ['문화유산']`), 브랜드명, `subscribePageUrl`, LLM `maxRetries: 5`, 체인 `stopAfterAttempt: 3`, 생성 `temperature: 0.3`이 정의되어 있습니다. 발행 설정은 `minimumArticleCountForIssue: 5`, `priorityArticleScoreThreshold: 8`이며 core 엔진에서 판정합니다. 잠금 파일의 core 3.1.1 구현은 중요도 8 이상 기사가 없을 때 후보가 **5개 이하이면 생략**합니다. 후보가 없으면 항상 생략합니다.
 
 ## 크롤링 대상과 파서
 
