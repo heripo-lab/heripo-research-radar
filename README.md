@@ -226,7 +226,10 @@ Prefer `templateOptions.verifiedDeadlineReminders` with freshly verified histori
 actions. The provider merges these with source-grounded deadlines from articles
 actually linked in the generated body, sorts them, and displays at most five
 eligible deadlines/events in one linked section. Deduplication includes the
-entry type, so a registration cutoff cannot replace an attendance schedule. For a refreshed source,
+entry type, so a registration cutoff cannot replace an attendance schedule.
+Event identity also includes the start/end dates and times, preserving separate
+occurrences with the same title and kind. Deadline action deduplication is unchanged.
+For a refreshed source,
 only freshly verified actions are eligible: unmatched cached actions are held,
 never inferred to be active or cancelled from free-form `title` or `kind` labels.
 G2B revisions share a source identity by notice number. Pass each distinct action

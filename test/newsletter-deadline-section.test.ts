@@ -593,3 +593,72 @@ test('collection preserves deadline/event identity and a fresh event cancellatio
     '',
   );
 });
+
+test('separate event dates, times and endpoints survive collection while exact duplicates collapse', () => {
+  const base = {
+    ...deadline,
+    type: 'event' as const,
+    title: '발굴 현장 공개',
+    kind: '현장 공개',
+    date: '2026-10-16',
+    time: '10:00',
+    endDate: '2026-10-16',
+    endTime: '11:00',
+  };
+  for (const fields of [
+    { date: '2026-10-18', endDate: '2026-10-18' },
+    { time: '11:00', endTime: '12:00' },
+    { endDate: '2026-10-17' },
+    { endTime: '12:00' },
+  ]) {
+    const instances = [base, { ...base, ...fields }].map((event) => ({
+      ...event,
+      evidence: `현장 공개는 ${event.date} ${event.time}부터 ${event.endDate} ${event.endTime}까지입니다.`,
+    }));
+    const included = {
+      ...article,
+      detailContent: instances.map((item) => item.evidence).join('\n'),
+      deadlines: [...instances, { ...instances[0] }],
+    };
+    const result = collectNewsletterDeadlines(
+      `[현장 공개](${article.url})`,
+      [included],
+      [],
+    );
+    assert.deepEqual(
+      result.map((item) => item.deadline),
+      instances,
+    );
+    const markdown = renderVerifiedDeadlineReminders(
+      result,
+      '2026-10-14',
+      new Date('2026-10-14T00:00:00Z'),
+    );
+    assert.equal(
+      markdown.split('\n').filter((line) => line.startsWith('| [')).length,
+      2,
+    );
+  }
+});
+
+test('deadline action identity continues deduplicating changed cutoff dates', () => {
+  const first = {
+    ...deadline,
+    date: '2026-10-16',
+    evidence: '발표 신청은 2026-10-16 마감입니다.',
+  };
+  const included = {
+    ...article,
+    detailContent: `${first.evidence}\n${deadline.evidence}`,
+    deadlines: [first, deadline],
+  };
+  const result = collectNewsletterDeadlines(
+    `[학술대회](${article.url})`,
+    [included],
+    [],
+  );
+  assert.deepEqual(
+    result.map((item) => item.deadline),
+    [first],
+  );
+});
