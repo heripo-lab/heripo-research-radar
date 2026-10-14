@@ -125,6 +125,9 @@ export function renderVerifiedDeadlineReminders(
     })
     .sort(
       (a, b) =>
+        // The five-row limit must not let older ongoing events displace
+        // today's or upcoming deadlines/events. Ongoing events fill spare rows.
+        Number(a.days < 0) - Number(b.days < 0) ||
         a.ms - b.ms ||
         (a.reminder.deadline.time ?? '23:59:59').localeCompare(
           b.reminder.deadline.time ?? '23:59:59',

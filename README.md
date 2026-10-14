@@ -212,9 +212,10 @@ deadlines }` from a successful refresh skips extraction only if a fresh fetch
 
 Pass host-selected verified actions to
 `renderVerifiedDeadlineReminders(reminders, publicationDate)` and place its result
-in `templateOptions.deadlineRemindersMarkdown`. It emits a date-ordered section
-of at most five active deadlines/events starting within seven days, also allowing
-ongoing events through a known end date. It preserves supplied periods and times
+in `templateOptions.deadlineRemindersMarkdown`. Today's and upcoming active
+deadlines/events within seven days take priority; ongoing events through a known
+end date fill any remaining slots. Each group is ordered by date and time, with
+at most five entries overall. It preserves supplied periods and times
 without inventing 23:59. The heading is **다가오는 일정·마감**. Today's entries say
 **오늘 마감**, **오늘 개최** or **오늘 공개**, while ongoing events say **진행 중**.
 An event's start time is not a cutoff: only its stated end time expires it during

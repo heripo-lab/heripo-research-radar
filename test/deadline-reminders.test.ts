@@ -288,3 +288,85 @@ test('deadline and event entries with identical free-form labels remain separate
     2,
   );
 });
+
+test('old ongoing events cannot push out a tomorrow deadline or a today event at the five-row limit', () => {
+  const ongoing = Array.from(
+    { length: 5 },
+    (_, index): VerifiedDeadlineReminder => ({
+      ...reminder,
+      deadline: {
+        ...deadline,
+        type: 'event',
+        title: `진행 행사 ${index}`,
+        kind: '공개',
+        date: `2026-09-0${index + 1}`,
+        endDate: '2026-10-30',
+        endTime: null,
+      },
+    }),
+  );
+  const tomorrow = {
+    ...reminder,
+    deadline: { ...deadline, title: '내일 신청 마감', date: '2026-10-15' },
+  };
+  const today: VerifiedDeadlineReminder = {
+    ...reminder,
+    deadline: {
+      ...deadline,
+      type: 'event',
+      title: '오늘 학술대회',
+      kind: '개최',
+      date: '2026-10-14',
+    },
+  };
+  const markdown = renderVerifiedDeadlineReminders(
+    [...ongoing, tomorrow, today],
+    '2026-10-14',
+    new Date('2026-10-14T00:00:00Z'),
+  );
+  assert.ok(markdown.includes('내일 신청 마감'));
+  assert.ok(markdown.includes('오늘 학술대회'));
+  assert.ok(
+    markdown.indexOf('오늘 학술대회') < markdown.indexOf('내일 신청 마감'),
+  );
+  assert.ok(
+    markdown.indexOf('내일 신청 마감') < markdown.indexOf('진행 행사 0'),
+  );
+  const rows = markdown.split('\n').filter((line) => line.startsWith('| ['));
+  assert.equal(rows.length, 5);
+  assert.equal(rows.filter((line) => line.includes('진행 중')).length, 3);
+});
+
+test('five upcoming entries use all slots ahead of an ongoing event', () => {
+  const upcoming = Array.from(
+    { length: 5 },
+    (_, index): VerifiedDeadlineReminder => ({
+      ...reminder,
+      deadline: {
+        ...deadline,
+        title: `신청 마감 ${index}`,
+        date: `2026-10-${15 + index}`,
+      },
+    }),
+  );
+  const ongoing: VerifiedDeadlineReminder = {
+    ...reminder,
+    deadline: {
+      ...deadline,
+      type: 'event',
+      title: '지난달 시작한 행사',
+      kind: '공개',
+      date: '2026-09-01',
+      endDate: '2026-10-30',
+    },
+  };
+  const markdown = renderVerifiedDeadlineReminders(
+    [ongoing, ...upcoming.reverse()],
+    '2026-10-14',
+    new Date('2026-10-14T00:00:00Z'),
+  );
+  for (let index = 0; index < 5; index++)
+    assert.ok(markdown.includes(`신청 마감 ${index}`));
+  assert.ok(!markdown.includes('지난달 시작한 행사'));
+  assert.ok(markdown.indexOf('신청 마감 0') < markdown.indexOf('신청 마감 4'));
+});
