@@ -213,15 +213,20 @@ deadlines }` from a successful refresh skips extraction only if a fresh fetch
 Pass host-selected verified actions to
 `renderVerifiedDeadlineReminders(reminders, publicationDate)` and place its result
 in `templateOptions.deadlineRemindersMarkdown`. It emits a date-ordered section
-of at most five active deadlines within seven days, preserving supplied times
-without inventing 23:59. The provider appends it to saved Markdown and HTML after
+of at most five active deadlines/events starting within seven days, also allowing
+ongoing events through a known end date. It preserves supplied periods and times
+without inventing 23:59. The heading is **다가오는 일정·마감**. Today's entries say
+**오늘 마감**, **오늘 개최** or **오늘 공개**, while ongoing events say **진행 중**.
+An event's start time is not a cutoff: only its stated end time expires it during
+the end date. Without an end date, it is listed only through its start date. The provider appends it to saved Markdown and HTML after
 generation, so reminders add no LLM context. The host owns D-7/D-1 scheduling,
 repeat suppression and publication history. Empty sections are omitted.
 
 Prefer `templateOptions.verifiedDeadlineReminders` with freshly verified historical
 actions. The provider merges these with source-grounded deadlines from articles
 actually linked in the generated body, sorts them, and displays at most five
-active deadlines within seven days in one linked section. For a refreshed source,
+eligible deadlines/events in one linked section. Deduplication includes the
+entry type, so a registration cutoff cannot replace an attendance schedule. For a refreshed source,
 only freshly verified actions are eligible: unmatched cached actions are held,
 never inferred to be active or cancelled from free-form `title` or `kind` labels.
 G2B revisions share a source identity by notice number. Pass each distinct action
@@ -230,8 +235,8 @@ sources without supplied verification continue using grounded article deadlines.
 The older
 `deadlineRemindersMarkdown` option remains available for pre-rendered sections.
 The generation prompt no longer produces a separate closing schedule list.
-The colleague-sharing notice follows the highlighted deadline section in both
-saved Markdown and HTML; no eligible deadlines means no empty section.
+The colleague-sharing notice follows the highlighted schedule/deadline section
+in both saved Markdown and HTML; no eligible entries means no empty section.
 Set `templateOptions.shareNoticeMarkdown` to customize this notice in both
 formats, omit it for the default, or pass an empty string to suppress it.
 

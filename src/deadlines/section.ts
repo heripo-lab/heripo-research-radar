@@ -74,6 +74,7 @@ export function collectNewsletterDeadlines(
     // cached actions can supplement a freshly verified source.
     return JSON.stringify([
       source,
+      item.deadline.type ?? 'deadline',
       source?.startsWith('g2b:') ? null : normalize(item.deadline.title),
       normalize(item.deadline.kind),
     ]);

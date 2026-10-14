@@ -148,7 +148,7 @@ interface BaseNewsletterTemplateOptions {
    */
   deadlineRemindersMarkdown?: string;
 
-  /** Freshly verified historical actions, merged with deadlines from included articles. */
+  /** Freshly verified historical deadlines/events, merged with included articles. */
   verifiedDeadlineReminders?: VerifiedDeadlineReminder[];
 
   /**

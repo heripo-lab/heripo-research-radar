@@ -147,16 +147,16 @@ test('both branding modes append reminders once to HTML and saved Markdown witho
     );
     assert.ok(
       saved!.content.indexOf('이 소식이 도움이') >
-        saved!.content.indexOf('다가오는 마감'),
+        saved!.content.indexOf('다가오는 일정·마감'),
     );
     assert.ok(
       saved!.htmlBody.indexOf('이 소식이 도움이') >
-        saved!.htmlBody.indexOf('다가오는 마감'),
+        saved!.htmlBody.indexOf('다가오는 일정·마감'),
     );
     assert.equal(saved!.htmlBody.split('이 소식이 도움이').length, 2);
-    assert.equal(saved?.htmlBody.split('다가오는 마감').length, 2);
+    assert.equal(saved?.htmlBody.split('다가오는 일정·마감').length, 2);
     assert.ok(
-      saved?.htmlBody.indexOf('다가오는 마감')! >
+      saved?.htmlBody.indexOf('다가오는 일정·마감')! >
         saved?.htmlBody.indexOf('{{NEWSLETTER_CONTENT}}')!,
     );
     assert.ok(!provider.htmlTemplate.html.includes('23:59'));
@@ -167,8 +167,124 @@ test('both branding modes append reminders once to HTML and saved Markdown witho
     assert.equal(sections.length, 1);
     assert.equal(
       sections[0].querySelector('h2')?.textContent,
-      '⏰ 다가오는 마감',
+      '⏰ 다가오는 일정·마감',
     );
     assert.equal(sections[0].querySelectorAll('td a[href]').length, 1);
   }
+});
+
+test('today distinguishes a deadline, conference and site visit without treating the event start as a cutoff', () => {
+  const today = { ...deadline, date: '2026-10-13' };
+  const publicVisit: ArticleDeadline = {
+    ...today,
+    type: 'event',
+    title: '발굴 현장 공개',
+    kind: '현장 공개',
+    time: '10:00',
+    endDate: '2026-10-13',
+    endTime: '16:00',
+    timeZone: 'Asia/Seoul',
+  };
+  const conference: ArticleDeadline = {
+    ...today,
+    type: 'event',
+    title: '학술대회',
+    kind: '개최',
+    time: '14:00',
+  };
+  const now = new Date('2026-10-13T03:00:00Z'); // 12:00 KST, after the visit started.
+  const markdown = renderVerifiedDeadlineReminders(
+    [
+      { ...reminder, deadline: today },
+      { ...reminder, deadline: publicVisit },
+      { ...reminder, deadline: conference },
+    ],
+    '2026-10-13',
+    now,
+  );
+  assert.ok(markdown.includes('## ⏰ 다가오는 일정·마감'));
+  assert.ok(markdown.includes('| 안내 | 일정 |'));
+  assert.ok(markdown.includes('오늘 마감'));
+  assert.ok(markdown.includes('오늘 개최'));
+  assert.ok(markdown.includes('10:00 ~ 16:00 (Asia/Seoul) · 오늘 공개'));
+  assert.equal(
+    renderVerifiedDeadlineReminders(
+      [{ ...reminder, deadline: publicVisit }],
+      '2026-10-13',
+      new Date('2026-10-13T07:00:00Z'),
+    ),
+    '',
+  );
+});
+
+test('event periods remain visible while ongoing and reject expired, cancelled or invalid periods', () => {
+  const event: ArticleDeadline = {
+    ...deadline,
+    type: 'event',
+    title: '현장 공개',
+    kind: '현장 공개',
+    date: '2026-10-12',
+    endDate: '2026-10-14',
+    endTime: null,
+  };
+  const upcoming = {
+    ...event,
+    title: '학술대회',
+    kind: '개최',
+    date: '2026-10-14',
+    endDate: '2026-10-15',
+  };
+  const now = new Date('2026-10-13T03:00:00Z');
+  const markdown = renderVerifiedDeadlineReminders(
+    [
+      { ...reminder, deadline: event },
+      { ...reminder, deadline: upcoming },
+    ],
+    '2026-10-13',
+    now,
+  );
+  assert.ok(markdown.includes('2026-10-12 ~ 2026-10-14 · 진행 중'));
+  assert.ok(markdown.includes('2026-10-14 ~ 2026-10-15 · D-1'));
+  assert.ok(!markdown.includes('23:59'));
+  for (const invalid of [
+    { ...event, endDate: '2026-10-11' },
+    { ...event, endDate: '2026-02-30' },
+    { ...event, endDate: null },
+    { ...event, status: 'cancelled' as const },
+    { ...event, date: '2026-10-21', endDate: '2026-10-22' },
+    {
+      ...event,
+      date: '2026-10-13',
+      time: '16:00',
+      endDate: '2026-10-13',
+      endTime: '10:00',
+    },
+    { ...event, date: '2026-10-13', endDate: null, endTime: '16:00' },
+  ])
+    assert.equal(
+      renderVerifiedDeadlineReminders(
+        [{ ...reminder, deadline: invalid }],
+        '2026-10-13',
+        now,
+      ),
+      '',
+    );
+});
+
+test('deadline and event entries with identical free-form labels remain separate', () => {
+  const same = { ...deadline, title: '학술대회', kind: '안내' };
+  const event = { ...same, type: 'event' as const };
+  const markdown = renderVerifiedDeadlineReminders(
+    [
+      { ...reminder, deadline: same },
+      { ...reminder, deadline: event },
+      { ...reminder, deadline: event },
+    ],
+    '2026-10-13',
+    new Date('2026-10-13T00:00:00Z'),
+  );
+  assert.equal(
+    markdown.split('\n').filter((line) => line.startsWith('| [')).length,
+    2,
+  );
 });

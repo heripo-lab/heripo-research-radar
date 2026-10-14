@@ -294,7 +294,24 @@ test('current and historical deadlines share one linked card, followed by exactl
     date: '2026-10-13',
     issueOrder: 336,
   };
-  await provider.saveNewsletter({ newsletter, usedArticles: [article] });
+  const event = {
+    ...deadline,
+    type: 'event' as const,
+    kind: '개최',
+    endDate: '2026-10-19',
+    endTime: null,
+    evidence: '학술대회는 2026년 10월 18일부터 19일까지 개최합니다.',
+  };
+  await provider.saveNewsletter({
+    newsletter,
+    usedArticles: [
+      {
+        ...article,
+        detailContent: `${deadline.evidence}\n${event.evidence}`,
+        deadlines: [deadline, event],
+      },
+    ],
+  });
   const document = new JSDOM(saved!.htmlBody).window.document;
   const cards = document.querySelectorAll(
     '[data-research-radar-unified-deadlines]',
@@ -303,8 +320,14 @@ test('current and historical deadlines share one linked card, followed by exactl
   const links = [...cards[0].querySelectorAll('td a')].map((link) =>
     link.getAttribute('href'),
   );
-  assert.deepEqual(links, ['https://example.com/old', 'https://example.com/a']);
-  assert.equal(cards[0].querySelectorAll('td strong').length, 2);
+  assert.deepEqual(links, [
+    'https://example.com/old',
+    'https://example.com/a',
+    'https://example.com/a',
+  ]);
+  assert.ok(saved!.content.includes('2026-10-18 ~ 2026-10-19'));
+  assert.ok(cards[0].textContent.includes('2026-10-18 ~ 2026-10-19'));
+  assert.equal(cards[0].querySelectorAll('td strong').length, 3);
   assert.ok(cards[0].getAttribute('style')!.includes('background-color'));
   const share = document.querySelector('[data-research-radar-closing] > p')!;
   assert.ok(share.textContent.includes('이 소식이 도움이'));
@@ -315,10 +338,10 @@ test('current and historical deadlines share one linked card, followed by exactl
   );
   assert.ok(saved!.htmlBody.includes('학회 하단 안내를 보존합니다.'));
   assert.ok(
-    saved!.content.indexOf('다가오는 마감') <
+    saved!.content.indexOf('다가오는 일정·마감') <
       saved!.content.indexOf('이 소식이 도움이'),
   );
-  assert.equal(newsletter.content.includes('다가오는 마감'), false);
+  assert.equal(newsletter.content.includes('다가오는 일정·마감'), false);
 });
 
 test('an issue without eligible deadlines has no empty card and still ends with sharing', async () => {
@@ -357,7 +380,7 @@ test('an issue without eligible deadlines has no empty card and still ends with 
     ],
   });
   assert.ok(!saved!.htmlBody.includes('data-research-radar-unified-deadlines'));
-  assert.ok(!saved!.content.includes('다가오는 마감'));
+  assert.ok(!saved!.content.includes('다가오는 일정·마감'));
   assert.ok(saved!.content.includes('이 소식이 도움이'));
   assert.equal(
     renderVerifiedDeadlineReminders(
@@ -461,7 +484,7 @@ test('generation instructions delegate deadline summaries and sharing to determi
   });
   assert.ok(!prompt.includes('임박한 주요 일정 및 마감:'));
   assert.ok(!prompt.includes('이 소식이 도움이 되셨다면'));
-  assert.ok(prompt.includes('마감 표 뒤에 코드가 한 번만 넣는다'));
+  assert.ok(prompt.includes('일정·마감 표 뒤에 코드가 한 번만 넣는다'));
   assert.ok(prompt.includes('향후 7일 이내'));
 });
 
@@ -515,6 +538,7 @@ test('duplicate model-generated deadline blocks and early sharing links fail bef
   for (const content of [
     '**임박한 주요 일정 및 마감:**\n- 행사',
     '## ⏰ 다가오는 마감\n- 신청',
+    '## ⏰ 다가오는 일정·마감\n- 행사',
     '[구독하기](https://heripo.app/research-radar/subscribe)',
   ]) {
     await assert.rejects(
@@ -531,4 +555,41 @@ test('duplicate model-generated deadline blocks and early sharing links fail bef
       /Generated body contains/,
     );
   }
+});
+
+test('collection preserves deadline/event identity and a fresh event cancellation holds the old event', () => {
+  const same = {
+    ...deadline,
+    kind: '안내',
+    evidence: '2026-10-18에 등록 마감과 행사가 있습니다.',
+  };
+  const event = { ...same, type: 'event' as const };
+  const included = {
+    ...article,
+    detailContent: same.evidence,
+    deadlines: [same, event],
+  };
+  const content = `[학술대회](${article.url})`;
+  assert.equal(collectNewsletterDeadlines(content, [included], []).length, 2);
+  const cancelled = {
+    ...event,
+    kind: '개최 취소',
+    date: null,
+    status: 'cancelled' as const,
+  };
+  const latest = {
+    deadline: cancelled,
+    url: article.url,
+    verificationStatus: 'verified' as const,
+  };
+  const result = collectNewsletterDeadlines(content, [included], [latest]);
+  assert.deepEqual(result, [latest]);
+  assert.equal(
+    renderVerifiedDeadlineReminders(
+      result,
+      '2026-10-13',
+      new Date('2026-10-13T00:00:00Z'),
+    ),
+    '',
+  );
 });
