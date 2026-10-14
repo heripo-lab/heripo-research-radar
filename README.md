@@ -209,10 +209,13 @@ repeat suppression and publication history. Empty sections are omitted.
 Prefer `templateOptions.verifiedDeadlineReminders` with freshly verified historical
 actions. The provider merges these with source-grounded deadlines from articles
 actually linked in the generated body, sorts them, and displays at most five
-active deadlines within seven days in one linked section. Fresh verification
-takes precedence over a collected G2B revision's cached date or cancellation,
-even if the notice title changes. G2B actions match by notice number and
-normalized `kind`; distinct action kinds remain separate. The older
+active deadlines within seven days in one linked section. For a refreshed source,
+only freshly verified actions are eligible: unmatched cached actions are held,
+never inferred to be active or cancelled from free-form `title` or `kind` labels.
+G2B revisions share a source identity by notice number. Pass each distinct action
+as a freshly verified result to retain multiple actions from that source. Other
+sources without supplied verification continue using grounded article deadlines.
+The older
 `deadlineRemindersMarkdown` option remains available for pre-rendered sections.
 The generation prompt no longer produces a separate closing schedule list.
 The colleague-sharing notice follows the highlighted deadline section in both

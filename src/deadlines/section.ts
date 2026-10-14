@@ -48,7 +48,7 @@ const normalize = (value: string) =>
     .toLowerCase()
     .replace(/[\p{P}\p{S}\s]/gu, '');
 
-/** Fresh historical verification wins over a collected revision's cached date. */
+/** Fresh source verification supersedes caches; unmatched cached actions are held. */
 export function collectNewsletterDeadlines(
   content: string,
   articles: ArticleForGenerateContent[],
@@ -70,8 +70,8 @@ export function collectNewsletterDeadlines(
   );
   const identity = (item: VerifiedDeadlineReminder) => {
     const source = sourceKey(item.url);
-    // G2B revisions can rename a notice. Match its action by kind, never by
-    // the display title; retain distinct kinds within the same notice.
+    // Deduplicate collected actions only. Free-form labels never decide which
+    // cached actions can supplement a freshly verified source.
     return JSON.stringify([
       source,
       source?.startsWith('g2b:') ? null : normalize(item.deadline.title),
@@ -81,10 +81,15 @@ export function collectNewsletterDeadlines(
   const result = verified.filter(
     (item) => item.verificationStatus === 'verified' && sourceKey(item.url),
   );
+  const refreshedSources = new Set(result.map((item) => sourceKey(item.url)));
   const seen = new Set(result.map(identity));
   for (const article of articles) {
     // Inclusion stays revision-specific even though reminders share a notice number.
     if (!included.has(canonicalSourceUrl(article.url))) continue;
+    // A different kind can be a renamed or cancelled action, not necessarily
+    // another action. Never refill this source with unmatched cached deadlines.
+    // Distinct actions remain eligible when each is freshly verified.
+    if (refreshedSources.has(sourceKey(article.url))) continue;
     for (const deadline of article.deadlines ?? []) {
       if (!isArticleDeadlineGrounded(deadline, article)) continue;
       const item: VerifiedDeadlineReminder = {

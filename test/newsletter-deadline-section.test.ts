@@ -94,11 +94,11 @@ test('fresh G2B verification supersedes a cached revision without claiming anoth
     [current],
     [{ ...verified, deadline: otherAction }],
   );
-  assert.equal(distinct.length, 2);
+  assert.deepEqual(distinct, [{ ...verified, deadline: otherAction }]);
 });
 
 for (const cancelled of [false, true]) {
-  test(`renamed G2B ${cancelled ? 'cancellations' : 'extensions'} replace only the same notice action`, () => {
+  test(`renamed G2B ${cancelled ? 'cancellations' : 'extensions'} replace cached actions while preserving separately verified actions`, () => {
     const url = (notice: string, revision: string) =>
       `https://www.g2b.go.kr/link/PNPE027_01/single/?bidPbancNo=${notice}&bidPbancOrd=${revision}` as const;
     const bid = {
@@ -141,18 +141,19 @@ for (const cancelled of [false, true]) {
       url: url('R26BK00123', '002'),
       verificationStatus: 'verified' as const,
     };
+    const verifiedRegistration = {
+      deadline: registration,
+      url: latest.url,
+      verificationStatus: 'verified' as const,
+    };
     const merged = collectNewsletterDeadlines(
       `[기사](${current.url})\n[별도 공고](${separateNotice.url})`,
       [current, separateNotice],
-      [latest],
+      [latest, verifiedRegistration],
     );
     assert.deepEqual(merged, [
       latest,
-      {
-        deadline: registration,
-        url: current.url,
-        verificationStatus: 'verified',
-      },
+      verifiedRegistration,
       {
         deadline: bid,
         url: separateNotice.url,
@@ -171,7 +172,7 @@ for (const cancelled of [false, true]) {
   });
 }
 
-test('non-G2B actions with distinct titles retain their separate identities', () => {
+test('a refreshed source holds unmatched cached actions even outside G2B', () => {
   const other = {
     deadline: { ...deadline, title: '별도 학술대회', date: '2026-10-20' },
     url: article.url,
@@ -183,9 +184,71 @@ test('non-G2B actions with distinct titles retain their separate identities', ()
       [article],
       [other],
     ),
-    [other, { deadline, url: article.url, verificationStatus: 'verified' }],
+    [other],
   );
 });
+
+for (const cancelled of [false, true]) {
+  for (const revision of ['001', '002']) {
+    test(`G2B kind drift holds stale actions for ${cancelled ? 'cancellation' : 'extension'} at revision ${revision}`, () => {
+      const url = (notice: string, order: string) =>
+        `https://www.g2b.go.kr/link/PNPE027_01/single/?bidPbancNo=${notice}&bidPbancOrd=${order}` as const;
+      const bid = {
+        ...deadline,
+        title: '발굴조사 용역',
+        kind: '입찰서 제출',
+        date: '2026-10-17',
+        evidence: '입찰서 제출은 2026-10-17 마감입니다.',
+      };
+      const current = {
+        ...article,
+        url: url('R26BK00123', '001'),
+        detailContent: bid.evidence,
+        deadlines: [bid],
+      };
+      const other = { ...current, id: 2, url: url('R26BK00999', '001') };
+      const latest = {
+        deadline: {
+          ...bid,
+          kind: cancelled ? '입찰 취소' : '입찰 마감',
+          date: cancelled ? null : '2026-10-20',
+          status: cancelled ? ('cancelled' as const) : ('active' as const),
+          evidence: cancelled
+            ? '입찰이 취소되었습니다.'
+            : '입찰 마감은 2026-10-20입니다.',
+        },
+        url: url('R26BK00123', revision),
+        verificationStatus: 'verified' as const,
+      };
+      const content = `[입찰](${current.url})\n[다른 공고](${other.url})`;
+      const merged = collectNewsletterDeadlines(
+        content,
+        [current, other],
+        [latest],
+      );
+      assert.deepEqual(merged, [
+        latest,
+        { deadline: bid, url: other.url, verificationStatus: 'verified' },
+      ]);
+      const own = renderVerifiedDeadlineReminders(
+        merged.filter((item) => item.url !== other.url),
+        '2026-10-13',
+        new Date('2026-10-13T00:00:00Z'),
+      );
+      assert.equal(cancelled ? own === '' : own.includes('2026-10-20'), true);
+      assert.ok(!own.includes('2026-10-17'));
+      // Unverified data cannot claim precedence over a collected source.
+      assert.deepEqual(
+        collectNewsletterDeadlines(
+          content,
+          [current],
+          [{ ...latest, verificationStatus: 'unverified' as 'verified' }],
+        ),
+        [{ deadline: bid, url: current.url, verificationStatus: 'verified' }],
+      );
+    });
+  }
+}
 
 test('current and historical deadlines share one linked card, followed by exactly one sharing notice', async () => {
   let saved: Newsletter | undefined;
