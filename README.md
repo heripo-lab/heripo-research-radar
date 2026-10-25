@@ -70,7 +70,7 @@ For academic publications:
 npm install @heripo/research-radar '@llm-newsletter-kit/core@~3.1.1'
 ```
 
-**Requirements**: Node.js 24.15.0 or newer within 24.x, or >= 26.0.0, and an ESM application. Node.js 25 is not supported. The package exports `dist/index.js` and TypeScript declarations (`dist/index.d.ts`), with a JavaScript sourcemap. The core engine is a peer dependency; the current supported range is `~3.1.1`. Core 3.1.1 is required for recent-title guarding and source-grounded deadline extraction. It also includes the crawl-timeout retry handling and generation self-verification retry cap required by Radar.
+**Requirements**: Node.js 24.22.1 or newer within 24.x, or >= 26.12.1, and an ESM application. Node.js 25 is not supported. The package exports `dist/index.js` and TypeScript declarations (`dist/index.d.ts`), with a JavaScript sourcemap. The core engine is a peer dependency; the current supported range is `~3.1.1`. Core 3.1.1 is required for recent-title guarding and source-grounded deadline extraction. It also includes the crawl-timeout retry handling and generation self-verification retry cap required by Radar.
 
 An OpenAI API key is always required and supplies all default models. The optional compatibility path for Anthropic or Google newsletter generation additionally requires that provider's key. Keys are passed explicitly to the library; load environment variables in your application.
 
@@ -418,7 +418,7 @@ npm run format             # format src/ with Prettier
 npm run format:check       # check src/ formatting
 ```
 
-The build emits ESM, declarations, and a JavaScript sourcemap; runtime dependencies remain external. CI runs `npm ci`, `format:check`, `lint:ci`, `typecheck`, `npm test`, and `build` on the minimum supported Node.js version (24.15.0), the latest 24.x, and the latest 26.x for pull requests and manual dispatch. Formatting scripts cover `src/`; to check the READMEs explicitly, run `npx prettier --check README.md README-ko.md`. `npm test` uses Node's experimental module mocking and the installed AI SDK test utilities; it makes no LLM, crawling, or email requests.
+The build emits ESM, declarations, and a JavaScript sourcemap; runtime dependencies remain external. CI runs `npm ci`, `format:check`, `lint:ci`, `typecheck`, `npm test`, and `build` on the minimum supported versions for Node.js 24 and 26 (24.22.1 and 26.12.1), the latest 24.x, and the latest 26.x for pull requests and manual dispatch. Formatting scripts cover `src/`; to check the READMEs explicitly, run `npx prettier --check README.md README-ko.md`. `npm test` uses Node's experimental module mocking and the installed AI SDK test utilities; it makes no LLM, crawling, or email requests.
 
 For maintainers, `release` publishes to npm, while `release:patch`, `release:minor`, and `release:major` bump the version and publish. The version hooks build first and push commits/tags; `prepublishOnly` builds before publishing.
 
