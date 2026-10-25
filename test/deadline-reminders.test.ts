@@ -79,6 +79,7 @@ test('source time and timezone are preserved and unsafe Markdown cannot add rows
       },
     ],
     '2026-10-13',
+    new Date('2026-10-13T00:00:00Z'),
   );
   assert.ok(markdown.includes('18:30 (Asia/Seoul)'));
   assert.ok(markdown.includes('&lt;img&gt;'));
