@@ -22,6 +22,7 @@ jobs:
         node-version:
           - 24.22.1
           - 24.x
+          - 26.12.1
           - 26.x
     steps:
       - name: Checkout
