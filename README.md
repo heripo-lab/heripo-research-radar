@@ -231,7 +231,9 @@ importance model to choose those rows from every eligible entry: it answers with
 candidate indices only, favours actions readers can take, keeps D-1 to D-3
 alongside today's entries and drops the same event announced by several
 sources. Titles, dates and links are always rendered from the verified rows,
-and an error or unusable answer falls back to the first ten by date. Set
+and an error, a 60-second timeout or an unusable answer falls back to the first
+ten by date. A short selection is filled in date order, skipping the rows the
+model named as duplicates. Set
 `recentReminderCount` on a reminder to tell the selection how many issues in
 the past week already listed it. Deduplication includes the
 entry type, so a registration cutoff cannot replace an attendance schedule.

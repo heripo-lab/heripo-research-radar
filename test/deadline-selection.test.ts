@@ -33,6 +33,18 @@ const candidates = Array.from(
     ...(index === 3 && { recentReminderCount: 2 }),
   }),
 );
+candidates[1] = {
+  ...candidates[1],
+  deadline: {
+    ...candidates[1].deadline,
+    type: 'event',
+    kind: '개최',
+    time: '10:00',
+    endDate: candidates[1].deadline.date,
+    endTime: '12:00',
+    timeZone: 'Asia/Seoul',
+  },
+};
 const rows = eligibleDeadlineReminders(candidates, '2026-10-13', now);
 
 const answer = (value: unknown) =>
@@ -51,6 +63,7 @@ const answer = (value: unknown) =>
 test('the model chooses rows by index; display keeps date order and the ten-row cap', async () => {
   const model = answer({
     select: [13, 0, 0, 2, -1, 99, 1.5, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+    duplicates: [],
   });
   const selected: number[] = [];
   const select = createDeadlineReminderSelector({
@@ -70,11 +83,36 @@ test('the model chooses rows by index; display keeps date order and the ten-row 
   assert.ok(prompt.includes('최근 7일 2회 안내'));
   assert.ok(prompt.includes('같은 행사'));
   assert.ok(prompt.includes('중복만 빼고 모두 고른다'));
+  assert.ok(prompt.includes('10:00 ~ 12:00 (Asia/Seoul)'));
+  assert.ok(prompt.includes('https://example.com/13'));
+});
+
+test('a short selection is filled by date without restoring named duplicates', async () => {
+  const filled: number[] = [];
+  const select = createDeadlineReminderSelector({
+    model: answer({ select: [5], duplicates: [0, 1, 5, 99] }),
+    onSelected: ({ filledCount }) => filled.push(filledCount),
+    onFallback: () => assert.fail('unexpected fallback'),
+  });
+  const result = await select(rows, '2026-10-13');
+  assert.equal(result.length, 10);
+  assert.ok(result.includes(rows[5]));
+  assert.ok(!result.includes(rows[0]));
+  assert.ok(!result.includes(rows[1]));
+  assert.deepEqual(filled, [9]);
+  const few = await createDeadlineReminderSelector({
+    model: answer({ select: [0], duplicates: [1] }),
+  })(rows.slice(0, 4), '2026-10-13');
+  assert.deepEqual(few, [rows[0], rows[2], rows[3]]);
 });
 
 for (const [name, model] of [
-  ['an empty answer', answer({ select: [] })],
-  ['only unusable indices', answer({ select: [-1, 99] })],
+  ['an empty answer', answer({ select: [], duplicates: [] })],
+  ['only unusable indices', answer({ select: [-1, 99], duplicates: [] })],
+  [
+    'a model that ignores cancellation',
+    new MockLanguageModelV4({ doGenerate: () => new Promise(() => {}) }),
+  ],
   [
     'a stalled model',
     new MockLanguageModelV4({

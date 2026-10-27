@@ -32,6 +32,8 @@ export type DeadlineReminderSelectorOptions = {
   onSelected?: (info: {
     candidateCount: number;
     selectedCount: number;
+    /** Rows added by date order because the model chose too few. */
+    filledCount: number;
     usage: unknown;
   }) => void;
 };
@@ -41,9 +43,10 @@ export type DeadlineReminderSelectorOptions = {
  *
  * Rendering stays on the verified rows, so the model can only leave a row out;
  * it cannot invent an action or alter one. Indices out of range or repeated
- * are discarded rather than trusted.
+ * are discarded rather than trusted. Duplicates are named separately so a short
+ * selection can be filled without restoring an event the model merged.
  */
-const SELECT_SCHEMA = jsonSchema<{ select: number[] }>({
+const SELECT_SCHEMA = jsonSchema<{ select: number[]; duplicates: number[] }>({
   type: 'object',
   properties: {
     select: {
@@ -51,8 +54,13 @@ const SELECT_SCHEMA = jsonSchema<{ select: number[] }>({
       items: { type: 'integer' },
       description: '뉴스레터에 안내할 일정·마감 후보의 번호',
     },
+    duplicates: {
+      type: 'array',
+      items: { type: 'integer' },
+      description: '고른 후보와 같은 행사·마감이라 뺀 후보의 번호',
+    },
   },
-  required: ['select'],
+  required: ['select', 'duplicates'],
   additionalProperties: false,
 });
 
@@ -66,7 +74,8 @@ const systemPrompt = (
 고르는 규칙:
 - 최대 ${limit}개를 고른다. 같은 행사 중복을 빼고도 후보가 ${limit}개 이상 남으면 반드시 ${limit}개를 채운다.
 - 같은 행사 중복을 뺀 후보가 ${limit}개 미만이면 중복만 빼고 모두 고른다. 후순위 일정도 자리가 남으면 뺄 이유가 없다.
-- 같은 행사나 같은 마감을 가리키는 후보는 하나만 고른다. 게시 기관이 달라 제목 표현이 조금 달라도 날짜와 내용이 같으면 같은 행사다.
+- 같은 행사나 같은 마감을 가리키는 후보는 하나만 고르고, 나머지 번호는 duplicates에 넣는다. 게시 기관이 달라 제목 표현이 조금 달라도 날짜·시각과 내용이 같으면 같은 행사다.
+- 시각이 다른 회차, 링크의 공고번호가 다른 공고는 제목이 같아도 서로 다른 일정이다. duplicates에 넣지 않는다.
 - 독자가 행동할 수 있는 일정을 우선한다: 학술대회·발표·논문 신청, 공모·지원사업 신청, 채용 접수, 발굴 현장 공개, 발굴·시굴·지표조사와 국가유산 수리·보존처리 입찰, 강연·답사 참가 신청.
 - 문화유산과 관련이 약한 일반 시설·장비·전산 입찰, 행사 운영 대행은 후순위로 둔다.
 - 오늘 마감·개최는 마지막 기회이므로 중요한 것을 우선 포함한다. 다만 오늘 일정만으로 채우지 말고 D-1~D-3 일정도 고르게 포함해 독자가 미리 준비할 수 있게 한다.
@@ -79,12 +88,8 @@ function timingOf({ days, reminder }: EligibleDeadlineReminder): string {
   return reminder.deadline.type === 'event' ? '오늘 개최' : '오늘 마감';
 }
 
-function sourceOf(url: string): string {
-  try {
-    return new URL(url).host;
-  } catch {
-    return '';
-  }
+function clockOf(date: string, time?: string | null): string {
+  return time ? `${date} ${time}` : date;
 }
 
 function buildUserPrompt(
@@ -94,16 +99,21 @@ function buildUserPrompt(
 ): string {
   const lines = rows.map((row, index) => {
     const { deadline, recentReminderCount } = row.reminder;
-    const period =
+    const start = clockOf(deadline.date!, deadline.time);
+    const end =
       deadline.type === 'event' && deadline.endDate
         ? deadline.endDate !== deadline.date
-          ? `${deadline.date} ~ ${deadline.endDate}`
-          : deadline.date
-        : deadline.date;
+          ? ` ~ ${clockOf(deadline.endDate, deadline.endTime)}`
+          : deadline.endTime
+            ? ` ~ ${deadline.endTime}`
+            : ''
+        : '';
+    const zone = deadline.timeZone ? ` (${deadline.timeZone})` : '';
     const recent = recentReminderCount
       ? ` · 최근 7일 ${recentReminderCount}회 안내`
       : '';
-    return `${index}. [${timingOf(row)}] ${period} · ${deadline.type === 'event' ? '행사' : '마감'} · ${deadline.kind} · ${deadline.title.replace(/\s+/g, ' ')} · ${sourceOf(row.url)}${recent}`;
+    // The full link carries notice numbers, which tell same-titled bids apart.
+    return `${index}. [${timingOf(row)}] ${start}${end}${zone} · ${deadline.type === 'event' ? '행사' : '마감'} · ${deadline.kind} · ${deadline.title.replace(/\s+/g, ' ')} · ${row.url}${recent}`;
   });
   return `발행일 ${publicationDate}. 다음 ${rows.length}건 중 안내할 일정을 최대 ${limit}개 골라 번호로 답하라.\n\n${lines.join('\n')}`;
 }
@@ -116,8 +126,9 @@ function buildUserPrompt(
  * need. The model judges relevance and duplicates; everything that decides
  * whether a row may appear at all stays in {@link eligibleDeadlineReminders}.
  *
- * It never fails the newsletter: an error, an empty answer or unusable indices
- * fall back to the first rows by date.
+ * It never fails the newsletter: an error, a timeout, an empty answer or
+ * unusable indices fall back to the first rows by date. A selection shorter
+ * than the rows available is filled in date order, skipping named duplicates.
  */
 export const createDeadlineReminderSelector = (
   options: DeadlineReminderSelectorOptions,
@@ -134,27 +145,56 @@ export const createDeadlineReminderSelector = (
   return async (rows, publicationDate) => {
     // One row leaves nothing to choose or deduplicate.
     if (rows.length <= 1) return rows;
+    const timeoutMs = options.timeoutMs ?? 60_000;
+    const controller = new AbortController();
+    let timer: ReturnType<typeof setTimeout> | undefined;
     try {
-      const { output, usage } = await generateText({
-        model: options.model,
-        output: Output.object({ schema: SELECT_SCHEMA }),
-        system: systemPrompt(limit),
-        prompt: buildUserPrompt(rows, publicationDate, limit),
-        abortSignal: AbortSignal.timeout(options.timeoutMs ?? 60_000),
-      });
+      // Abort is only a request; a model that ignores it would otherwise hold
+      // the save forever, so the race is what bounds the wait.
+      const { output, usage } = await Promise.race([
+        generateText({
+          model: options.model,
+          output: Output.object({ schema: SELECT_SCHEMA }),
+          system: systemPrompt(limit),
+          prompt: buildUserPrompt(rows, publicationDate, limit),
+          abortSignal: controller.signal,
+        }),
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(() => {
+            controller.abort();
+            reject(new Error(`selection timed out after ${timeoutMs}ms`));
+          }, timeoutMs);
+        }),
+      ]);
+      const usable = (index: number) =>
+        Number.isInteger(index) && index >= 0 && index < rows.length;
       const chosen = new Set<number>();
       for (const index of output.select) {
         if (chosen.size === limit) break;
-        if (Number.isInteger(index) && index >= 0 && index < rows.length)
-          chosen.add(index);
+        if (usable(index)) chosen.add(index);
       }
       // Every candidate is a verified, current action, so an empty section is
       // a malformed answer rather than a judgement that nothing matters.
       if (!chosen.size)
         return fallback(rows, 'no usable index in the selection');
+      const duplicates = new Set(
+        (output.duplicates ?? []).filter(
+          (index) => usable(index) && !chosen.has(index),
+        ),
+      );
+      // The prompt asks for a full section; a short answer is filled by date
+      // rather than trusted, but never with a row the model called a repeat.
+      let filledCount = 0;
+      for (let index = 0; index < rows.length; index++) {
+        if (chosen.size === limit) break;
+        if (chosen.has(index) || duplicates.has(index)) continue;
+        chosen.add(index);
+        filledCount++;
+      }
       options.onSelected?.({
         candidateCount: rows.length,
         selectedCount: chosen.size,
+        filledCount,
         usage,
       });
       return rows.filter((_, index) => chosen.has(index));
@@ -163,6 +203,8 @@ export const createDeadlineReminderSelector = (
         rows,
         error instanceof Error ? error.message : String(error),
       );
+    } finally {
+      clearTimeout(timer);
     }
   };
 };
