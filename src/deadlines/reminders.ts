@@ -11,6 +11,25 @@ export interface VerifiedDeadlineReminder {
   deadline: ArticleDeadline;
   url: UrlString;
   verificationStatus: 'verified';
+  /**
+   * Published issues in the past week that already listed this action.
+   * Host-supplied history; it only informs the reminder selection prompt.
+   */
+  recentReminderCount?: number;
+}
+
+/** Days before the date an action first becomes eligible (D-3 through D-day). */
+export const DEADLINE_REMINDER_LEAD_DAYS = 3;
+
+/** Rows the unified deadline section displays. */
+export const DEADLINE_REMINDER_LIMIT = 10;
+
+/** A reminder that passed every display guard, with its normalized link. */
+export interface EligibleDeadlineReminder {
+  reminder: VerifiedDeadlineReminder;
+  /** Calendar days from publication to the start date; negative while ongoing. */
+  days: number;
+  url: string;
 }
 
 export function escapeLabel(value: string): string {
@@ -32,12 +51,18 @@ function calendarMs(date: string): number {
     : NaN;
 }
 
-/** Deterministic deadlines/events, no LLM context. Host owns selection and history. */
-export function renderVerifiedDeadlineReminders(
+/**
+ * Every displayable reminder, deduplicated and in display order.
+ *
+ * Eligibility stays deterministic: only verified, active actions from D-3
+ * through D-day, or events still running, with a safe link and a closing time
+ * that has not passed. Selection may choose among these but never adds to them.
+ */
+export function eligibleDeadlineReminders(
   reminders: VerifiedDeadlineReminder[],
   publicationDate: IsoDateString,
   now = new Date(),
-): string {
+): EligibleDeadlineReminder[] {
   const date = new DateService(publicationDate).getPublicationISODateString();
   const publicationMs = Date.parse(`${date}T00:00:00Z`);
   const rows = reminders
@@ -79,7 +104,11 @@ export function renderVerifiedDeadlineReminders(
       const days = (ms - publicationMs) / 86_400_000;
       // Events remain eligible through a known end date; a start time is never
       // treated as an application cutoff. Unknown endpoints stay unknown.
-      if (days > 7 || endMs < publicationMs || !deadline.title.trim())
+      if (
+        days > DEADLINE_REMINDER_LEAD_DAYS ||
+        endMs < publicationMs ||
+        !deadline.title.trim()
+      )
         return [];
       let url: URL;
       try {
@@ -125,7 +154,7 @@ export function renderVerifiedDeadlineReminders(
     })
     .sort(
       (a, b) =>
-        // The five-row limit must not let older ongoing events displace
+        // The fallback limit must not let older ongoing events displace
         // today's or upcoming deadlines/events. Ongoing events fill spare rows.
         Number(a.days < 0) - Number(b.days < 0) ||
         a.ms - b.ms ||
@@ -134,8 +163,7 @@ export function renderVerifiedDeadlineReminders(
         ),
     );
   const seen = new Set<string>();
-  const lines: string[] = [];
-  for (const { reminder, days, url } of rows) {
+  return rows.flatMap(({ reminder, days, url }) => {
     const d = reminder.deadline;
     const key = JSON.stringify([
       url,
@@ -147,39 +175,61 @@ export function renderVerifiedDeadlineReminders(
       d.endDate ?? null,
       d.endTime ?? null,
     ]);
-    if (seen.has(key)) continue;
+    if (seen.has(key)) return [];
     seen.add(key);
-    const isEvent = d.type === 'event';
-    const time = d.time ? ` ${d.time}` : '';
-    const end =
-      isEvent && d.endDate
-        ? d.endDate !== d.date
-          ? ` ~ ${d.endDate}${d.endTime ? ` ${d.endTime}` : ''}`
-          : d.endTime
-            ? ` ~ ${d.endTime}`
-            : ''
-        : '';
-    const zone =
-      (d.time || (isEvent && d.endTime)) && d.timeZone
-        ? ` (${escapeLabel(d.timeZone)})`
-        : '';
-    const timing =
-      days > 0
-        ? `D-${days}`
-        : days < 0
-          ? '진행 중'
-          : isEvent
-            ? /공개/.test(d.kind)
-              ? '오늘 공개'
-              : '오늘 개최'
-            : '오늘 마감';
-    const label = d.title.includes(d.kind) ? d.title : `${d.title} · ${d.kind}`;
-    lines.push(
-      `| [${escapeLabel(label)}](${url}) | **${d.date}${time}${end}${zone} · ${timing}** |`,
-    );
-    if (lines.length === 5) break;
-  }
+    return [{ reminder, days, url }];
+  });
+}
+
+/** Renders already eligible rows in the order given, up to the display limit. */
+export function formatDeadlineReminders(
+  rows: EligibleDeadlineReminder[],
+): string {
+  const lines = rows
+    .slice(0, DEADLINE_REMINDER_LIMIT)
+    .map(({ reminder, days, url }) => {
+      const d = reminder.deadline;
+      const isEvent = d.type === 'event';
+      const time = d.time ? ` ${d.time}` : '';
+      const end =
+        isEvent && d.endDate
+          ? d.endDate !== d.date
+            ? ` ~ ${d.endDate}${d.endTime ? ` ${d.endTime}` : ''}`
+            : d.endTime
+              ? ` ~ ${d.endTime}`
+              : ''
+          : '';
+      const zone =
+        (d.time || (isEvent && d.endTime)) && d.timeZone
+          ? ` (${escapeLabel(d.timeZone)})`
+          : '';
+      const timing =
+        days > 0
+          ? `D-${days}`
+          : days < 0
+            ? '진행 중'
+            : isEvent
+              ? /공개/.test(d.kind)
+                ? '오늘 공개'
+                : '오늘 개최'
+              : '오늘 마감';
+      const label = d.title.includes(d.kind)
+        ? d.title
+        : `${d.title} · ${d.kind}`;
+      return `| [${escapeLabel(label)}](${url}) | **${d.date}${time}${end}${zone} · ${timing}** |`;
+    });
   return lines.length
     ? `## ⏰ 다가오는 일정·마감\n\n| 안내 | 일정 |\n| --- | --- |\n${lines.join('\n')}`
     : '';
+}
+
+/** Deterministic deadlines/events, no LLM context: the first rows by date. */
+export function renderVerifiedDeadlineReminders(
+  reminders: VerifiedDeadlineReminder[],
+  publicationDate: IsoDateString,
+  now = new Date(),
+): string {
+  return formatDeadlineReminders(
+    eligibleDeadlineReminders(reminders, publicationDate, now),
+  );
 }

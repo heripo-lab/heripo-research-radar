@@ -212,21 +212,30 @@ deadlines }` from a successful refresh skips extraction only if a fresh fetch
 
 Pass host-selected verified actions to
 `renderVerifiedDeadlineReminders(reminders, publicationDate)` and place its result
-in `templateOptions.deadlineRemindersMarkdown`. Today's and upcoming active
-deadlines/events within seven days take priority; ongoing events through a known
-end date fill any remaining slots. Each group is ordered by date and time, with
-at most five entries overall. It preserves supplied periods and times
+in `templateOptions.deadlineRemindersMarkdown`. Active deadlines/events from
+D-3 through today take priority; ongoing events through a known end date fill
+any remaining slots. Each group is ordered by date and time, with at most ten
+entries overall (`DEADLINE_REMINDER_LEAD_DAYS`, `DEADLINE_REMINDER_LIMIT`). It preserves supplied periods and times
 without inventing 23:59. The heading is **다가오는 일정·마감**. Today's entries say
 **오늘 마감**, **오늘 개최** or **오늘 공개**, while ongoing events say **진행 중**.
 An event's start time is not a cutoff: only its stated end time expires it during
 the end date. Without an end date, it is listed only through its start date. The provider appends it to saved Markdown and HTML after
-generation, so reminders add no LLM context. The host owns D-7/D-1 scheduling,
-repeat suppression and publication history. Empty sections are omitted.
+generation, so reminders add no article-generation context. The host owns
+reminder scheduling, repeat suppression and publication history. Empty sections are omitted.
 
 Prefer `templateOptions.verifiedDeadlineReminders` with freshly verified historical
 actions. The provider merges these with source-grounded deadlines from articles
-actually linked in the generated body, sorts them, and displays at most five
-eligible deadlines/events in one linked section. Deduplication includes the
+actually linked in the generated body and displays at most ten eligible
+deadlines/events in one linked section. `generateNewsletter()` asks the
+importance model to choose those rows from every eligible entry: it answers with
+candidate indices only, favours actions readers can take, keeps D-1 to D-3
+alongside today's entries and drops the same event announced by several
+sources. Titles, dates and links are always rendered from the verified rows,
+and an error, a 60-second timeout or an unusable answer falls back to the first
+ten by date. A short selection is filled in date order, skipping the rows the
+model named as duplicates. Set
+`recentReminderCount` on a reminder to tell the selection how many issues in
+the past week already listed it. Deduplication includes the
 entry type, so a registration cutoff cannot replace an attendance schedule.
 Event identity also includes the start/end dates and times, preserving separate
 occurrences with the same title and kind. Deadline action deduplication is unchanged.

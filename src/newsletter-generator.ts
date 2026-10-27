@@ -30,6 +30,7 @@ import { createOpenAI } from '@ai-sdk/openai';
 import { GenerateNewsletter } from '@llm-newsletter-kit/core';
 
 import { createHeritageBidTriage } from '~/crawling/heritage-triage';
+import { createDeadlineReminderSelector } from '~/deadlines/select';
 
 import { contentOptions, llmConfig, newsletterConfig } from './config';
 import { researchRadarPromptProvider } from './prompts';
@@ -310,6 +311,23 @@ function createNewsletterGenerator(
     dependencies.newsletterRepository,
     templateOptions,
     resolvedBrandName,
+    // Reminder selection judges relevance the way importance scoring does, so
+    // it reuses that model rather than adding another configuration knob.
+    createDeadlineReminderSelector({
+      model: resolveModel('determineImportance'),
+      onFallback: (reason, candidateCount) => {
+        dependencies.logger?.info({
+          event: 'newsletter.deadlines.selection.fallback',
+          data: { reason, candidateCount },
+        });
+      },
+      onSelected: (data) => {
+        dependencies.logger?.info({
+          event: 'newsletter.deadlines.selection',
+          data,
+        });
+      },
+    }),
   );
 
   return new GenerateNewsletter({

@@ -14,11 +14,11 @@ import { ContentGenerateProvider } from '../src/providers/content-generate.provi
 const deadline: ArticleDeadline = {
   title: '학술대회 발표 신청',
   kind: '발표 신청',
-  date: '2026-10-20',
+  date: '2026-10-15',
   time: null,
   timeZone: null,
   status: 'active',
-  evidence: '2026-10-20 마감',
+  evidence: '2026-10-15 마감',
 };
 const reminder: VerifiedDeadlineReminder = {
   deadline,
@@ -26,35 +26,45 @@ const reminder: VerifiedDeadlineReminder = {
   verificationStatus: 'verified',
 };
 
-test('reminders are ordered, deduplicated and capped at five, with no invented closing time', () => {
+test('reminders from D-3 through D-day are ordered, deduplicated and capped at ten, with no invented closing time', () => {
   const reminders = Array.from(
-    { length: 7 },
+    { length: 12 },
     (_, index): VerifiedDeadlineReminder => ({
       ...reminder,
       deadline: {
         ...deadline,
         title: `신청 ${index}`,
-        date: `2026-10-${20 - index}`,
+        date: `2026-10-${16 - (index % 4)}`,
       },
     }),
   );
+  const beyond = {
+    ...reminder,
+    deadline: { ...deadline, title: '범위 밖 신청', date: '2026-10-17' },
+  };
   const markdown = renderVerifiedDeadlineReminders(
-    [reminders[6], ...reminders],
+    [reminders[6], beyond, ...reminders],
     '2026-10-13',
+    new Date('2026-10-13T00:00:00Z'),
   );
   assert.equal(
     markdown.split('\n').filter((line) => line.startsWith('| [')).length,
-    5,
+    10,
   );
-  assert.ok(markdown.indexOf('신청 6') < markdown.indexOf('신청 5'));
-  assert.ok(!markdown.includes('신청 0'));
+  assert.ok(markdown.indexOf('신청 3') < markdown.indexOf('신청 1'));
+  assert.ok(markdown.includes('신청 0'));
+  assert.ok(!markdown.includes('신청 8'));
+  assert.ok(!markdown.includes('범위 밖 신청'));
+  assert.equal(markdown.split('신청 6').length, 2);
   assert.ok(!markdown.includes('23:59'));
-  assert.ok(markdown.includes('D-1'));
+  assert.ok(markdown.includes('D-3'));
+  assert.ok(markdown.includes('오늘 마감'));
 });
 
 test('only verified upcoming active deadlines display; empty sections disappear', () => {
   const variants: VerifiedDeadlineReminder[] = [
     { ...reminder, deadline: { ...deadline, date: '2026-10-12' } },
+    { ...reminder, deadline: { ...deadline, date: '2026-10-17' } },
     { ...reminder, deadline: { ...deadline, date: '2026-11-13' } },
     { ...reminder, deadline: { ...deadline, date: null } },
     { ...reminder, deadline: { ...deadline, date: '2026-02-30' } },
@@ -290,9 +300,9 @@ test('deadline and event entries with identical free-form labels remain separate
   );
 });
 
-test('old ongoing events cannot push out a tomorrow deadline or a today event at the five-row limit', () => {
+test('old ongoing events cannot push out a tomorrow deadline or a today event at the ten-row limit', () => {
   const ongoing = Array.from(
-    { length: 5 },
+    { length: 10 },
     (_, index): VerifiedDeadlineReminder => ({
       ...reminder,
       deadline: {
@@ -300,7 +310,7 @@ test('old ongoing events cannot push out a tomorrow deadline or a today event at
         type: 'event',
         title: `진행 행사 ${index}`,
         kind: '공개',
-        date: `2026-09-0${index + 1}`,
+        date: `2026-09-${String(index + 1).padStart(2, '0')}`,
         endDate: '2026-10-30',
         endTime: null,
       },
@@ -334,19 +344,19 @@ test('old ongoing events cannot push out a tomorrow deadline or a today event at
     markdown.indexOf('내일 신청 마감') < markdown.indexOf('진행 행사 0'),
   );
   const rows = markdown.split('\n').filter((line) => line.startsWith('| ['));
-  assert.equal(rows.length, 5);
-  assert.equal(rows.filter((line) => line.includes('진행 중')).length, 3);
+  assert.equal(rows.length, 10);
+  assert.equal(rows.filter((line) => line.includes('진행 중')).length, 8);
 });
 
-test('five upcoming entries use all slots ahead of an ongoing event', () => {
+test('ten upcoming entries use all slots ahead of an ongoing event', () => {
   const upcoming = Array.from(
-    { length: 5 },
+    { length: 10 },
     (_, index): VerifiedDeadlineReminder => ({
       ...reminder,
       deadline: {
         ...deadline,
         title: `신청 마감 ${index}`,
-        date: `2026-10-${15 + index}`,
+        date: `2026-10-${14 + (index % 4)}`,
       },
     }),
   );
@@ -366,8 +376,8 @@ test('five upcoming entries use all slots ahead of an ongoing event', () => {
     '2026-10-14',
     new Date('2026-10-14T00:00:00Z'),
   );
-  for (let index = 0; index < 5; index++)
+  for (let index = 0; index < 10; index++)
     assert.ok(markdown.includes(`신청 마감 ${index}`));
   assert.ok(!markdown.includes('지난달 시작한 행사'));
-  assert.ok(markdown.indexOf('신청 마감 0') < markdown.indexOf('신청 마감 4'));
+  assert.ok(markdown.indexOf('신청 마감 0') < markdown.indexOf('신청 마감 3'));
 });
