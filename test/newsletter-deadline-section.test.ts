@@ -162,8 +162,8 @@ for (const cancelled of [false, true]) {
     ]);
     const markdown = renderVerifiedDeadlineReminders(
       merged.filter((item) => item.url !== separateNotice.url),
-      '2026-10-13',
-      new Date('2026-10-13T00:00:00Z'),
+      '2026-10-17',
+      new Date('2026-10-17T00:00:00Z'),
     );
     assert.ok(!markdown.includes('2026-10-17'));
     assert.ok(markdown.includes('참가 등록'));
@@ -232,8 +232,8 @@ for (const cancelled of [false, true]) {
       ]);
       const own = renderVerifiedDeadlineReminders(
         merged.filter((item) => item.url !== other.url),
-        '2026-10-13',
-        new Date('2026-10-13T00:00:00Z'),
+        '2026-10-17',
+        new Date('2026-10-17T00:00:00Z'),
       );
       assert.equal(cancelled ? own === '' : own.includes('2026-10-20'), true);
       assert.ok(!own.includes('2026-10-17'));
@@ -291,7 +291,7 @@ test('current and historical deadlines share one linked card, followed by exactl
       '{{NEWSLETTER_CONTENT}}',
       '<p id="original" style="font-size: 16px">원래 기사 본문</p>',
     ),
-    date: '2026-10-13',
+    date: '2026-10-15',
     issueOrder: 336,
   };
   const event = {
@@ -434,7 +434,7 @@ for (const isKrasNewsletter of [false, true]) {
           title: '학술대회 연구 발표 신청 안내',
           content: '[학술대회](https://example.com/a)',
           htmlBody: provider.htmlTemplate.html,
-          date: '2026-10-13',
+          date: '2026-10-15',
           issueOrder: 1,
         },
         usedArticles: [article],
@@ -631,8 +631,8 @@ test('separate event dates, times and endpoints survive collection while exact d
     );
     const markdown = renderVerifiedDeadlineReminders(
       result,
-      '2026-10-14',
-      new Date('2026-10-14T00:00:00Z'),
+      '2026-10-15',
+      new Date('2026-10-15T00:00:00Z'),
     );
     assert.equal(
       markdown.split('\n').filter((line) => line.startsWith('| [')).length,

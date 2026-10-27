@@ -8,6 +8,7 @@ import type {
 } from '@llm-newsletter-kit/core';
 import type { LanguageModel } from 'ai';
 
+import type { DeadlineReminderSelector } from '../deadlines/select';
 import type {
   ArticleRepository,
   NewsletterRepository,
@@ -21,7 +22,9 @@ import { createNewsletterHtmlTemplate } from '~/templates/newsletter-html';
 
 import { llmConfig, newsletterConfig } from '../config';
 import {
+  eligibleDeadlineReminders,
   escapeLabel,
+  formatDeadlineReminders,
   renderVerifiedDeadlineReminders,
 } from '../deadlines/reminders';
 import { collectNewsletterDeadlines } from '../deadlines/section';
@@ -52,6 +55,8 @@ export class ContentGenerateProvider implements CoreContentGenerateProvider {
     private readonly newsletterRepository: NewsletterRepository,
     private readonly templateOptions?: NewsletterTemplateOptions,
     brandName?: string,
+    /** Chooses displayed reminders; omitted, the first rows by date display. */
+    private readonly selectDeadlineReminders?: DeadlineReminderSelector,
   ) {
     this.model = model;
     this.deadlineRemindersMarkdown =
@@ -146,9 +151,9 @@ export class ContentGenerateProvider implements CoreContentGenerateProvider {
     );
     const markdown =
       this.templateOptions?.verifiedDeadlineReminders !== undefined
-        ? renderVerifiedDeadlineReminders(reminders, newsletter.date)
+        ? await this.renderDeadlineReminders(reminders, newsletter.date)
         : this.deadlineRemindersMarkdown ||
-          renderVerifiedDeadlineReminders(reminders, newsletter.date);
+          (await this.renderDeadlineReminders(reminders, newsletter.date));
     const share =
       this.templateOptions?.shareNoticeMarkdown ??
       `이 소식이 도움이 되셨다면 동료 연구자에게도 소개해주시면 좋겠습니다. [${escapeLabel(this.newsletterBrandName)} 구독하기](${this.subscribePageUrl})`;
@@ -178,5 +183,17 @@ export class ContentGenerateProvider implements CoreContentGenerateProvider {
         htmlBody: dom.serialize(),
       },
     });
+  }
+
+  private async renderDeadlineReminders(
+    reminders: Parameters<typeof renderVerifiedDeadlineReminders>[0],
+    publicationDate: IsoDateString,
+  ): Promise<string> {
+    if (!this.selectDeadlineReminders)
+      return renderVerifiedDeadlineReminders(reminders, publicationDate);
+    const rows = eligibleDeadlineReminders(reminders, publicationDate);
+    return formatDeadlineReminders(
+      await this.selectDeadlineReminders(rows, publicationDate),
+    );
   }
 }

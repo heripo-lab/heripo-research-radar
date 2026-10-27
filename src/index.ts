@@ -53,6 +53,14 @@ export {
   type ResearchRadarDeadlineRefreshResult,
 } from './deadlines/refresh';
 export {
+  DEADLINE_REMINDER_LEAD_DAYS,
+  DEADLINE_REMINDER_LIMIT,
   renderVerifiedDeadlineReminders,
+  type EligibleDeadlineReminder,
   type VerifiedDeadlineReminder,
 } from './deadlines/reminders';
+export {
+  createDeadlineReminderSelector,
+  type DeadlineReminderSelector,
+  type DeadlineReminderSelectorOptions,
+} from './deadlines/select';
