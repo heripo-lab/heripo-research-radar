@@ -63,6 +63,11 @@ import {
   parseJinjuMuseumList,
 } from '~/parsers/jinju-museum.parser';
 import {
+  JOURNAL_ISSUE_LIST_URL,
+  parseJournalIssueDetail,
+  parseJournalIssueList,
+} from '~/parsers/journal-issue.parser';
+import {
   parseKaahDetail,
   parseKaahList,
   parseKaahPlaceDetail,
@@ -174,6 +179,14 @@ export function createCrawlingTargetGroups(
           url: 'https://www.nrich.go.kr/kor/majorList.do?menuIdx=286',
           parseList: parseNrichMajorEventList,
           parseDetail: parseNrichMajorEventDetail,
+        },
+        {
+          // Served from the application's injected KCI issues, never crawled.
+          id: 'KCI_학술지_신간',
+          name: 'KCI 학술지 신간 권호',
+          url: JOURNAL_ISSUE_LIST_URL,
+          parseList: parseJournalIssueList,
+          parseDetail: parseJournalIssueDetail,
         },
         {
           id: '국립문화유산연구원_학술지_헤리티지',

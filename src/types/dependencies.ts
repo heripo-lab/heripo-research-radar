@@ -128,6 +128,89 @@ export interface ExcavationReport {
 export type ExcavationReportSource = () => Promise<ExcavationReport[]>;
 
 /**
+ * One paper in an injected journal issue.
+ */
+export interface JournalIssuePaper {
+  /** Paper title. */
+  title: string;
+
+  /** Author names in publication order. */
+  authors: string[];
+
+  /** Author keywords. Blank and repeated keywords are ignored. */
+  keywords: string[];
+
+  /**
+   * Abstract shown to the scoring and generation models, in the original
+   * language when the source has one. Truncated before it reaches them.
+   */
+  abstract?: string | null;
+
+  /** Public page for the paper, such as its KCI article page. */
+  url: string;
+}
+
+/**
+ * A newly published journal issue (권호) supplied by the application.
+ *
+ * Each issue becomes one article whose body lists every paper it carries, so a
+ * twenty-paper issue is scored and introduced once rather than twenty times.
+ */
+export interface JournalIssue {
+  /**
+   * Stable identifier for the issue, such as
+   * `{journalId}|{year}|{month}|{volume}|{issue}`. It becomes the article's
+   * `uniqId`, which is how the application maps the issue back from
+   * `usedArticles` when the newsletter is saved. Keep it independent of the
+   * paper list, or a later snapshot of the same issue looks like a new one.
+   */
+  externalId: string;
+
+  /**
+   * Public page readers follow from the newsletter. It is also the article's
+   * URL, so it must be stable for the issue: previously saved issues are
+   * recognized by it and not saved again.
+   */
+  url: string;
+
+  /** Journal name, e.g. "헤리티지:역사와 과학". */
+  journalName: string;
+
+  /** Publication year. */
+  publishedYear: number;
+
+  /** Publication month, 1-12. */
+  publishedMonth: number;
+
+  /** Volume (권). Empty when the journal numbers issues only. */
+  volume: string;
+
+  /** Issue number (호). Empty when the journal numbers volumes only. */
+  issue: string;
+
+  /**
+   * Date the issue became available to the application, in ISO format
+   * (YYYY-MM-DD, Korean time) — for example when its papers were first
+   * collected. Used as the article's registered date.
+   * @example "2026-10-28"
+   */
+  registeredDate: IsoDateString;
+
+  /** Every paper in the issue, in the order to list them. */
+  papers: JournalIssuePaper[];
+}
+
+/**
+ * Supplies newly published journal issues from the application, such as those
+ * collected from KCI.
+ *
+ * The journal issue target has no live board behind it: when this is omitted
+ * the target collects nothing and makes no request. Called at most once per
+ * generation run.
+ */
+export type JournalIssueSource = () => Promise<JournalIssue[]>;
+
+/**
  * Repository interface for tag management
  */
 export interface TagRepository {

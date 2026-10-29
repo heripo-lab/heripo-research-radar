@@ -18,6 +18,7 @@ import type { ContentOptions } from './config';
 import type {
   ArticleRepository,
   ExcavationReportSource,
+  JournalIssueSource,
   NewsletterRepository,
   NewsletterTemplateOptions,
   TagRepository,
@@ -157,6 +158,17 @@ export interface NewsletterGeneratorDependencies {
   excavationReportSource?: ExcavationReportSource;
 
   /**
+   * Supplies newly published journal issues from the application (optional),
+   * such as those collected from KCI.
+   *
+   * Each issue becomes one article listing its papers. The target has no live
+   * board, so omitting this leaves it empty without making a request. The
+   * article's `uniqId` is the issue's `externalId`, which lets the application
+   * record which issues a saved newsletter introduced.
+   */
+  journalIssueSource?: JournalIssueSource;
+
+  /**
    * data.go.kr service key for the 나라일터 and 알리오 job boards (optional).
    *
    * Pass the encoded key exactly as the portal supplies it. Both boards are read
@@ -257,6 +269,7 @@ function createNewsletterGenerator(
         });
       },
     }),
+    dependencies.journalIssueSource,
   );
 
   const analysisProvider = new AnalysisProvider(
