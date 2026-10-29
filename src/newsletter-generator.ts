@@ -163,8 +163,9 @@ export interface NewsletterGeneratorDependencies {
    *
    * Each issue becomes one article listing its papers. The target has no live
    * board, so omitting this leaves it empty without making a request. The
-   * article's `uniqId` is the issue's `externalId`, which lets the application
-   * record which issues a saved newsletter introduced.
+   * article's `uniqId` is the issue's `externalId` and its URL the issue's
+   * `url`; store either when articles are saved to record which issues a
+   * saved newsletter introduced.
    */
   journalIssueSource?: JournalIssueSource;
 

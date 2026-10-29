@@ -160,9 +160,12 @@ export interface JournalIssue {
   /**
    * Stable identifier for the issue, such as
    * `{journalId}|{year}|{month}|{volume}|{issue}`. It becomes the article's
-   * `uniqId`, which is how the application maps the issue back from
-   * `usedArticles` when the newsletter is saved. Keep it independent of the
-   * paper list, or a later snapshot of the same issue looks like a new one.
+   * `uniqId` and reaches `saveCrawledArticles`, so the application can store
+   * it with the article. `usedArticles` carry only the article's own id and
+   * URL, so that stored value (or the issue `url`) is how the application maps
+   * a saved newsletter back to the issues it introduced. Keep it independent
+   * of the paper list, or a later snapshot of the same issue looks like a new
+   * one.
    */
   externalId: string;
 
