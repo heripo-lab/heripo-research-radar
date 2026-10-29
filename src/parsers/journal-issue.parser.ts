@@ -83,7 +83,12 @@ function requestHref(input: string | URL | Request): string {
  * the URLs of the issues already served; anything else is delegated.
  *
  * `source` is called once and its result reused for the detail requests that
- * follow.
+ * follow. The adapter sits outermost on the fetch every target shares, so only
+ * the list request ever waits on the source: other requests are matched
+ * against issues already served, without awaiting, so a slow or failing source
+ * cannot stall or break the rest of the crawl. Core requests this target's
+ * details only after its list has parsed. A failed source is retried on the
+ * next list request.
  *
  * @param baseFetch - Fetch to delegate every other request to
  * @param source - Supplies the issues for this run
@@ -93,8 +98,18 @@ export const createJournalIssueFetch = (
   source?: JournalIssueSource,
 ): typeof fetch => {
   let pending: Promise<JournalIssue[]> | null = null;
+  const issuesByUrl = new Map<string, JournalIssue>();
   const loadIssues = () =>
-    (pending ??= source ? source() : Promise.resolve([]));
+    (pending ??= (source ? source() : Promise.resolve([])).then(
+      (issues) => {
+        for (const issue of issues) issuesByUrl.set(issue.url, issue);
+        return issues;
+      },
+      (error: unknown) => {
+        pending = null;
+        throw error;
+      },
+    ));
 
   return async (input, init) => {
     const href = requestHref(input);
@@ -106,15 +121,12 @@ export const createJournalIssueFetch = (
       } satisfies InjectedListPayload);
     }
 
-    if (pending) {
-      const issue = (await pending).find((candidate) => candidate.url === href);
-
-      if (issue) {
-        return jsonResponse({
-          marker: INJECTED_MARKER,
-          issue,
-        } satisfies InjectedDetailPayload);
-      }
+    const issue = issuesByUrl.get(href);
+    if (issue) {
+      return jsonResponse({
+        marker: INJECTED_MARKER,
+        issue,
+      } satisfies InjectedDetailPayload);
     }
 
     return baseFetch(input, init);

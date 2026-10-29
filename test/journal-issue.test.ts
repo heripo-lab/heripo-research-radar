@@ -110,6 +110,46 @@ test('주입한 권호가 아닌 요청은 다음 fetch로 넘긴다', async () 
   assert.deepEqual(parseJournalIssueDetail('<html></html>').detailContent, '');
 });
 
+test('출처가 실패하면 목록만 실패하고 다른 요청은 계속되며 다음 목록 요청에서 다시 시도한다', async () => {
+  const requested: string[] = [];
+  let calls = 0;
+  const journalFetch = createJournalIssueFetch(
+    async (input) => {
+      requested.push(String(input));
+      return new Response('<html></html>');
+    },
+    async () => {
+      calls += 1;
+      if (calls === 1) throw new Error('catalog unavailable');
+      return [issue];
+    },
+  );
+
+  await assert.rejects(
+    journalFetch(JOURNAL_ISSUE_LIST_URL),
+    /catalog unavailable/,
+  );
+  await journalFetch('https://www.khs.go.kr/board');
+  assert.deepEqual(requested, ['https://www.khs.go.kr/board']);
+
+  const list = parseJournalIssueList(
+    await (await journalFetch(JOURNAL_ISSUE_LIST_URL)).text(),
+  );
+  assert.equal(calls, 2);
+  assert.equal(list.length, 1);
+});
+
+test('출처가 끝나지 않아도 다른 요청은 기다리지 않는다', async () => {
+  const journalFetch = createJournalIssueFetch(
+    async () => new Response('ok'),
+    () => new Promise(() => {}),
+  );
+
+  void journalFetch(JOURNAL_ISSUE_LIST_URL);
+  const response = await journalFetch('https://www.khs.go.kr/board');
+  assert.equal(await response.text(), 'ok');
+});
+
 test('운영 크롤링 fetch는 출처 없이도 권호 대상을 네트워크로 보내지 않는다', async () => {
   const sourceFetch = createResearchRadarFetch({
     customFetch: unexpectedFetch,
