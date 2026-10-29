@@ -32,6 +32,8 @@ import { GenerateNewsletter } from '@llm-newsletter-kit/core';
 
 import { createHeritageBidTriage } from '~/crawling/heritage-triage';
 import { createDeadlineReminderSelector } from '~/deadlines/select';
+import { createJournalPaperClassifier } from '~/journals/classify';
+import { createJournalIssueLoader } from '~/journals/loader';
 
 import { contentOptions, llmConfig, newsletterConfig } from './config';
 import { researchRadarPromptProvider } from './prompts';
@@ -252,6 +254,11 @@ function createNewsletterGenerator(
 
   const taskService = new TaskService(dependencies.taskRepository);
 
+  // One source call serves both the crawl and the journal tables at save time.
+  const loadJournalIssues = dependencies.journalIssueSource
+    ? createJournalIssueLoader(dependencies.journalIssueSource)
+    : undefined;
+
   const crawlingProvider = new CrawlingProvider(
     dependencies.articleRepository,
     dependencies.customFetch,
@@ -270,7 +277,7 @@ function createNewsletterGenerator(
         });
       },
     }),
-    dependencies.journalIssueSource,
+    loadJournalIssues,
   );
 
   const analysisProvider = new AnalysisProvider(
@@ -342,6 +349,25 @@ function createNewsletterGenerator(
         });
       },
     }),
+    loadJournalIssues && {
+      load: loadJournalIssues,
+      // Sorting papers into fields is a relevance judgement, like importance.
+      classify: createJournalPaperClassifier({
+        model: resolveModel('determineImportance'),
+        onFallback: (reason, issue) => {
+          dependencies.logger?.info({
+            event: 'newsletter.journals.classification.fallback',
+            data: { reason, issueUrl: issue.url },
+          });
+        },
+      }),
+      onUnavailable: (reason) => {
+        dependencies.logger?.error({
+          event: 'newsletter.journals.load.failed',
+          data: { reason },
+        });
+      },
+    },
   );
 
   return new GenerateNewsletter({

@@ -134,7 +134,7 @@ export const createJournalIssueFetch = (
 };
 
 /** "제59권 제3호", or whichever part the journal numbers. */
-function formatVolumeIssue(issue: JournalIssue): string {
+export function formatVolumeIssue(issue: JournalIssue): string {
   const label = (value: string, unit: string) => {
     const trimmed = value.trim();
     if (!trimmed) return '';

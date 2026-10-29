@@ -9,8 +9,11 @@ import type {
 import type { LanguageModel } from 'ai';
 
 import type { DeadlineReminderSelector } from '../deadlines/select';
+import type { JournalPaperClassifier } from '../journals/classify';
+import type { JournalIssueLoader } from '../journals/loader';
 import type {
   ArticleRepository,
+  JournalIssue,
   NewsletterRepository,
   NewsletterTemplateOptions,
 } from '../types/dependencies';
@@ -28,6 +31,26 @@ import {
   renderVerifiedDeadlineReminders,
 } from '../deadlines/reminders';
 import { collectNewsletterDeadlines } from '../deadlines/section';
+import {
+  insertJournalIssueHtml,
+  insertJournalIssueMarkdown,
+  renderJournalIssueSection,
+} from '../journals/section';
+import { JOURNAL_ISSUE_LIST_URL } from '../parsers/journal-issue.parser';
+
+/**
+ * Injected journal issues are rendered by the provider rather than written by
+ * the model: each is a table of up to twenty titles and author lists, which
+ * the model would have to copy exactly.
+ */
+export type JournalIssueRendering = {
+  /** The run's injected issues, matched to candidates by URL. */
+  load: JournalIssueLoader;
+  /** Orders papers by field; omitted, every paper is listed unclassified. */
+  classify?: JournalPaperClassifier;
+  /** Reports that the issues could not be loaded, so the model got them. */
+  onUnavailable?: (reason: string) => void;
+};
 
 /**
  * Content generation provider implementation
@@ -38,6 +61,10 @@ import { collectNewsletterDeadlines } from '../deadlines/section';
 export class ContentGenerateProvider implements CoreContentGenerateProvider {
   private _issueOrder: number | null = null;
   private readonly deadlineRemindersMarkdown: string;
+  private heldJournalIssues: {
+    article: ArticleForGenerateContent;
+    issue: JournalIssue;
+  }[] = [];
 
   readonly model: LanguageModel;
 
@@ -57,6 +84,7 @@ export class ContentGenerateProvider implements CoreContentGenerateProvider {
     brandName?: string,
     /** Chooses displayed reminders; omitted, the first rows by date display. */
     private readonly selectDeadlineReminders?: DeadlineReminderSelector,
+    private readonly journalIssues?: JournalIssueRendering,
   ) {
     this.model = model;
     this.deadlineRemindersMarkdown =
@@ -119,7 +147,35 @@ export class ContentGenerateProvider implements CoreContentGenerateProvider {
    * @returns Articles eligible for inclusion in the newsletter
    */
   async fetchArticleCandidates(): Promise<ArticleForGenerateContent[]> {
-    return this.articleRepository.findCandidatesForNewsletter();
+    const candidates =
+      await this.articleRepository.findCandidatesForNewsletter();
+    this.heldJournalIssues = [];
+
+    const journalCandidates = candidates.filter(
+      (article) => article.targetUrl === JOURNAL_ISSUE_LIST_URL,
+    );
+    if (!this.journalIssues || journalCandidates.length === 0) {
+      return candidates;
+    }
+
+    // An issue this run cannot load is left to the model, as before; it is
+    // never dropped.
+    let issues: JournalIssue[];
+    try {
+      issues = await this.journalIssues.load();
+    } catch (error) {
+      this.journalIssues.onUnavailable?.(
+        error instanceof Error ? error.message : String(error),
+      );
+      return candidates;
+    }
+    const issuesByUrl = new Map(issues.map((issue) => [issue.url, issue]));
+    this.heldJournalIssues = journalCandidates.flatMap((article) => {
+      const issue = issuesByUrl.get(article.url);
+      return issue ? [{ article, issue }] : [];
+    });
+    const held = new Set(this.heldJournalIssues.map(({ article }) => article));
+    return candidates.filter((article) => !held.has(article));
   }
 
   /**
@@ -154,6 +210,7 @@ export class ContentGenerateProvider implements CoreContentGenerateProvider {
         ? await this.renderDeadlineReminders(reminders, newsletter.date)
         : this.deadlineRemindersMarkdown ||
           (await this.renderDeadlineReminders(reminders, newsletter.date));
+    const journalMarkdown = await this.renderJournalIssues();
     const share =
       this.templateOptions?.shareNoticeMarkdown ??
       `이 소식이 도움이 되셨다면 동료 연구자에게도 소개해주시면 좋겠습니다. [${escapeLabel(this.newsletterBrandName)} 구독하기](${this.subscribePageUrl})`;
@@ -165,6 +222,7 @@ export class ContentGenerateProvider implements CoreContentGenerateProvider {
           ...this.templateOptions,
           deadlineRemindersMarkdown: markdown,
           shareNoticeMarkdown: share,
+          journalIssuesMarkdown: journalMarkdown,
         }),
       ),
     ).window.document;
@@ -172,17 +230,48 @@ export class ContentGenerateProvider implements CoreContentGenerateProvider {
     const document = dom.window.document;
     const closing = document.querySelector('[data-research-radar-closing]');
     if (!closing) throw new Error('Newsletter closing block not found');
+    const journalSection = closingDocument.querySelector(
+      '[data-research-radar-journal-issues]',
+    );
+    if (journalSection) {
+      insertJournalIssueHtml(
+        document,
+        document.importNode(journalSection, true),
+        closing,
+      );
+    }
     closing.outerHTML = closingDocument.querySelector(
       '[data-research-radar-closing]',
     )!.outerHTML;
+    // Core hands back only the candidates the model saw; the held-aside
+    // journal articles are part of this issue too.
+    const usedIds = new Set(usedArticles.map((article) => article.id));
     return this.newsletterRepository.saveNewsletter({
       ...input,
+      usedArticles: [
+        ...usedArticles,
+        ...this.heldJournalIssues
+          .map(({ article }) => article)
+          .filter((article) => !usedIds.has(article.id)),
+      ],
       newsletter: {
         ...newsletter,
-        content: `${newsletter.content}${markdown ? `\n\n<!-- research-radar-deadline-reminders -->\n${markdown}` : ''}${share ? `\n\n<!-- research-radar-share-notice -->\n${share}` : ''}`,
+        content: `${insertJournalIssueMarkdown(newsletter.content, journalMarkdown)}${markdown ? `\n\n<!-- research-radar-deadline-reminders -->\n${markdown}` : ''}${share ? `\n\n<!-- research-radar-share-notice -->\n${share}` : ''}`,
         htmlBody: dom.serialize(),
       },
     });
+  }
+
+  private async renderJournalIssues(): Promise<string> {
+    if (this.heldJournalIssues.length === 0) return '';
+    const classify = this.journalIssues?.classify;
+    const entries = await Promise.all(
+      this.heldJournalIssues.map(async ({ issue }) => ({
+        issue,
+        verdicts: classify ? await classify(issue) : null,
+      })),
+    );
+    return renderJournalIssueSection(entries);
   }
 
   private async renderDeadlineReminders(
