@@ -1,9 +1,8 @@
 import type { JournalIssue, JournalIssuePaper } from '../types/dependencies';
-import type { JournalPaperVerdict } from './classify';
+import type { JournalPaperSelection } from './select';
 
 import { escapeLabel } from '../deadlines/reminders';
 import { formatVolumeIssue } from '../parsers/journal-issue.parser';
-import { JOURNAL_PAPER_FIELDS } from './classify';
 
 /** Heading of the journal issue section. Distinct from any 학술지 heading the model writes. */
 export const JOURNAL_ISSUE_SECTION_HEADING = '📖 새로 나온 학술지';
@@ -11,13 +10,13 @@ export const JOURNAL_ISSUE_SECTION_HEADING = '📖 새로 나온 학술지';
 /** Authors listed per paper before the rest are counted. */
 const AUTHOR_LIMIT = 3;
 
-/** Topic labels named in the summary of unrelated papers. */
+/** Topic labels named in the summary of papers left out of the table. */
 const TOPIC_LIMIT = 5;
 
 export type JournalIssueSectionEntry = {
   issue: JournalIssue;
-  /** One verdict per paper, or null to list every paper unclassified. */
-  verdicts: JournalPaperVerdict[] | null;
+  /** Which papers to show, or null to list every paper in source order. */
+  selection: JournalPaperSelection | null;
 };
 
 /**
@@ -56,44 +55,26 @@ function topicSummary(topics: (string | null)[]): string {
 }
 
 /**
- * Renders one issue: its papers related to the newsletter's fields as a table
- * ordered 고고학 → 역사학 → 문화유산 (unplaced papers last), and the unrelated
- * rest as a count with their topics. Table rows plus that count always equal
- * the paper count.
+ * Renders one issue: the papers its readers would care about as a table, most
+ * interesting first, and the rest as a count with their topics. Table rows plus
+ * that count always equal the paper count.
  */
-function renderIssue({ issue, verdicts }: JournalIssueSectionEntry): string {
+function renderIssue({ issue, selection }: JournalIssueSectionEntry): string {
   const lines = [issueHeading(issue), ''];
+  const featured = selection
+    ? selection.featured
+    : issue.papers.map((_, index) => index);
+  const others = selection?.others ?? [];
+  const topics = topicSummary(others.map(({ topic }) => topic));
 
-  if (!verdicts) {
+  if (featured.length > 0) {
     lines.push('| 논문 | 저자 |', '| --- | --- |');
-    for (const paper of issue.papers)
+    for (const index of featured) {
+      const paper = issue.papers[index];
       lines.push(
         `| ${paperLink(paper)} | ${cell(formatAuthors(paper.authors))} |`,
       );
-    return lines.join('\n');
-  }
-
-  const order = [...JOURNAL_PAPER_FIELDS, null] as const;
-  const rows = issue.papers
-    .map((paper, index) => ({ paper, verdict: verdicts[index] }))
-    .filter(({ verdict }) => verdict.field !== '기타')
-    .sort(
-      (a, b) =>
-        order.indexOf(a.verdict.field as (typeof order)[number]) -
-        order.indexOf(b.verdict.field as (typeof order)[number]),
-    );
-  const others = verdicts.filter(
-    (verdict): verdict is { field: '기타'; topic: string | null } =>
-      verdict.field === '기타',
-  );
-  const topics = topicSummary(others.map((verdict) => verdict.topic));
-
-  if (rows.length > 0) {
-    lines.push('| 분야 | 논문 | 저자 |', '| --- | --- | --- |');
-    for (const { paper, verdict } of rows)
-      lines.push(
-        `| ${verdict.field ?? '—'} | ${paperLink(paper)} | ${cell(formatAuthors(paper.authors))} |`,
-      );
+    }
     if (others.length > 0)
       lines.push(
         '',
@@ -105,7 +86,7 @@ function renderIssue({ issue, verdicts }: JournalIssueSectionEntry): string {
     lines.push(
       topics
         ? `${topics} 등을 다룬 논문이 실렸습니다.`
-        : '고고학·역사학·문화유산과 거리가 있는 논문이 실렸습니다.',
+        : '이번 호에는 소개할 만한 논문이 없었습니다.',
     );
   }
 

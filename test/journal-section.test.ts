@@ -10,12 +10,12 @@ import { JSDOM } from 'jsdom';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { createJournalPaperClassifier } from '../src/journals/classify';
 import { createJournalIssueLoader } from '../src/journals/loader';
 import {
   insertJournalIssueMarkdown,
   renderJournalIssueSection,
 } from '../src/journals/section';
+import { createJournalPaperSelector } from '../src/journals/select';
 import { JOURNAL_ISSUE_LIST_URL } from '../src/parsers/journal-issue.parser';
 import { ContentGenerateProvider } from '../src/providers/content-generate.provider';
 
@@ -53,58 +53,59 @@ const answer = (value: unknown) =>
 
 /** Table rows (excluding header and separator) of a rendered issue. */
 const tableRows = (markdown: string) =>
-  markdown.split('\n').filter((line) => /^\| (?!분야|논문|---)/.test(line));
+  markdown.split('\n').filter((line) => /^\| (?!논문 \||---)/.test(line));
 
-test('논문을 고고학 → 역사학 → 문화유산 순 표로 보여주고 나머지는 편수와 주제로 줄인다', async () => {
-  const classify = createJournalPaperClassifier({
+test('관심 가질 논문을 관심 순 표로 보여주고 나머지는 편수와 주제로 줄인다', async () => {
+  const select = createJournalPaperSelector({
+    audience: '한국고고학회 회원',
     model: answer({
-      archaeology: [3, 0],
-      history: [5],
-      heritage: [1],
-      other: [
-        { index: 2, topic: '섬 지역 어업 경제' },
+      featured: [3, 0, 5, 1],
+      others: [
         { index: 4, topic: '해양 생태계 변화' },
+        { index: 2, topic: '섬 지역 어업 경제' },
       ],
     }),
   });
   const markdown = renderJournalIssueSection([
-    { issue, verdicts: await classify(issue) },
+    { issue, selection: await select(issue) },
   ]);
 
   assert.match(
     markdown,
-    /^## 📖 새로 나온 학술지\n\n\*\*\[한국고고학보 제3호\]\(https:\/\/www\.kci\.go\.kr\/.+VOL1\)\*\* · 2026년 9월 · 논문 6편/,
+    /^## 📖 새로 나온 학술지\n\n\*\*\[한국고고학보 제3호\]\(https:\/\/www\.kci\.go\.kr\/.+VOL1\)\*\* · 2026년 9월 · 논문 6편\n\n\| 논문 \| 저자 \|/,
   );
   assert.deepEqual(
-    tableRows(markdown).map((row) => row.split(' | ')[0]),
-    ['| 고고학', '| 고고학', '| 역사학', '| 문화유산'],
+    tableRows(markdown).map((row) => /논문(\d)/.exec(row)?.[1]),
+    ['3', '0', '5', '1'],
   );
-  // 같은 분야 안에서는 원래 순서를 지킨다.
-  assert.match(tableRows(markdown)[0], /논문0/);
-  assert.match(tableRows(markdown)[1], /논문3/);
+  // 주제는 논문 순서대로 요약한다.
   assert.match(
     markdown,
     /그 밖에 섬 지역 어업 경제, 해양 생태계 변화 등을 다룬 논문 2편이 함께 실렸습니다\./,
   );
 });
 
-test('범위 밖·중복·누락 번호의 논문은 숨기지 않고 분야 없이 표에 남긴다', async () => {
-  const classify = createJournalPaperClassifier({
+test('범위 밖·중복·누락 번호의 논문은 숨기지 않고 고른 논문 뒤에 표로 남긴다', async () => {
+  const select = createJournalPaperSelector({
+    audience: '한국고고학회 회원',
     model: answer({
-      archaeology: [0, 99, -1, 1.5],
-      history: [1],
-      heritage: [1],
-      other: [{ index: 2, topic: '해양 생태' }],
+      featured: [2, 99, -1, 1.5, 2, 1],
+      others: [
+        { index: 1, topic: '양쪽에 넣음' },
+        { index: 4, topic: '해양 생태' },
+        { index: 4, topic: '중복' },
+      ],
     }),
   });
-  const verdicts = await classify(issue);
-  const markdown = renderJournalIssueSection([{ issue, verdicts }]);
-  const rows = tableRows(markdown);
+  const selection = await select(issue);
+  const rows = tableRows(renderJournalIssueSection([{ issue, selection }]));
 
-  // 1번은 두 분야에 들어갔고 3~5번은 빠졌다.
-  assert.equal(rows.filter((row) => row.startsWith('| — |')).length, 4);
+  // 1번은 양쪽에 들어가 표에 남고, 0·3·5번은 빠져 뒤에 붙는다.
+  assert.deepEqual(selection, {
+    featured: [2, 1, 0, 3, 5],
+    others: [{ index: 4, topic: '해양 생태' }],
+  });
   assert.equal(rows.length + 1, issue.papers.length);
-  assert.match(markdown, /논문 1편이 함께 실렸습니다/);
 });
 
 for (const [name, model] of [
@@ -120,29 +121,29 @@ for (const [name, model] of [
     '시간 초과',
     new MockLanguageModelV4({ doGenerate: () => new Promise(() => {}) }),
   ],
-  [
-    '쓸 수 있는 번호 없음',
-    answer({ archaeology: [99], history: [], heritage: [], other: [] }),
-  ],
+  ['쓸 수 있는 번호 없음', answer({ featured: [99], others: [] })],
 ] as const) {
-  test(`분류 ${name} 시 모든 논문을 분야 없이 표로 보여준다`, async () => {
+  test(`선별 ${name} 시 모든 논문을 원래 순서대로 표에 싣는다`, async () => {
     const reasons: string[] = [];
-    const classify = createJournalPaperClassifier({
+    const select = createJournalPaperSelector({
+      audience: '한국고고학회 회원',
       model,
       timeoutMs: 20,
       onFallback: (reason) => reasons.push(reason),
     });
-    const verdicts = await classify(issue);
-    const markdown = renderJournalIssueSection([{ issue, verdicts }]);
+    const selection = await select(issue);
+    const markdown = renderJournalIssueSection([{ issue, selection }]);
 
-    assert.equal(verdicts, null);
+    assert.equal(selection, null);
     assert.equal(reasons.length, 1);
-    assert.match(markdown, /\| 논문 \| 저자 \|/);
-    assert.equal(tableRows(markdown).length, issue.papers.length);
+    assert.deepEqual(
+      tableRows(markdown).map((row) => /논문(\d)/.exec(row)?.[1]),
+      ['0', '1', '2', '3', '4', '5'],
+    );
   });
 }
 
-test('모든 논문이 기타면 표 없이 주제만 알리고, 저자가 많으면 줄이고, 표 칸을 이스케이프한다', () => {
+test('관심 논문이 없으면 표 없이 주제만 알리고, 저자가 많으면 줄이고, 표 칸을 이스케이프한다', () => {
   const crowded = {
     ...issue,
     papers: [paper(0, ['가', '나', '다', '라', '마']), paper(1)],
@@ -152,17 +153,20 @@ test('모든 논문이 기타면 표 없이 주제만 알리고, 저자가 많�
   const allOther = renderJournalIssueSection([
     {
       issue: crowded,
-      verdicts: [
-        { field: '기타', topic: '섬 관광' },
-        { field: '기타', topic: '섬 관광' },
-      ],
+      selection: {
+        featured: [],
+        others: [
+          { index: 0, topic: '섬 관광' },
+          { index: 1, topic: '섬 관광' },
+        ],
+      },
     },
   ]);
   assert.doesNotMatch(allOther, /\| 논문/);
   assert.match(allOther, /논문 2편\n\n섬 관광 등을 다룬 논문이 실렸습니다\./);
 
   const listed = renderJournalIssueSection([
-    { issue: crowded, verdicts: null },
+    { issue: crowded, selection: null },
   ]);
   assert.match(listed, /\| 가, 나, 다 외 2명 \|/);
   assert.match(listed, /\[A\\\|B 비교\]/);
@@ -260,12 +264,11 @@ function providerWith(
     undefined,
     {
       load,
-      classify: createJournalPaperClassifier({
+      select: createJournalPaperSelector({
+        audience: '한국고고학회 회원',
         model: answer({
-          archaeology: [0, 1, 2],
-          history: [],
-          heritage: [3, 4],
-          other: [{ index: 5, topic: '해양 생태' }],
+          featured: [0, 1, 2, 3, 4],
+          others: [{ index: 5, topic: '해양 생태' }],
         }),
       }),
     },

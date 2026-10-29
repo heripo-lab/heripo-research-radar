@@ -9,8 +9,8 @@ import type {
 import type { LanguageModel } from 'ai';
 
 import type { DeadlineReminderSelector } from '../deadlines/select';
-import type { JournalPaperClassifier } from '../journals/classify';
 import type { JournalIssueLoader } from '../journals/loader';
+import type { JournalPaperSelector } from '../journals/select';
 import type {
   ArticleRepository,
   JournalIssue,
@@ -46,8 +46,8 @@ import { JOURNAL_ISSUE_LIST_URL } from '../parsers/journal-issue.parser';
 export type JournalIssueRendering = {
   /** The run's injected issues, matched to candidates by URL. */
   load: JournalIssueLoader;
-  /** Orders papers by field; omitted, every paper is listed unclassified. */
-  classify?: JournalPaperClassifier;
+  /** Picks the papers readers would care about; omitted, every paper is listed. */
+  select?: JournalPaperSelector;
   /** Reports that the issues could not be loaded, so the model got them. */
   onUnavailable?: (reason: string) => void;
 };
@@ -264,11 +264,11 @@ export class ContentGenerateProvider implements CoreContentGenerateProvider {
 
   private async renderJournalIssues(): Promise<string> {
     if (this.heldJournalIssues.length === 0) return '';
-    const classify = this.journalIssues?.classify;
+    const select = this.journalIssues?.select;
     const entries = await Promise.all(
       this.heldJournalIssues.map(async ({ issue }) => ({
         issue,
-        verdicts: classify ? await classify(issue) : null,
+        selection: select ? await select(issue) : null,
       })),
     );
     return renderJournalIssueSection(entries);
