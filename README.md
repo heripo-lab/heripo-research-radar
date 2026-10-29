@@ -370,7 +370,7 @@ import { getSourceList } from '@heripo/research-radar';
 const groups = getSourceList(); // [{ id, name, sources: [{ id, name, url }] }]
 ```
 
-`createCrawlingTargetGroups(customFetch?)`, `getSourceList()`, `contentOptions`, `newsletterConfig`, `llmConfig`, and `researchRadarPromptProvider` are public exports. `ExcavationReport`, `ExcavationReportSource`, `JournalIssue`, `JournalIssuePaper`, and `JournalIssueSource` are exported as types. The package also exports the three provider classes, `DateService`, `TaskService`, and their public configuration/dependency types through [src/index.ts](./src/index.ts).
+`createCrawlingTargetGroups(customFetch?)`, `getSourceList()`, `contentOptions`, `newsletterConfig`, `llmConfig`, `researchRadarPromptProvider`, and `JOURNAL_ISSUE_LIST_URL` (the journal issue target's URL, for finding the issue articles an application saved) are public exports. `ExcavationReport`, `ExcavationReportSource`, `JournalIssue`, `JournalIssuePaper`, and `JournalIssueSource` are exported as types. The package also exports the three provider classes, `DateService`, `TaskService`, and their public configuration/dependency types through [src/index.ts](./src/index.ts).
 
 ## Email templates
 

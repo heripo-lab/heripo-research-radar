@@ -356,7 +356,7 @@ import { getSourceList } from '@heripo/research-radar';
 const groups = getSourceList(); // [{ id, name, sources: [{ id, name, url }] }]
 ```
 
-`createCrawlingTargetGroups(customFetch?)`, `getSourceList()`, `contentOptions`, `newsletterConfig`, `llmConfig`, `researchRadarPromptProvider`는 공개 API입니다. `ExcavationReport`, `ExcavationReportSource`, `JournalIssue`, `JournalIssuePaper`, `JournalIssueSource`는 타입으로 export됩니다. Provider 클래스 3개, `DateService`, `TaskService`, 공개 설정·의존성 타입도 [src/index.ts](./src/index.ts)에서 export합니다.
+`createCrawlingTargetGroups(customFetch?)`, `getSourceList()`, `contentOptions`, `newsletterConfig`, `llmConfig`, `researchRadarPromptProvider`, `JOURNAL_ISSUE_LIST_URL`(애플리케이션이 저장한 학술지 권호 기사를 찾는 데 쓰는 대상 URL)은 공개 API입니다. `ExcavationReport`, `ExcavationReportSource`, `JournalIssue`, `JournalIssuePaper`, `JournalIssueSource`는 타입으로 export됩니다. Provider 클래스 3개, `DateService`, `TaskService`, 공개 설정·의존성 타입도 [src/index.ts](./src/index.ts)에서 export합니다.
 
 ## 이메일 템플릿
 
