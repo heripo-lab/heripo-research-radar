@@ -22,6 +22,10 @@ export type {
   WelcomeTemplateOptions,
 } from './types/dependencies';
 
+// Board URL of the injected journal issue target, so applications can find
+// the articles it saved without hardcoding it.
+export { JOURNAL_ISSUE_LIST_URL } from './parsers/journal-issue.parser';
+
 // Welcome email template export
 export { generateWelcomeHTML } from './templates/welcome-html';
 
