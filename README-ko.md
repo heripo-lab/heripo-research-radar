@@ -336,7 +336,7 @@ Anthropic·Google로 뉴스레터를 생성하는 기존 `contentGeneration: { p
 
 타깃 3개는 크롤링이 아니라 data.go.kr 오픈 API에서 읽습니다. 채용 그룹의 나라일터(`PblJobService`)·알리오(`recruitment`), 입찰 그룹의 나라장터(`BidPublicInfoService`)입니다. 인증키는 `publicDataApiKey`로 주입하며, 생략하면 해당 타깃은 요청 없이 빈 목록을 반환합니다. 세 게시판은 전국 공공부문 채용과 조달 공고를 모두 담고 있어 분석 단계 이전에 걸러냅니다. 채용 게시판은 `src/crawling/heritage-job-filter.ts`를 쓰며 제외어가 모두 직무 명사라 패턴으로 버팁니다(약 2%, 하루 2.6건 통과). 나라장터는 `src/crawling/heritage-triage.ts`가 제목 100건씩을 저렴한 모델에 묻습니다. 한국어에서 유산 여부는 부분문자열로 판정할 수 없기 때문이며, 배치가 실패하면 기존 정규식이 폴백으로 판단합니다.
 
-새로 발간된 학술지 권호는 크롤링하지 않습니다. 애플리케이션이 `journalIssueSource`로 주입하고(heripo-web은 KCI 논문 카탈로그에서 읽음) `KCI_학술지_신간` 타깃이 이를 그대로 제공하므로, 타깃 URL로는 요청하지 않습니다. 권호 하나가 기사 하나가 됩니다. `uniqId`는 권호의 `externalId`, URL은 권호의 `url`입니다. `usedArticles`에는 애플리케이션의 기사 ID와 URL만 실리므로, 저장된 뉴스레터가 소개한 권호는 `saveCrawledArticles`에서 저장해 둔 `uniqId`나 권호 URL로 기록합니다. 본문에는 권호의 키워드 집계와 함께 수록 논문 전체의 저자·키워드·300자로 자른 초록이 들어갑니다. 출처를 주지 않으면 빈 목록을 반환합니다. 기존 국립문화유산연구원 헤리티지:역사와 과학·보존과학연구 게시판 크롤링을 대체합니다.
+새로 발간된 학술지 권호는 크롤링하지 않습니다. 애플리케이션이 `journalIssueSource`로 주입하고(heripo-web은 KCI 논문 카탈로그에서 읽음) `KCI_학술지_신간` 타깃이 이를 그대로 제공하므로, 타깃 URL로는 요청하지 않습니다. 권호 하나가 기사 하나가 됩니다. `uniqId`는 권호의 `externalId`, URL은 권호의 `url`입니다. `usedArticles`에는 애플리케이션의 기사 ID와 URL만 실리므로, 저장된 뉴스레터가 소개한 권호는 `saveCrawledArticles`에서 저장해 둔 `uniqId`나 권호 URL로 기록합니다. 본문에는 여러 논문이 공유한 키워드와 함께 수록 논문 전체의 저자·키워드·300자로 자른 초록이 들어갑니다. 출처를 주지 않으면 빈 목록을 반환합니다. 기존 국립문화유산연구원 헤리티지:역사와 과학·보존과학연구 게시판 크롤링을 대체합니다.
 
 크롤링 요청은 네트워크에 나가기 전에 robots.txt 검사(`src/crawling/robots.ts`)를 거칩니다. 금지된 요청은 전송하지 않고 거부하며, robots.txt가 없거나 조회에 실패하면 허용합니다. 검사에서 제외할 origin은 `src/config/index.ts`의 `robotsExemptOrigins`에 사유와 함께 명시합니다.
 

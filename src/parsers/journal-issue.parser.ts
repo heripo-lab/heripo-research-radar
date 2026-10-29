@@ -206,16 +206,19 @@ export function renderJournalIssueContent(issue: JournalIssue): string {
   ];
 
   // Counts are per paper and overlap, so they are not summed into a total.
-  const keywords = countKeywords(issue.papers).slice(0, KEYWORD_SUMMARY_LIMIT);
+  // Only keywords shared by several papers say anything about the issue; when
+  // every keyword is unique the summary would just be the alphabetical head of
+  // the list, so it is left out.
+  const keywords = countKeywords(issue.papers)
+    .filter(({ paperCount }) => paperCount > 1)
+    .slice(0, KEYWORD_SUMMARY_LIMIT);
   if (keywords.length > 0) {
     lines.push(
       '',
-      '## 주요 키워드',
+      '## 여러 논문이 다룬 키워드',
       '',
       keywords
-        .map(({ keyword, paperCount }) =>
-          paperCount > 1 ? `${keyword}(${paperCount}편)` : keyword,
-        )
+        .map(({ keyword, paperCount }) => `${keyword}(${paperCount}편)`)
         .join(', '),
     );
   }

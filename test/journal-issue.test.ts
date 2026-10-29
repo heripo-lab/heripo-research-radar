@@ -73,7 +73,10 @@ test('주입한 권호를 목록과 상세로 제공하고 출처는 한 번만 
   assert.equal(detail.hasAttachedFile, false);
   assert.match(detail.detailContent, /- \*\*수록 논문\*\*: 2편/);
   // 같은 논문 안의 중복 키워드는 한 번만 센다.
-  assert.match(detail.detailContent, /기와\(2편\), 보존처리, 풍납토성/);
+  assert.match(
+    detail.detailContent,
+    /여러 논문이 다룬 키워드\n\n기와\(2편\)\n/,
+  );
   assert.match(
     detail.detailContent,
     /1\. \*\*\[풍납토성 출토 기와의 제작 기법\]\(https:\/\/www\.kci\.go\.kr\/.+ART1\)\*\*/,
@@ -91,6 +94,15 @@ test('발행 연도와 같은 권은 제목과 본문에서 생략한다', () =>
     '헤리티지:역사와 과학 제3호 발간 (2026년 9월)',
   );
   assert.match(renderJournalIssueContent(yearVolume), /- \*\*권호\*\*: 제3호/);
+  // 겹치는 키워드가 없으면 키워드 요약을 생략한다.
+  const unique = {
+    ...issue,
+    papers: issue.papers.map((paper, index) => ({
+      ...paper,
+      keywords: [`키워드${index}`],
+    })),
+  };
+  assert.doesNotMatch(renderJournalIssueContent(unique), /키워드\n/);
 });
 
 test('출처가 없으면 요청 없이 빈 목록을 돌려준다', async () => {
