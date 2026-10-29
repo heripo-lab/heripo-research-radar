@@ -141,7 +141,12 @@ function formatVolumeIssue(issue: JournalIssue): string {
     return /^\d+$/.test(trimmed) ? `제${trimmed}${unit}` : trimmed;
   };
 
-  return [label(issue.volume, '권'), label(issue.issue, '호')]
+  // Some journals register the publication year as the volume on KCI
+  // (한국고고학보 2026-3), which would read as "제2026권".
+  const volume =
+    issue.volume.trim() === String(issue.publishedYear) ? '' : issue.volume;
+
+  return [label(volume, '권'), label(issue.issue, '호')]
     .filter(Boolean)
     .join(' ');
 }

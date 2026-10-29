@@ -9,8 +9,10 @@ import { createResearchRadarFetch } from '../src/crawling/source-fetch';
 import {
   JOURNAL_ISSUE_LIST_URL,
   createJournalIssueFetch,
+  formatJournalIssueTitle,
   parseJournalIssueDetail,
   parseJournalIssueList,
+  renderJournalIssueContent,
 } from '../src/parsers/journal-issue.parser';
 
 const issue: JournalIssue = {
@@ -79,6 +81,16 @@ test('주입한 권호를 목록과 상세로 제공하고 출처는 한 번만 
   assert.match(detail.detailContent, /저자: 홍길동, 김철수/);
   assert.match(detail.detailContent, new RegExp(`초록: 가{300}…`));
   assert.doesNotMatch(detail.detailContent, /가{301}/);
+});
+
+test('발행 연도와 같은 권은 제목과 본문에서 생략한다', () => {
+  const yearVolume = { ...issue, volume: '2026', issue: '3' };
+
+  assert.equal(
+    formatJournalIssueTitle(yearVolume),
+    '헤리티지:역사와 과학 제3호 발간 (2026년 9월)',
+  );
+  assert.match(renderJournalIssueContent(yearVolume), /- \*\*권호\*\*: 제3호/);
 });
 
 test('출처가 없으면 요청 없이 빈 목록을 돌려준다', async () => {
