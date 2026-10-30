@@ -216,14 +216,55 @@ test('운영 크롤링 fetch는 출처 없이도 권호 대상을 네트워크�
   assert.deepEqual(await target.parseList(await response.text()), []);
 });
 
-test('권호 기사는 중요도가 낮게 매겨져도 회차 후보에서 빠지지 않도록 최저 6점을 받는다', () => {
+test('권호 기사는 모델 점수나 분석 실패와 상관없이 최저 6점으로 저장하고 분야 상한은 그대로 둔다', async () => {
+  const saved: { url: string; score: number }[] = [];
   const model = {} as LanguageModel;
   const provider = new AnalysisProvider(
     { classifyTags: model, analyzeImages: model, determineImportance: model },
-    {} as ArticleRepository,
+    {
+      updateAnalysis: async (article: {
+        url: string;
+        importanceScore: number;
+      }) => {
+        saved.push({ url: article.url, score: article.importanceScore });
+      },
+    } as unknown as ArticleRepository,
     {} as TagRepository,
   );
+  const article = (
+    url: string,
+    targetUrl: string,
+    importanceScore: number,
+    tag1 = '고고학',
+  ) =>
+    provider.update({
+      id: url,
+      url,
+      targetUrl,
+      importanceScore,
+      tag1,
+      tag2: null,
+      tag3: null,
+      title: '제목',
+      detailContent: '본문',
+      hasAttachedImage: false,
+      imageContextByLlm: null,
+    } as unknown as Parameters<typeof provider.update>[0]);
 
+  // 모델이 1점을 주거나 분석 실패로 1점이 돼도 권호는 6점이 된다.
+  await article('issue-low', JOURNAL_ISSUE_LIST_URL, 1);
+  await article('issue-high', JOURNAL_ISSUE_LIST_URL, 9);
+  // 분야 상한(기타 5점)은 하한 뒤에 적용된다.
+  await article('issue-other', JOURNAL_ISSUE_LIST_URL, 1, '기타');
+  // 다른 게시판 기사는 모델 점수를 그대로 둔다.
+  await article('board', 'https://www.kaah.kr/notice', 1);
+
+  assert.deepEqual(saved, [
+    { url: 'issue-low', score: 6 },
+    { url: 'issue-high', score: 9 },
+    { url: 'issue-other', score: 5 },
+    { url: 'board', score: 1 },
+  ]);
   assert.deepEqual(
     provider.determineScoreOptions.minimumImportanceScoreRules.filter(
       (rule) => rule.targetUrl === JOURNAL_ISSUE_LIST_URL,
