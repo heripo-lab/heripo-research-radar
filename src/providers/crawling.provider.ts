@@ -10,6 +10,7 @@ import type {
 import type {
   ArticleRepository,
   ExcavationReportSource,
+  JournalIssueSource,
 } from '../types/dependencies';
 
 import { createCrawlingTargetGroups } from '~/config';
@@ -39,10 +40,12 @@ export class CrawlingProvider implements CoreCrawlingProvider {
     logger?: AppLogger,
     publicDataApiKey?: string,
     bidTriage?: HeritageBidTriage,
+    journalIssueSource?: JournalIssueSource,
   ) {
     this.customFetch = createResearchRadarFetch({
       customFetch,
       excavationReportSource,
+      journalIssueSource,
       logger,
       publicDataApiKey,
       bidTriage,

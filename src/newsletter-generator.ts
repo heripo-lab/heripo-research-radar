@@ -18,6 +18,7 @@ import type { ContentOptions } from './config';
 import type {
   ArticleRepository,
   ExcavationReportSource,
+  JournalIssueSource,
   NewsletterRepository,
   NewsletterTemplateOptions,
   TagRepository,
@@ -31,6 +32,8 @@ import { GenerateNewsletter } from '@llm-newsletter-kit/core';
 
 import { createHeritageBidTriage } from '~/crawling/heritage-triage';
 import { createDeadlineReminderSelector } from '~/deadlines/select';
+import { createJournalIssueLoader } from '~/journals/loader';
+import { createJournalPaperSelector } from '~/journals/select';
 
 import { contentOptions, llmConfig, newsletterConfig } from './config';
 import { researchRadarPromptProvider } from './prompts';
@@ -157,6 +160,18 @@ export interface NewsletterGeneratorDependencies {
   excavationReportSource?: ExcavationReportSource;
 
   /**
+   * Supplies newly published journal issues from the application (optional),
+   * such as those collected from KCI.
+   *
+   * Each issue becomes one article listing its papers. The target has no live
+   * board, so omitting this leaves it empty without making a request. The
+   * article's `uniqId` is the issue's `externalId` and its URL the issue's
+   * `url`; store either when articles are saved to record which issues a
+   * saved newsletter introduced.
+   */
+  journalIssueSource?: JournalIssueSource;
+
+  /**
    * data.go.kr service key for the 나라일터 and 알리오 job boards (optional).
    *
    * Pass the encoded key exactly as the portal supplies it. Both boards are read
@@ -239,6 +254,11 @@ function createNewsletterGenerator(
 
   const taskService = new TaskService(dependencies.taskRepository);
 
+  // One source call serves both the crawl and the journal tables at save time.
+  const loadJournalIssues = dependencies.journalIssueSource
+    ? createJournalIssueLoader(dependencies.journalIssueSource)
+    : undefined;
+
   const crawlingProvider = new CrawlingProvider(
     dependencies.articleRepository,
     dependencies.customFetch,
@@ -257,6 +277,7 @@ function createNewsletterGenerator(
         });
       },
     }),
+    loadJournalIssues,
   );
 
   const analysisProvider = new AnalysisProvider(
@@ -328,6 +349,29 @@ function createNewsletterGenerator(
         });
       },
     }),
+    loadJournalIssues && {
+      load: loadJournalIssues,
+      // Choosing papers is a relevance judgement for the readers, like
+      // importance, so it reuses that model.
+      select: createJournalPaperSelector({
+        model: resolveModel('determineImportance'),
+        audience: templateOptions?.isKrasNewsletter
+          ? '한국고고학회 회원(고고학 연구자, 발굴·조사기관 종사자, 관련 전공 학생)'
+          : '문화유산 연구자와 실무자(고고학, 보존과학, 학예, 문화유산 행정)',
+        onFallback: (reason, issue) => {
+          dependencies.logger?.info({
+            event: 'newsletter.journals.selection.fallback',
+            data: { reason, issueUrl: issue.url },
+          });
+        },
+      }),
+      onUnavailable: (reason) => {
+        dependencies.logger?.error({
+          event: 'newsletter.journals.load.failed',
+          data: { reason },
+        });
+      },
+    },
   );
 
   return new GenerateNewsletter({

@@ -7,6 +7,7 @@ import { Agent, fetch as undiciFetch } from 'undici';
 import { robotsExemptOrigins } from '~/config';
 import { createCrawlingTargetGroups } from '~/config/crawling-targets';
 import { createRobotsGate } from '~/crawling/robots';
+import { JOURNAL_ISSUE_LIST_URL } from '~/parsers/journal-issue.parser';
 import { createKrasFetch } from '~/parsers/kras.parser';
 
 /**
@@ -434,6 +435,20 @@ async function main() {
           reason: 'CLI option',
         });
         console.log(`Skipping [${group.name}] ${target.name}`);
+        continue;
+      }
+
+      // Injected by the application at generation time; there is no live
+      // board to check.
+      if (target.url === JOURNAL_ISSUE_LIST_URL) {
+        skippedTargets.push({
+          groupName: group.name,
+          targetName: target.name,
+          reason: 'injected by application',
+        });
+        console.log(
+          `Skipping [${group.name}] ${target.name} — injected by application`,
+        );
         continue;
       }
 

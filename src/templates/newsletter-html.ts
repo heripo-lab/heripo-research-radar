@@ -31,7 +31,13 @@ import type { NewsletterTemplateOptions } from '~/types/dependencies';
  * ```
  */
 export const createNewsletterHtmlTemplate = (
-  options?: NewsletterTemplateOptions,
+  options?: NewsletterTemplateOptions & {
+    /**
+     * Rendered journal issue section. Only used to style the section before
+     * it is moved into the body; core's template never receives it.
+     */
+    journalIssuesMarkdown?: string;
+  },
 ) => `<!DOCTYPE html>
 <html lang="ko" style="color-scheme: light dark; supported-color-schemes: light dark;">
 <head>
@@ -514,6 +520,21 @@ ${options.heripolabNewsMarkdown}
             }
 
             {{NEWSLETTER_CONTENT}}
+
+            ${
+              options?.journalIssuesMarkdown
+                ? `<div data-research-radar-journal-issues="">${safeMarkdown2Html(
+                    options.journalIssuesMarkdown,
+                    {
+                      window: new JSDOM('').window,
+                      linkTargetBlank: true,
+                      fixMalformedUrls: true,
+                      fixBoldSyntax: true,
+                      convertStrikethrough: true,
+                    },
+                  )}</div>`
+                : ''
+            }
 
             <div data-research-radar-closing="">
 

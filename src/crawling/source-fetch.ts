@@ -1,6 +1,9 @@
 import type { AppLogger } from '@llm-newsletter-kit/core';
 
-import type { ExcavationReportSource } from '../types/dependencies';
+import type {
+  ExcavationReportSource,
+  JournalIssueSource,
+} from '../types/dependencies';
 import type { HeritageBidTriage } from './heritage-triage';
 
 import { robotsExemptOrigins } from '../config';
@@ -8,12 +11,14 @@ import { createAlioFetch } from '../parsers/alio.parser';
 import { createExcavationReportFetch } from '../parsers/excavation.parser';
 import { createG2bFetch } from '../parsers/g2b.parser';
 import { createGojobsFetch } from '../parsers/gojobs.parser';
+import { createJournalIssueFetch } from '../parsers/journal-issue.parser';
 import { createKrasFetch } from '../parsers/kras.parser';
 import { createRobotsAwareFetch } from './robots';
 
 export interface ResearchRadarFetchOptions {
   customFetch?: typeof fetch;
   excavationReportSource?: ExcavationReportSource;
+  journalIssueSource?: JournalIssueSource;
   logger?: AppLogger;
   publicDataApiKey?: string;
   bidTriage?: HeritageBidTriage;
@@ -25,6 +30,7 @@ export interface ResearchRadarFetchOptions {
 export function createResearchRadarFetch({
   customFetch,
   excavationReportSource,
+  journalIssueSource,
   logger,
   publicDataApiKey,
   bidTriage,
@@ -86,7 +92,12 @@ export function createResearchRadarFetch({
   // When the application supplies excavation reports, that board is served
   // from the injected source and never requested over the network. Every
   // other target keeps going through the same fetch as before.
-  return excavationReportSource
+  const withExcavationReports = excavationReportSource
     ? createExcavationReportFetch(withPublicJobs, excavationReportSource)
     : withPublicJobs;
+
+  // Journal issues have no live board to fall back to, so this adapter is
+  // always installed: without a source the target is an empty list and its
+  // URL is never requested.
+  return createJournalIssueFetch(withExcavationReports, journalIssueSource);
 }

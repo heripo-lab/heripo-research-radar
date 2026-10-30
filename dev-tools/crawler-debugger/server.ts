@@ -7,6 +7,7 @@ import { createCrawlingTargetGroups } from '../../src/config/crawling-targets';
 import { createAlioFetch } from '../../src/parsers/alio.parser';
 import { createG2bFetch } from '../../src/parsers/g2b.parser';
 import { createGojobsFetch } from '../../src/parsers/gojobs.parser';
+import { createJournalIssueFetch } from '../../src/parsers/journal-issue.parser';
 import { createKrasFetch } from '../../src/parsers/kras.parser';
 
 // Create proxy fetch if PROXY_URL is set
@@ -21,14 +22,18 @@ const proxyFetch: typeof fetch | undefined = proxyAgent
 // targets return an empty list instead of failing.
 const PUBLIC_DATA_API_KEY = process.env.PUBLIC_DATA_API_KEY ?? '';
 
-const crawlingFetch = createG2bFetch(
-  createAlioFetch(
-    createGojobsFetch(createKrasFetch(proxyFetch ?? fetch), {
-      apiKey: PUBLIC_DATA_API_KEY,
-    }),
+// Journal issues are injected by the application at generation time, so the
+// debugger has none and shows that target as an empty list.
+const crawlingFetch = createJournalIssueFetch(
+  createG2bFetch(
+    createAlioFetch(
+      createGojobsFetch(createKrasFetch(proxyFetch ?? fetch), {
+        apiKey: PUBLIC_DATA_API_KEY,
+      }),
+      { apiKey: PUBLIC_DATA_API_KEY },
+    ),
     { apiKey: PUBLIC_DATA_API_KEY },
   ),
-  { apiKey: PUBLIC_DATA_API_KEY },
 );
 const crawlingTargetGroups = createCrawlingTargetGroups(crawlingFetch);
 

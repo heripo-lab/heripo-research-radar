@@ -90,38 +90,6 @@ export const parseNrichMajorEventList = (
   return posts;
 };
 
-export const parseNrichJournalList = (html: string): ParsedTargetListItem[] => {
-  const $ = cheerio.load(html);
-  const posts: ParsedTargetListItem[] = [];
-  const baseUrl = 'https://www.nrich.go.kr';
-
-  $('ul.list-body li').each((index, element) => {
-    const titleElement = $(element).find('.col2 a.cont-link');
-    const relativeHref = titleElement.attr('href');
-
-    if (!relativeHref) {
-      return;
-    }
-
-    const fullUrl = new URL(`${relativeHref}`, baseUrl);
-    const detailUrl = fullUrl.href;
-    const uniqId = fullUrl.searchParams.get('idx') ?? undefined;
-
-    const title = titleElement.text()?.trim() ?? '';
-    const date = getDate($(element).find('.col3 .cont-txt').text().trim());
-
-    posts.push({
-      uniqId,
-      title,
-      date,
-      detailUrl: cleanUrl(detailUrl),
-      dateType: DateType.REGISTERED,
-    });
-  });
-
-  return posts;
-};
-
 export const parseNrichPortalList = (html: string): ParsedTargetListItem[] => {
   const $ = cheerio.load(html);
   const posts: ParsedTargetListItem[] = [];
@@ -183,34 +151,6 @@ export const parseNrichMajorEventDetail = (
     detailContent: new TurndownService().turndown(content.html() ?? ''),
     hasAttachedFile: false,
     hasAttachedImage: content.find('img').length > 0,
-  };
-};
-
-export const parseNrichJournalDetail = (html: string): ParsedTargetDetail => {
-  const $ = cheerio.load(html);
-  $('script, style').remove();
-
-  const articles: string[] = [];
-
-  // 리스트의 각 항목을 순회하면서 논문 정보 추출
-  $('ul.list-body li').each((index, element) => {
-    const number = $(element).find('.col1 .cont-txt').text().trim();
-    const titleElement = $(element).find('.col2 a.cont-link');
-    const title = titleElement.text().trim();
-    const author = $(element).find('.col3 .cont-txt').text().trim();
-
-    if (title && author) {
-      articles.push(`${number}. **${title}**\n   저자: ${author}`);
-    }
-  });
-
-  const content =
-    articles.length > 0 ? `## 논문 목록\n\n${articles.join('\n\n')}` : '';
-
-  return {
-    detailContent: content,
-    hasAttachedFile: true,
-    hasAttachedImage: false,
   };
 };
 

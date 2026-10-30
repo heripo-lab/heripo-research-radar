@@ -23,7 +23,7 @@
 
 - 엄격한 타입 시스템의 TypeScript
 - 교체 가능한 Provider 패턴 (Crawling/Analysis/Content/Email)
-- 문화유산 기관, 박물관, 학회 등 활성 크롤링 타겟 74개 (robots.txt로 런타임 필터링)
+- 문화유산 기관, 박물관, 학회 등 활성 크롤링 타겟 73개 (robots.txt로 런타임 필터링)와 애플리케이션이 주입하는 학술지 신간 권호
 - 모든 LLM 작업에 OpenAI GPT-6 기본값 적용 및 작업별 모델 재정의 지원
 - 재시도, 체인 옵션, 미리보기 이메일 내장
 
@@ -249,6 +249,7 @@ publicationDate)`에 전달하고 결과를 `templateOptions.deadlineRemindersMa
 | `templateOptions`        | 기본/KRAS 브랜딩과 Markdown 섹션 설정(아래 참고)                                                                                         |
 | `promptProvider`         | 패키지 자체 LLM 프롬프트를 통째로 대체하는 core `PromptProvider`. 생략하면 패키지 프롬프트를 쓰고, 정의되지 않은 단계는 core 기본값 사용 |
 | `excavationReportSource` | 국가유산청 발굴조사 보고서를 애플리케이션이 주입. 주입하면 해당 게시판은 크롤링하지 않음. 생략하면 기존대로 크롤링                       |
+| `journalIssueSource`     | KCI 등 새로 발간된 학술지 권호를 애플리케이션이 주입. 권호 하나가 기사 하나가 됨. 생략하면 해당 타깃은 수집하지 않음                     |
 | `previewNewsletter`      | 저장된 `Newsletter`를 조회하고 전달한 core `EmailService`로 미리보기 발송                                                                |
 
 `previewNewsletter`에는 `fetchNewsletterForPreview: () => Promise<Newsletter>`, `emailService`(`send(message)` 구현), `emailMessage`(core `EmailMessage`에서 `subject`, `html`, `text`를 제외한 값)가 필요합니다. 세 필드는 core가 채우며, 생성된 뉴스레터가 없으면 미리보기를 발송하지 않습니다. 조회 콜백은 이번 실행에서 저장한 회차를 반환하도록 구현하세요.
@@ -326,20 +327,24 @@ Anthropic·Google로 뉴스레터를 생성하는 기존 `contentGeneration: { p
 
 | 그룹             |   활성 | 주석 처리 |
 | ---------------- | -----: | --------: |
-| 뉴스(News)       |     57 |         1 |
+| 뉴스(News)       |     56 |         1 |
 | 입찰(Business)   |      5 |         0 |
 | 채용(Employment) |     12 |         0 |
-| **합계**         | **74** |     **1** |
+| **합계**         | **73** |     **1** |
 
-주석 처리된 것은 발굴조사 현황공개 1개뿐입니다. 정보가 파편적이고 뉴스레터 가치가 낮습니다. robots.txt가 제한하는 게시판도 설정에는 그대로 두고 런타임 검사에서 거부하므로, 사이트별 정책을 설정 파일에 손으로 반영할 필요가 없습니다. 현재 정책 기준으로 74개 중 14개가 거부됩니다.
+주석 처리된 것은 발굴조사 현황공개 1개뿐입니다. 정보가 파편적이고 뉴스레터 가치가 낮습니다. robots.txt가 제한하는 게시판도 설정에는 그대로 두고 런타임 검사에서 거부하므로, 사이트별 정책을 설정 파일에 손으로 반영할 필요가 없습니다. 현재 정책 기준으로 73개 중 14개가 거부됩니다.
 
 타깃 3개는 크롤링이 아니라 data.go.kr 오픈 API에서 읽습니다. 채용 그룹의 나라일터(`PblJobService`)·알리오(`recruitment`), 입찰 그룹의 나라장터(`BidPublicInfoService`)입니다. 인증키는 `publicDataApiKey`로 주입하며, 생략하면 해당 타깃은 요청 없이 빈 목록을 반환합니다. 세 게시판은 전국 공공부문 채용과 조달 공고를 모두 담고 있어 분석 단계 이전에 걸러냅니다. 채용 게시판은 `src/crawling/heritage-job-filter.ts`를 쓰며 제외어가 모두 직무 명사라 패턴으로 버팁니다(약 2%, 하루 2.6건 통과). 나라장터는 `src/crawling/heritage-triage.ts`가 제목 100건씩을 저렴한 모델에 묻습니다. 한국어에서 유산 여부는 부분문자열로 판정할 수 없기 때문이며, 배치가 실패하면 기존 정규식이 폴백으로 판단합니다.
+
+새로 발간된 학술지 권호는 크롤링하지 않습니다. 애플리케이션이 `journalIssueSource`로 주입하고(heripo-web은 KCI 논문 카탈로그에서 읽음) `KCI_학술지_신간` 타깃이 이를 그대로 제공하므로, 타깃 URL로는 요청하지 않습니다. 권호 하나가 기사 하나가 됩니다. `uniqId`는 권호의 `externalId`, URL은 권호의 `url`입니다. `usedArticles`에는 애플리케이션의 기사 ID와 URL만 실리므로, 저장된 뉴스레터가 소개한 권호는 `saveCrawledArticles`에서 저장해 둔 `uniqId`나 권호 URL로 기록합니다. 채점 단계가 읽는 기사 본문에는 여러 논문이 공유한 키워드와 함께 수록 논문 전체의 저자·키워드·300자로 자른 초록이 들어갑니다. 출처를 주지 않으면 빈 목록을 반환합니다. 기존 국립문화유산연구원 헤리티지:역사와 과학·보존과학연구 게시판 크롤링을 대체합니다.
+
+이 권호들은 생성 모델이 쓰지 않습니다. `ContentGenerateProvider`가 후보에서 빼 두었다가 `📖 새로 나온 학술지` 섹션을 직접 렌더링해 `📑 사업·입찰 공고` 앞(입찰 섹션이 없으면 `📌 마무리` 앞)에 넣습니다. 권호마다 KCI 권호 목차로 링크하고, 독자가 관심 가질 논문을 관심이 큰 순서대로 저자와 함께 표로 보여주며, 나머지는 편수와 주제로 줄입니다. 기준은 학문 분야가 아니라 독자(KRAS 모드에서는 한국고고학회 회원)의 관심입니다. 역사학 논문이라도 뺄 수 있고 고고학이 아니어도 실을 수 있습니다. 중요도 모델은 논문 번호를 고르고 순서를 정하며 뺀 논문의 주제만 붙이고, 제목·링크·저자는 주입 데이터 그대로 씁니다. 선별이 실패하거나 시간이 초과되면 모든 논문을 표에 싣고, 권호를 불러오지 못하면 해당 기사는 일반 후보로 모델에 넘깁니다. 따로 뺀 기사는 `usedArticles`에 다시 붙이므로 모델이 보지 않았어도 소개 이력에 남습니다. 그 결과 제목·브리핑·마무리에는 학술지가 언급되지 않고, 학술지 권호는 발행 기준 건수에 포함되지 않습니다.
 
 크롤링 요청은 네트워크에 나가기 전에 robots.txt 검사(`src/crawling/robots.ts`)를 거칩니다. 금지된 요청은 전송하지 않고 거부하며, robots.txt가 없거나 조회에 실패하면 허용합니다. 검사에서 제외할 origin은 `src/config/index.ts`의 `robotsExemptOrigins`에 사유와 함께 명시합니다.
 
 국가유산청, 국립문화유산연구원, 국립해양유산연구소, 국가유산진흥원, 한국문화유산협회, 고고학회, 국립박물관 등이 수집 대상입니다.
 
-[src/parsers/](./src/parsers/)에는 기관별 파서 모듈 23개와 공통 날짜·URL 유틸리티가 있습니다. 목록 파서는 `ParsedTargetListItem[]`(제목, 날짜, 상세 URL, 날짜 유형, 선택적 원문 ID)을, 상세 파서는 Markdown `detailContent`와 첨부파일·이미지 유무를 반환합니다. 동기·비동기 파서를 모두 지원합니다. 한국고고학회, 영남고고학회, 국립해양유산연구소는 클라이언트 렌더링 콘텐츠를 읽기 위해 API를 추가 호출합니다.
+[src/parsers/](./src/parsers/)에는 파서 모듈 24개(기관별 23개와 학술지 권호 주입 어댑터)와 공통 날짜·URL 유틸리티가 있습니다. 목록 파서는 `ParsedTargetListItem[]`(제목, 날짜, 상세 URL, 날짜 유형, 선택적 원문 ID)을, 상세 파서는 Markdown `detailContent`와 첨부파일·이미지 유무를 반환합니다. 동기·비동기 파서를 모두 지원합니다. 한국고고학회, 영남고고학회, 국립해양유산연구소는 클라이언트 렌더링 콘텐츠를 읽기 위해 API를 추가 호출합니다.
 
 `CrawlingProvider`의 최대 동시 크롤링 수는 5입니다. 전달된 fetch를 감싸 한국고고학회의 공개 상세 URL 요청을 상세 API로 연결하면서 기사 메타데이터에는 공개 URL을 유지합니다. 파이프라인을 직접 구성할 때는 provider의 fetch와 타겟 그룹을 함께 사용하세요.
 
@@ -351,7 +356,7 @@ import { getSourceList } from '@heripo/research-radar';
 const groups = getSourceList(); // [{ id, name, sources: [{ id, name, url }] }]
 ```
 
-`createCrawlingTargetGroups(customFetch?)`, `getSourceList()`, `contentOptions`, `newsletterConfig`, `llmConfig`, `researchRadarPromptProvider`는 공개 API입니다. `ExcavationReport`, `ExcavationReportSource`는 타입으로 export됩니다. Provider 클래스 3개, `DateService`, `TaskService`, 공개 설정·의존성 타입도 [src/index.ts](./src/index.ts)에서 export합니다.
+`createCrawlingTargetGroups(customFetch?)`, `getSourceList()`, `contentOptions`, `newsletterConfig`, `llmConfig`, `researchRadarPromptProvider`, `JOURNAL_ISSUE_LIST_URL`(애플리케이션이 저장한 학술지 권호 기사를 찾는 데 쓰는 대상 URL)은 공개 API입니다. `ExcavationReport`, `ExcavationReportSource`, `JournalIssue`, `JournalIssuePaper`, `JournalIssueSource`는 타입으로 export됩니다. Provider 클래스 3개, `DateService`, `TaskService`, 공개 설정·의존성 타입도 [src/index.ts](./src/index.ts)에서 export합니다.
 
 ## 이메일 템플릿
 
@@ -483,7 +488,7 @@ npm run health-check -- --skip-khs-excavation  # 국가유산청 발굴조사 �
 
 **출력**: 콘솔 테이블 요약 + CI 연동을 위한 compact 텍스트 서머리
 
-**CI**: [.github/workflows/parser-health-check.yml](./.github/workflows/parser-health-check.yml)은 매일 UTC 08:00(KST 17:00) 또는 수동으로 실행되며, `org-linux` 러너와 30분 작업 제한을 사용합니다. 국가유산청 발굴조사 보고서·현장공개 2개를 제외합니다. 크롤링 타겟의 헬스체크는 운영과 동일하게 robots.txt 게이트와 KRAS 상세 어댑터를 조합하므로, 거부되는 게시판은 실패가 아니라 건너뜀으로 보고됩니다. 현재 설정에서는 16개 건너뜀, 55개 검사입니다. 상세 검사는 목록의 최대 3개 항목까지 시도하므로, 맨 위 글 하나가 읽히지 않아도 타깃이 실패하지 않습니다. Slack 알림에는 `SLACK_BOT_TOKEN` secret과 `SLACK_ALERT_DEV_CHANNEL` 저장소 변수가 필요합니다. 포크에서 그대로 실행하려면 같은 러너 및 알림 구성이 필요합니다. CLI는 관련 환경변수가 있으면 GitHub Actions 출력과 작업 요약도 기록합니다.
+**CI**: [.github/workflows/parser-health-check.yml](./.github/workflows/parser-health-check.yml)은 매일 UTC 08:00(KST 17:00) 또는 수동으로 실행되며, `org-linux` 러너와 30분 작업 제한을 사용합니다. 국가유산청 발굴조사 보고서·현장공개 2개를 제외합니다. 크롤링 타겟의 헬스체크는 운영과 동일하게 robots.txt 게이트와 KRAS 상세 어댑터를 조합하므로, 거부되는 게시판은 실패가 아니라 건너뜀으로 보고됩니다. 현재 설정에서는 17개 건너뜀(실제 게시판이 없는 학술지 권호 주입 타깃 포함), 53개 검사입니다. 상세 검사는 목록의 최대 3개 항목까지 시도하므로, 맨 위 글 하나가 읽히지 않아도 타깃이 실패하지 않습니다. Slack 알림에는 `SLACK_BOT_TOKEN` secret과 `SLACK_ALERT_DEV_CHANNEL` 저장소 변수가 필요합니다. 포크에서 그대로 실행하려면 같은 러너 및 알림 구성이 필요합니다. CLI는 관련 환경변수가 있으면 GitHub Actions 출력과 작업 요약도 기록합니다.
 
 ## 🤝 기여하기
 

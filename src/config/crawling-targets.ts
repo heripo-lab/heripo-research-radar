@@ -63,6 +63,11 @@ import {
   parseJinjuMuseumList,
 } from '~/parsers/jinju-museum.parser';
 import {
+  JOURNAL_ISSUE_LIST_URL,
+  parseJournalIssueDetail,
+  parseJournalIssueList,
+} from '~/parsers/journal-issue.parser';
+import {
   parseKaahDetail,
   parseKaahList,
   parseKaahPlaceDetail,
@@ -87,8 +92,6 @@ import {
   parseMuseumRecruitList,
 } from '~/parsers/museum.parser';
 import {
-  parseNrichJournalDetail,
-  parseNrichJournalList,
   parseNrichMajorEventDetail,
   parseNrichMajorEventList,
   parseNrichNoticeDetail,
@@ -176,18 +179,12 @@ export function createCrawlingTargetGroups(
           parseDetail: parseNrichMajorEventDetail,
         },
         {
-          id: '국립문화유산연구원_학술지_헤리티지',
-          name: '국립문화유산연구원 헤리티지:역사와 과학 학술지',
-          url: 'https://www.nrich.go.kr/kor/subscriptionDataUsrList.do?menuIdx=1651&gubun=J',
-          parseList: parseNrichJournalList,
-          parseDetail: parseNrichJournalDetail,
-        },
-        {
-          id: '국립문화유산연구원_학술지_보존과학연구',
-          name: '국립문화유산연구원 보존과학연구 학술지',
-          url: 'https://www.nrich.go.kr/kor/subscriptionDataUsrList.do?menuIdx=2065&gubun=K',
-          parseList: parseNrichJournalList,
-          parseDetail: parseNrichJournalDetail,
+          // Served from the application's injected KCI issues, never crawled.
+          id: 'KCI_학술지_신간',
+          name: 'KCI 학술지 신간 권호',
+          url: JOURNAL_ISSUE_LIST_URL,
+          parseList: parseJournalIssueList,
+          parseDetail: parseJournalIssueDetail,
         },
         {
           id: '국가유산지식이음_공지사항',

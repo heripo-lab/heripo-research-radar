@@ -23,7 +23,7 @@ Previously reported service metrics were $0.2–1 per issue and 15% CTR. These a
 
 - Type-safe TypeScript with strict interfaces
 - Provider pattern for swapping components (Crawling/Analysis/Content/Email)
-- 74 active crawling targets across heritage agencies, museums, academic societies, filtered at runtime by robots.txt
+- 73 active crawling targets across heritage agencies, museums, academic societies, filtered at runtime by robots.txt, plus newly published journal issues injected by the application
 - OpenAI GPT-6 defaults for every LLM task, with per-task model overrides
 - Built-in retries, chain options, preview emails
 
@@ -263,6 +263,7 @@ formats, omit it for the default, or pass an empty string to suppress it.
 | `templateOptions`        | Default or KRAS newsletter branding and Markdown sections (see below)                                                                                |
 | `promptProvider`         | Core `PromptProvider` overriding the package's own LLM prompts entirely; omit to use the package's prompts, which fall back to core's defaults       |
 | `excavationReportSource` | Supplies 국가유산청 발굴조사 보고서 entries from the application; that board is then never crawled. Omit to crawl it as before                       |
+| `journalIssueSource`     | Supplies newly published journal issues (such as KCI) from the application, one article per issue. Omit and that target collects nothing             |
 | `previewNewsletter`      | Fetch a saved `Newsletter` and send it through a supplied core `EmailService`                                                                        |
 
 `previewNewsletter` requires `fetchNewsletterForPreview: () => Promise<Newsletter>`, `emailService` (with `send(message)`), and `emailMessage` (core `EmailMessage` without `subject`, `html`, or `text`). The core fills those three fields and skips preview delivery when no newsletter was created. Ensure the callback fetches the issue saved by this run.
@@ -340,20 +341,24 @@ The optional `contentGeneration: { provider, apiKey, model? }` compatibility pat
 
 | Group      | Active | Commented out |
 | ---------- | -----: | ------------: |
-| News       |     57 |             1 |
+| News       |     56 |             1 |
 | Business   |      5 |             0 |
 | Employment |     12 |             0 |
-| **Total**  | **74** |         **1** |
+| **Total**  | **73** |         **1** |
 
-Only the excavation status board stays commented out, as low-value fragmented data. Boards that a site's robots.txt restricts are configured normally and refused at runtime by the robots.txt check, so the configuration does not have to track each site's policy by hand. With current policies 14 of the 74 targets are refused.
+Only the excavation status board stays commented out, as low-value fragmented data. Boards that a site's robots.txt restricts are configured normally and refused at runtime by the robots.txt check, so the configuration does not have to track each site's policy by hand. With current policies 14 of the 73 targets are refused.
 
 Three targets are read from data.go.kr open APIs instead of scraped: 나라일터 (`PblJobService`) and 알리오 (`recruitment`) under Employment, and 나라장터 (`BidPublicInfoService`) under Business. Each is a single round of requests, and `publicDataApiKey` supplies the service key — omit it and they answer with an empty list without making a request. The boards carry every public-sector vacancy and procurement notice in the country, so both are narrowed before analysis. The job boards use `src/crawling/heritage-job-filter.ts`, whose exclusions are role nouns and hold up as patterns; roughly 2% of postings survive, about 2.6 a day. 나라장터 instead uses `src/crawling/heritage-triage.ts`, which asks a cheap model about 100 titles per request: heritage vocabulary cannot be settled by substring in Korean, and the deterministic filter remains behind it as the fallback when a batch fails.
+
+Newly published journal issues are not crawled. The application supplies them through `journalIssueSource` — heripo-web reads them from its KCI paper catalog — and the `KCI_학술지_신간` target serves them from that source, so its URL is never requested. Each issue (권호) becomes one article: its `uniqId` is the issue's `externalId` and its URL the issue's `url`. `usedArticles` carry only the application's article id and URL, so the application records which issues a saved newsletter introduced through the `uniqId` it stored in `saveCrawledArticles`, or through the issue URL. The article body, which scoring sees, lists every paper with its authors, keywords and an abstract truncated to 300 characters, after the keywords several papers share. Without a source the target answers with an empty list. This replaces the former crawl of the 국립문화유산연구원 헤리티지:역사와 과학 and 보존과학연구 boards.
+
+The generation model never writes about these issues. `ContentGenerateProvider` takes them out of its candidates and renders a `📖 새로 나온 학술지` section itself, placed before `📑 사업·입찰 공고` (or `📌 마무리` when there is no procurement section). Each issue links to its KCI table of contents and shows, as a table with their authors, the papers its readers would want to read, most interesting first; the rest are collapsed into a count and their topics. The criterion is the readers' interest, not academic discipline — a 역사학 paper can be left out and a non-archaeology one shown — and the readers are 한국고고학회 회원 in KRAS mode. The importance model only chooses and orders paper indices and names the topics of the papers it leaves out — titles, links and authors come from the injected data. If the selection fails or times out, every paper is listed; if the run cannot load the issues, the articles go to the model as ordinary candidates. The held-aside articles are appended to `usedArticles`, so they are recorded with the issue even though the model never saw them. As a result the title, briefing and 마무리 do not mention journals, and journal issues do not count toward the publication criteria.
 
 Crawling fetches pass through that check (`src/crawling/robots.ts`) before reaching the network: a disallowed request is refused rather than sent, and a missing or unreachable robots.txt allows it. `robotsExemptOrigins` in `src/config/index.ts` lists origins exempted from the check, each with its reason.
 
 Sources include the Korea Heritage Service, National Research Institute of Cultural Heritage, National Research Institute of Maritime Heritage, Korea Heritage Agency, Korea Association of Archaeological Heritage, archaeological societies, and national museums.
 
-[src/parsers/](./src/parsers/) contains 23 organization-specific parser modules plus shared date and URL utilities. List parsers return `ParsedTargetListItem[]` (title, date, detail URL, date type, and optional source ID); detail parsers return Markdown `detailContent` and attachment/image flags. Parsers can be synchronous or asynchronous. KRAS, Yeongnam Archaeological Society, and maritime heritage sources use additional API requests for client-rendered content.
+[src/parsers/](./src/parsers/) contains 24 parser modules (23 organization-specific, plus the injected journal issue adapter) plus shared date and URL utilities. List parsers return `ParsedTargetListItem[]` (title, date, detail URL, date type, and optional source ID); detail parsers return Markdown `detailContent` and attachment/image flags. Parsers can be synchronous or asynchronous. KRAS, Yeongnam Archaeological Society, and maritime heritage sources use additional API requests for client-rendered content.
 
 `CrawlingProvider` uses a maximum concurrency of 5 and wraps the supplied fetch to route KRAS public detail URLs to its detail API, while retaining public URLs in article metadata. When constructing your own pipeline, use the provider's fetch together with its target groups.
 
@@ -365,7 +370,7 @@ import { getSourceList } from '@heripo/research-radar';
 const groups = getSourceList(); // [{ id, name, sources: [{ id, name, url }] }]
 ```
 
-`createCrawlingTargetGroups(customFetch?)`, `getSourceList()`, `contentOptions`, `newsletterConfig`, `llmConfig`, and `researchRadarPromptProvider` are public exports. `ExcavationReport` and `ExcavationReportSource` are exported as types. The package also exports the three provider classes, `DateService`, `TaskService`, and their public configuration/dependency types through [src/index.ts](./src/index.ts).
+`createCrawlingTargetGroups(customFetch?)`, `getSourceList()`, `contentOptions`, `newsletterConfig`, `llmConfig`, `researchRadarPromptProvider`, and `JOURNAL_ISSUE_LIST_URL` (the journal issue target's URL, for finding the issue articles an application saved) are public exports. `ExcavationReport`, `ExcavationReportSource`, `JournalIssue`, `JournalIssuePaper`, and `JournalIssueSource` are exported as types. The package also exports the three provider classes, `DateService`, `TaskService`, and their public configuration/dependency types through [src/index.ts](./src/index.ts).
 
 ## Email templates
 
@@ -497,7 +502,7 @@ Use repeatable `--skip-target=<id-or-name>` or `--skip-target <id-or-name>` to e
 
 **Output**: Console table summary + compact text summary for CI integrations.
 
-**CI**: [.github/workflows/parser-health-check.yml](./.github/workflows/parser-health-check.yml) runs daily at 08:00 UTC (17:00 KST), or manually, on an `org-linux` runner with a 30-minute job timeout. It skips the two KHS excavation report/site-open targets. For crawling targets, the health-check composes the same fetch as production — robots.txt gate, then the KRAS detail adapter — so disallowed boards are reported as skipped rather than failed: 16 skipped and 55 checked with the current configuration. The detail check tries up to three list items, so one unreadable post at the top of a board does not fail the target. Slack notifications require the `SLACK_BOT_TOKEN` secret and `SLACK_ALERT_DEV_CHANNEL` repository variable. Forks need a matching runner and notification configuration to use this workflow unchanged. The CLI also writes GitHub Actions outputs and a job summary when their environment variables are present.
+**CI**: [.github/workflows/parser-health-check.yml](./.github/workflows/parser-health-check.yml) runs daily at 08:00 UTC (17:00 KST), or manually, on an `org-linux` runner with a 30-minute job timeout. It skips the two KHS excavation report/site-open targets. For crawling targets, the health-check composes the same fetch as production — robots.txt gate, then the KRAS detail adapter — so disallowed boards are reported as skipped rather than failed: 17 skipped (including the injected journal issue target, which has no live board) and 53 checked with the current configuration. The detail check tries up to three list items, so one unreadable post at the top of a board does not fail the target. Slack notifications require the `SLACK_BOT_TOKEN` secret and `SLACK_ALERT_DEV_CHANNEL` repository variable. Forks need a matching runner and notification configuration to use this workflow unchanged. The CLI also writes GitHub Actions outputs and a job summary when their environment variables are present.
 
 ## 🤝 Contributing
 
