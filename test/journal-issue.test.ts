@@ -174,6 +174,28 @@ test('출처가 끝나지 않아도 다른 요청은 기다리지 않는다', as
   assert.equal(await response.text(), 'ok');
 });
 
+test('출처를 기다리는 목록 요청은 취소 신호에 끝나고 다른 요청을 막지 않는다', async () => {
+  const journalFetch = createJournalIssueFetch(
+    async () => new Response('ok'),
+    () => new Promise(() => {}),
+  );
+
+  const controller = new AbortController();
+  const list = journalFetch(JOURNAL_ISSUE_LIST_URL, {
+    signal: controller.signal,
+  });
+  controller.abort('timeout after 10000ms');
+  await assert.rejects(list, (reason) => reason === 'timeout after 10000ms');
+  await assert.rejects(
+    journalFetch(JOURNAL_ISSUE_LIST_URL, { signal: controller.signal }),
+    (reason) => reason === 'timeout after 10000ms',
+  );
+  assert.equal(
+    await (await journalFetch('https://www.khs.go.kr/board')).text(),
+    'ok',
+  );
+});
+
 test('운영 크롤링 fetch는 출처 없이도 권호 대상을 네트워크로 보내지 않는다', async () => {
   const sourceFetch = createResearchRadarFetch({
     customFetch: unexpectedFetch,

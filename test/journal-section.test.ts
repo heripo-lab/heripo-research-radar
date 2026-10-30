@@ -202,6 +202,17 @@ test('로더는 출처를 한 번만 부르고 실패한 호출은 잊는다', a
   assert.equal(calls, 2);
 });
 
+test('로더는 끝나지 않는 출처 호출을 시간 초과로 끊고 다음 호출에서 다시 묻는다', async () => {
+  let calls = 0;
+  const load = createJournalIssueLoader(() => {
+    calls += 1;
+    return calls === 1 ? new Promise(() => {}) : Promise.resolve([issue]);
+  }, 10);
+  await assert.rejects(load(), /timed out after 10ms/);
+  assert.deepEqual(await load(), [issue]);
+  assert.equal(calls, 2);
+});
+
 const article = (
   id: number,
   overrides: Partial<ArticleForGenerateContent> = {},

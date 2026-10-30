@@ -73,6 +73,22 @@ function requestHref(input: string | URL | Request): string {
 }
 
 /**
+ * Settles with `promise`, or rejects once `signal` aborts. The promise keeps
+ * running; only this request stops waiting for it, as a network fetch would.
+ */
+function untilAborted<T>(promise: Promise<T>, signal?: AbortSignal | null) {
+  if (!signal) return promise;
+  if (signal.aborted) return Promise.reject(signal.reason);
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => reject(signal.reason);
+    signal.addEventListener('abort', onAbort, { once: true });
+    promise.then(resolve, reject).finally(() => {
+      signal.removeEventListener('abort', onAbort);
+    });
+  });
+}
+
+/**
  * Serves the journal issue target from an injected source.
  *
  * Core's crawling chain always fetches a target's list URL and then each detail
@@ -88,7 +104,8 @@ function requestHref(input: string | URL | Request): string {
  * against issues already served, without awaiting, so a slow or failing source
  * cannot stall or break the rest of the crawl. Core requests this target's
  * details only after its list has parsed. A failed source is retried on the
- * next list request.
+ * next list request. The list request honors its abort signal, so core's
+ * request timeout ends this target even when the source never settles.
  *
  * @param baseFetch - Fetch to delegate every other request to
  * @param source - Supplies the issues for this run
@@ -117,7 +134,7 @@ export const createJournalIssueFetch = (
     if (href === JOURNAL_ISSUE_LIST_URL) {
       return jsonResponse({
         marker: INJECTED_MARKER,
-        issues: await loadIssues(),
+        issues: await untilAborted(loadIssues(), init?.signal),
       } satisfies InjectedListPayload);
     }
 
