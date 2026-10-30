@@ -9,6 +9,7 @@ import type { LanguageModel } from 'ai';
 import type { ArticleRepository, TagRepository } from '../types/dependencies';
 
 import { llmConfig, maximumImportanceScoreByDomain } from '../config';
+import { JOURNAL_ISSUE_LIST_URL } from '../parsers/journal-issue.parser';
 import { toHeritageDomainTag } from '../prompts';
 
 export interface AnalysisModels {
@@ -162,6 +163,15 @@ export class AnalysisProvider implements CoreAnalysisProvider {
         {
           targetUrl:
             'https://www.seamuse.go.kr/resources/academicreport/list/1#tab4',
+          minScore: 6,
+        },
+        // Injected journal issues: minimum score 6. The application only
+        // injects issues of journals it chose for the newsletter, and their
+        // papers are filtered for the readers when rendered, so a low score
+        // must not drop a whole issue before then — the application leaves
+        // articles scored 1 out of the candidates.
+        {
+          targetUrl: JOURNAL_ISSUE_LIST_URL,
           minScore: 6,
         },
         // Excavation report news: minimum score 2

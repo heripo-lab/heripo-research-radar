@@ -1,4 +1,10 @@
-import type { JournalIssue } from '../src/types/dependencies';
+import type { LanguageModel } from 'ai';
+
+import type {
+  ArticleRepository,
+  JournalIssue,
+  TagRepository,
+} from '../src/types/dependencies';
 
 import { DateType } from '@llm-newsletter-kit/core';
 import assert from 'node:assert/strict';
@@ -14,6 +20,7 @@ import {
   parseJournalIssueList,
   renderJournalIssueContent,
 } from '../src/parsers/journal-issue.parser';
+import { AnalysisProvider } from '../src/providers/analysis.provider';
 
 const issue: JournalIssue = {
   externalId: 'journal-1|2026|9|59|3',
@@ -207,4 +214,20 @@ test('운영 크롤링 fetch는 출처 없이도 권호 대상을 네트워크�
   assert.ok(target);
   const response = await sourceFetch(target.url);
   assert.deepEqual(await target.parseList(await response.text()), []);
+});
+
+test('권호 기사는 중요도가 낮게 매겨져도 회차 후보에서 빠지지 않도록 최저 6점을 받는다', () => {
+  const model = {} as LanguageModel;
+  const provider = new AnalysisProvider(
+    { classifyTags: model, analyzeImages: model, determineImportance: model },
+    {} as ArticleRepository,
+    {} as TagRepository,
+  );
+
+  assert.deepEqual(
+    provider.determineScoreOptions.minimumImportanceScoreRules.filter(
+      (rule) => rule.targetUrl === JOURNAL_ISSUE_LIST_URL,
+    ),
+    [{ targetUrl: JOURNAL_ISSUE_LIST_URL, minScore: 6 }],
+  );
 });
