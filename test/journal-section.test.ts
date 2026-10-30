@@ -92,18 +92,19 @@ test('범위 밖·중복·누락 번호의 논문은 숨기지 않고 고른 논
       featured: [2, 99, -1, 1.5, 2, 1],
       others: [
         { index: 1, topic: '양쪽에 넣음' },
-        { index: 4, topic: '해양 생태' },
-        { index: 4, topic: '중복' },
+        { index: 3, topic: '해양 생태' },
+        { index: 4, topic: '문화유산 연구' },
+        { index: 4, topic: '보존 기술' },
       ],
     }),
   });
   const selection = await select(issue);
   const rows = tableRows(renderJournalIssueSection([{ issue, selection }]));
 
-  // 1번은 양쪽에 들어가 표에 남고, 0·3·5번은 빠져 뒤에 붙는다.
+  // 1번은 양쪽에, 4번은 others에 두 번 들어가 표에 남고, 0·5번은 빠져 뒤에 붙는다.
   assert.deepEqual(selection, {
-    featured: [2, 1, 0, 3, 5],
-    others: [{ index: 4, topic: '해양 생태' }],
+    featured: [2, 1, 0, 4, 5],
+    others: [{ index: 3, topic: '해양 생태' }],
   });
   assert.equal(rows.length + 1, issue.papers.length);
 });

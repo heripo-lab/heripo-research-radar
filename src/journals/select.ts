@@ -117,9 +117,9 @@ function normalizeTopic(topic: string): string | null {
  *
  * It never fails the newsletter: an error, a timeout or an answer with no
  * usable index falls back to null, and the section lists every paper. A paper
- * the model left out, or named in both lists, is shown in the table after the
- * chosen ones rather than collapsed, so a malformed answer can only show more,
- * never hide a paper.
+ * the model left out, named in both lists or summarized twice is shown in the
+ * table after the chosen ones rather than collapsed, so a malformed answer can
+ * only show more, never hide a paper.
  */
 export const createJournalPaperSelector = (
   options: JournalPaperSelectorOptions,
@@ -158,9 +158,14 @@ export const createJournalPaperSelector = (
       for (const index of output.featured ?? [])
         if (usable(index) && !featured.includes(index)) featured.push(index);
       const topics = new Map<number, string | null>();
-      for (const { index, topic } of output.others ?? [])
-        if (usable(index) && !featured.includes(index) && !topics.has(index))
-          topics.set(index, normalizeTopic(topic));
+      const repeated = new Set<number>();
+      for (const { index, topic } of output.others ?? []) {
+        if (!usable(index) || featured.includes(index)) continue;
+        if (topics.has(index)) repeated.add(index);
+        else topics.set(index, normalizeTopic(topic));
+      }
+      // A paper summarized twice is ambiguous, so it is shown rather than hidden.
+      for (const index of repeated) topics.delete(index);
 
       if (featured.length === 0 && topics.size === 0)
         return fallback(issue, 'no usable index in the selection');
