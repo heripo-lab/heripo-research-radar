@@ -9,6 +9,7 @@ import type { LanguageModel } from 'ai';
 import type { ArticleRepository, TagRepository } from '../types/dependencies';
 
 import { llmConfig, maximumImportanceScoreByDomain } from '../config';
+import { JOURNAL_ISSUE_LIST_URL } from '../parsers/journal-issue.parser';
 import { toHeritageDomainTag } from '../prompts';
 
 export interface AnalysisModels {
@@ -164,6 +165,13 @@ export class AnalysisProvider implements CoreAnalysisProvider {
             'https://www.seamuse.go.kr/resources/academicreport/list/1#tab4',
           minScore: 6,
         },
+        // Injected journal issues: the prompt asks for the same floor that
+        // `update()` enforces, so the model is not asked for scores it cannot
+        // keep.
+        {
+          targetUrl: JOURNAL_ISSUE_LIST_URL,
+          minScore: JOURNAL_ISSUE_MINIMUM_SCORE,
+        },
         // Excavation report news: minimum score 2
         {
           targetUrl:
@@ -205,9 +213,36 @@ export class AnalysisProvider implements CoreAnalysisProvider {
   async update(article: ArticleForUpdateByAnalysis): Promise<void> {
     await this.articleRepository.updateAnalysis({
       ...article,
-      importanceScore: capScoreByHeritageDomain(article),
+      importanceScore: capScoreByHeritageDomain({
+        ...article,
+        importanceScore: raiseJournalIssueScore(article),
+      }),
     });
   }
+}
+
+/**
+ * Lowest score an injected journal issue article is saved with.
+ *
+ * The application only injects issues of journals it chose for the
+ * newsletter, and their papers are filtered for the readers when rendered, so
+ * a low score must not drop a whole issue before then: the application leaves
+ * articles scored 1 out of the candidates.
+ */
+const JOURNAL_ISSUE_MINIMUM_SCORE = 6;
+
+/**
+ * Enforces the journal issue floor on the saved score.
+ *
+ * Core only states `minimumImportanceScoreRules` in the prompt; it keeps the
+ * model's score as returned and falls back to 1 when scoring fails. The floor
+ * is applied here so neither can drop an issue. The per-domain ceiling still
+ * applies afterwards.
+ */
+function raiseJournalIssueScore(article: ArticleForUpdateByAnalysis): number {
+  return article.targetUrl === JOURNAL_ISSUE_LIST_URL
+    ? Math.max(article.importanceScore, JOURNAL_ISSUE_MINIMUM_SCORE)
+    : article.importanceScore;
 }
 
 /**
