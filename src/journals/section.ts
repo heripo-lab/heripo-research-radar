@@ -3,6 +3,10 @@ import type { JournalPaperSelection } from './select';
 
 import { escapeLabel } from '../deadlines/reminders';
 import { formatVolumeIssue } from '../parsers/journal-issue.parser';
+import {
+  LEADING_CATEGORIES,
+  TRAILING_CATEGORY,
+} from '../prompts/generate-newsletter';
 
 /** Heading of the journal issue section. Distinct from any 학술지 heading the model writes. */
 export const JOURNAL_ISSUE_SECTION_HEADING = '📖 새로 나온 학술지';
@@ -110,12 +114,19 @@ export function renderJournalIssueSection(
 /**
  * Headings the section is placed before, in order of preference.
  *
- * 사업·입찰 runs last so it does not bury academic news; placing journals after
- * it would bury them in turn. Without that section the journals go before
- * 마무리, and without either at the end of the body.
+ * New journal issues are academic news, so they follow 학술대회·학술행사 and
+ * come before 발굴조사보고서. The headings come from the prompt's category
+ * order, so a section missing that day moves the journals before the next one
+ * present: 발굴현장 공개, 채용·공고, then 사업·입찰 and 마무리. The categories
+ * the model names itself cannot be matched, so on a day with none of the fixed
+ * ones the journals land after them. Without any anchor they go at the end of
+ * the body.
  */
 export const JOURNAL_ISSUE_SECTION_ANCHORS = [
-  '📑 사업·입찰 공고',
+  ...LEADING_CATEGORIES.slice(
+    LEADING_CATEGORIES.indexOf('📋 발굴조사보고서 (신규 제출)'),
+  ),
+  TRAILING_CATEGORY,
   '📌 마무리',
 ] as const;
 

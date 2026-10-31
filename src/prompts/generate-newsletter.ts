@@ -8,7 +8,7 @@ import type {
  * Category order. Categories listed here are emitted first, in this order;
  * anything else follows, ordered by how consequential it is.
  */
-const LEADING_CATEGORIES = [
+export const LEADING_CATEGORIES = [
   '🎓 학술대회·학술행사',
   '📋 발굴조사보고서 (신규 제출)',
   '⛏️ 발굴현장 공개',
@@ -29,7 +29,7 @@ const LEADING_CATEGORIES = [
  * work. But they are the tail of the issue, not its headline, which is why
  * {@link SECTION_PLACEMENT} keeps them out of the title and the briefing.
  */
-const TRAILING_CATEGORY = '📑 사업·입찰 공고';
+export const TRAILING_CATEGORY = '📑 사업·입찰 공고';
 
 /**
  * Where 사업·입찰 may and may not appear.
