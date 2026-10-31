@@ -32,8 +32,12 @@ import {
 } from '../deadlines/reminders';
 import { collectNewsletterDeadlines } from '../deadlines/section';
 import {
+  JOURNAL_ISSUE_CONTENT_TYPE,
   insertJournalIssueHtml,
   insertJournalIssueMarkdown,
+  journalIssueLinks,
+  removeJournalIssueMentionsHtml,
+  removeJournalIssueMentionsMarkdown,
   renderJournalIssueSection,
 } from '../journals/section';
 import { JOURNAL_ISSUE_LIST_URL } from '../parsers/journal-issue.parser';
@@ -50,6 +54,8 @@ export type JournalIssueRendering = {
   select?: JournalPaperSelector;
   /** Reports that the issues could not be loaded, so the model got them. */
   onUnavailable?: (reason: string) => void;
+  /** Reports body lines about the issues removed despite the prompt. */
+  onBodyMentionsRemoved?: (removed: number) => void;
 };
 
 /**
@@ -174,8 +180,15 @@ export class ContentGenerateProvider implements CoreContentGenerateProvider {
       const issue = issuesByUrl.get(article.url);
       return issue ? [{ article, issue }] : [];
     });
+    // Held issues stay candidates, so they count toward publication and can
+    // lead the title and briefing like any other news. The marker keeps them
+    // out of the body sections, where the rendered table stands for them.
     const held = new Set(this.heldJournalIssues.map(({ article }) => article));
-    return candidates.filter((article) => !held.has(article));
+    return candidates.map((article) =>
+      held.has(article)
+        ? { ...article, contentType: JOURNAL_ISSUE_CONTENT_TYPE }
+        : article,
+    );
   }
 
   /**
@@ -187,7 +200,8 @@ export class ContentGenerateProvider implements CoreContentGenerateProvider {
     newsletter: Newsletter;
     usedArticles: ArticleForGenerateContent[];
   }): Promise<{ id: string | number }> {
-    const { newsletter, usedArticles } = input;
+    const { usedArticles } = input;
+    const newsletter = this.removeJournalIssueMentions(input.newsletter);
     // Reject conflicting model output before any persistence, rather than
     // silently publishing a second schedule block or misplaced sharing link.
     if (
@@ -243,23 +257,43 @@ export class ContentGenerateProvider implements CoreContentGenerateProvider {
     closing.outerHTML = closingDocument.querySelector(
       '[data-research-radar-closing]',
     )!.outerHTML;
-    // Core hands back only the candidates the model saw; the held-aside
-    // journal articles are part of this issue too.
-    const usedIds = new Set(usedArticles.map((article) => article.id));
+    // Held journal articles are candidates the model saw, so core already
+    // hands them back with the rest.
     return this.newsletterRepository.saveNewsletter({
-      ...input,
-      usedArticles: [
-        ...usedArticles,
-        ...this.heldJournalIssues
-          .map(({ article }) => article)
-          .filter((article) => !usedIds.has(article.id)),
-      ],
+      usedArticles,
       newsletter: {
         ...newsletter,
         content: `${insertJournalIssueMarkdown(newsletter.content, journalMarkdown)}${markdown ? `\n\n<!-- research-radar-deadline-reminders -->\n${markdown}` : ''}${share ? `\n\n<!-- research-radar-share-notice -->\n${share}` : ''}`,
         htmlBody: dom.serialize(),
       },
     });
+  }
+
+  /**
+   * Drops what the model wrote about the held issues outside the briefing.
+   * The prompt already keeps them out of the body; this makes it certain, so
+   * an issue never appears both as a model-written row and in the table.
+   */
+  private removeJournalIssueMentions(newsletter: Newsletter): Newsletter {
+    const links = journalIssueLinks(
+      this.heldJournalIssues.map(({ issue }) => issue),
+    );
+    if (links.size === 0) return newsletter;
+    const markdown = removeJournalIssueMentionsMarkdown(
+      newsletter.content,
+      links,
+    );
+    const dom = new JSDOM(newsletter.htmlBody);
+    const removed = removeJournalIssueMentionsHtml(dom.window.document, links);
+    if (markdown.removed === 0 && removed === 0) return newsletter;
+    this.journalIssues?.onBodyMentionsRemoved?.(
+      Math.max(markdown.removed, removed),
+    );
+    return {
+      ...newsletter,
+      content: markdown.content,
+      htmlBody: dom.serialize(),
+    };
   }
 
   private async renderJournalIssues(): Promise<string> {

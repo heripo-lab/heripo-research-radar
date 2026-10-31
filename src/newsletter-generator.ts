@@ -371,6 +371,12 @@ function createNewsletterGenerator(
           data: { reason },
         });
       },
+      onBodyMentionsRemoved: (removed) => {
+        dependencies.logger?.info({
+          event: 'newsletter.journals.body.removed',
+          data: { removed },
+        });
+      },
     },
   );
 

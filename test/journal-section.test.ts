@@ -12,13 +12,19 @@ import { test } from 'node:test';
 
 import { createJournalIssueLoader } from '../src/journals/loader';
 import {
+  JOURNAL_ISSUE_CONTENT_TYPE,
   insertJournalIssueHtml,
   insertJournalIssueMarkdown,
+  journalIssueLinks,
+  removeJournalIssueMentionsHtml,
+  removeJournalIssueMentionsMarkdown,
   renderJournalIssueSection,
 } from '../src/journals/section';
 import { createJournalPaperSelector } from '../src/journals/select';
 import { JOURNAL_ISSUE_LIST_URL } from '../src/parsers/journal-issue.parser';
+import { researchRadarPromptProvider } from '../src/prompts';
 import { ContentGenerateProvider } from '../src/providers/content-generate.provider';
+import { DateService } from '../src/services/date.service';
 
 const paper = (index: number, authors = [`저자${index}`]) => ({
   title: `논문${index}`,
@@ -318,6 +324,7 @@ const unknownJournal = article(11, {
   url: 'https://www.kci.go.kr/unknown',
   targetUrl: JOURNAL_ISSUE_LIST_URL,
 });
+let removedMentions = 0;
 const unexpected = () => {
   throw new Error('unexpected');
 };
@@ -354,6 +361,7 @@ function providerWith(
     undefined,
     {
       load,
+      onBodyMentionsRemoved: (removed) => (removedMentions += removed),
       select: createJournalPaperSelector({
         audience: '한국고고학회 회원',
         model: answer({
@@ -365,7 +373,7 @@ function providerWith(
   );
 }
 
-test('주입 권호는 모델 후보에서 빼서 사업·입찰 앞 표로 렌더링하고 사용 기사에 되붙인다', async () => {
+test('주입 권호는 자동 섹션 표시를 달아 모델 후보로 넘기고, 사업·입찰 앞 표로 렌더링한다', async () => {
   let saved:
     | { newsletter: Newsletter; usedArticles: ArticleForGenerateContent[] }
     | undefined;
@@ -375,21 +383,47 @@ test('주입 권호는 모델 후보에서 빼서 사업·입찰 앞 표로 렌�
   );
 
   const candidates = await provider.fetchArticleCandidates();
-  // 출처에 없는 권호는 모델에게 그대로 넘긴다.
+  // 주입 권호도 다른 소식과 같은 후보다. 표시만 달아 본문 섹션에 쓰지 않게 하고,
+  // 출처에 없는 권호는 일반 기사로 그대로 넘긴다.
   assert.deepEqual(
-    candidates.map((candidate) => candidate.id),
-    [1, 11],
+    candidates.map((candidate) => [candidate.id, candidate.contentType]),
+    [
+      [1, article(1).contentType],
+      [10, JOURNAL_ISSUE_CONTENT_TYPE],
+      [11, unknownJournal.contentType],
+    ],
   );
+  const prompt =
+    researchRadarPromptProvider.contentGenerate!.generateNewsletter!;
+  const context = {
+    newsletterBrandName: '한국고고학회 뉴스레터',
+    expertFields: ['고고학'],
+    outputLanguage: '한국어',
+    targetArticles: candidates,
+    dateService: new DateService('2026-10-29'),
+    freeFormIntro: true,
+    subscribePageUrl: 'https://heripo.app/research-radar/subscribe',
+  };
+  assert.match(
+    prompt.system!(context),
+    /`구분`이 `자동 섹션: 📖 새로 나온 논문`인 소식은 어느 분류에도 넣지 않는다/,
+  );
+  const listed = prompt.user!(context);
+  assert.match(
+    listed,
+    /\*\*구분:\*\* 자동 섹션: 📖 새로 나온 논문 — 이 소식은 `## 📖 새로 나온 논문` 섹션에 표로 자동으로 실린다/,
+  );
+  assert.equal(listed.match(/자동으로 실린다/g)?.length, 1);
 
-  const content =
-    '## 🎓 학술\n\n[기사1](https://example.com/1)\n\n## 📑 사업·입찰 공고\n\n| 사업 |\n\n## 📌 마무리\n\n정리';
+  // 모델이 지시와 달리 본문에 권호를 쓴 줄은 저장 전에 지운다.
+  const content = `## 📮 브리핑\n\n오늘 소식\n\n## 🎓 학술\n\n[기사1](https://example.com/1)\n\n[권호 소식](${issue.url})\n\n## 📑 사업·입찰 공고\n\n| 사업 |\n\n## 📌 마무리\n\n정리`;
   await provider.saveNewsletter({
     newsletter: {
       title: '제목',
       content,
       htmlBody: provider.htmlTemplate.html.replace(
         '{{NEWSLETTER_CONTENT}}',
-        '<h2>🎓 학술</h2><p>기사1</p><h2>📑 사업·입찰 공고</h2><p>입찰</p><h2>📌 마무리</h2><p>정리</p>',
+        `<h2>📮 브리핑</h2><p>오늘 소식</p><h2>🎓 학술</h2><p>기사1</p><p><a href="${issue.url}">권호 소식</a></p><h2>📑 사업·입찰 공고</h2><p>입찰</p><h2>📌 마무리</h2><p>정리</p>`,
       ),
       date: '2026-10-29',
       issueOrder: 1,
@@ -400,8 +434,11 @@ test('주입 권호는 모델 후보에서 빼서 사업·입찰 앞 표로 렌�
   assert.ok(saved);
   assert.deepEqual(
     saved.usedArticles.map((used) => used.id),
-    [1, 11, 10],
+    [1, 10, 11],
   );
+  assert.equal(removedMentions, 1);
+  assert.doesNotMatch(saved.newsletter.content, /권호 소식/);
+  assert.doesNotMatch(saved.newsletter.htmlBody, /권호 소식/);
   assert.ok(
     saved.newsletter.content.indexOf('## 📖 새로 나온 논문') <
       saved.newsletter.content.indexOf('## 📑 사업·입찰 공고'),
@@ -432,4 +469,103 @@ test('권호를 불러오지 못하면 모든 학술지 기사를 모델에게 �
     (await provider.fetchArticleCandidates()).map((candidate) => candidate.id),
     [1, 10, 11],
   );
+});
+
+test('모델이 본문 섹션에 쓴 권호·논문 줄은 지우고 브리핑의 언급은 남긴다', () => {
+  const links = journalIssueLinks([issue]);
+  const toc = issue.url.replace('&', '&amp;');
+  const body = [
+    `## 🎓 학술대회·학술행사`,
+    ``,
+    `[학술대회](https://example.com/1) 안내입니다.`,
+    `[한국고고학보 제3호](${toc}) 발간 소식입니다.`,
+    ``,
+    `## 📚 학술지 소식`,
+    ``,
+    `| 논문 | 저자 |`,
+    `| --- | --- |`,
+    `| [${issue.papers[0].title}](${issue.papers[0].url}) | 홍길동 |`,
+    ``,
+    `## 📌 마무리`,
+    ``,
+    `정리`,
+  ];
+  const briefing = [
+    `## 📮 2026년 10월 31일 브리핑`,
+    ``,
+    `오늘은 [한국고고학보 제3호](${issue.url})가 나왔습니다.`,
+    ``,
+  ];
+  // KRAS 모드는 브리핑으로, 일반 모드는 H1 머리말 다음 브리핑으로 시작한다.
+  for (const opening of [[], ['# 2026년 10월 31일 문화유산 소식', '']]) {
+    const markdown = [...opening, ...briefing, ...body].join('\n');
+    const result = removeJournalIssueMentionsMarkdown(markdown, links);
+    assert.equal(result.removed, 2);
+    assert.match(result.content, /오늘은 \[한국고고학보 제3호\]/);
+    assert.match(result.content, /## 📮 2026년 10월 31일 브리핑/);
+    assert.match(result.content, /\[학술대회\]\(https:\/\/example\.com\/1\)/);
+    assert.doesNotMatch(result.content, /발간 소식입니다/);
+    // 표 행이 모두 빠진 섹션은 제목과 표 머리까지 지운다.
+    assert.doesNotMatch(result.content, /학술지 소식|\| 논문 \| 저자 \|/);
+    assert.match(result.content, /## 📌 마무리\n\n정리$/);
+  }
+  const plain = [...briefing, ...body].join('\n');
+  assert.deepEqual(removeJournalIssueMentionsMarkdown(plain, new Set()), {
+    content: plain,
+    removed: 0,
+  });
+
+  // 템플릿이 본문 앞뒤에 넣는 공지는 건드리지 않는다.
+  const { document } = new JSDOM(
+    `<h2>학회 소식</h2><p><a href="${toc}">공지 속 권호</a></p>` +
+      `<h2>heripo lab 소식</h2><p>소식</p>` +
+      `<div data-research-radar-body="">` +
+      `<h1>2026년 10월 31일 문화유산 소식</h1>` +
+      `<hr><h2>📮 2026년 10월 31일 브리핑</h2><p>오늘은 <a href="${toc}">한국고고학보</a></p>` +
+      `<hr><h2>🎓 학술대회·학술행사</h2><p><a href="https://example.com/1">학술대회</a></p><p><a href="${toc}">발간</a></p>` +
+      `<hr><h2>📚 학술지 소식</h2><table><thead><tr><th>논문</th></tr></thead><tbody><tr><td><a href="${issue.papers[0].url}">논문</a></td></tr></tbody></table>` +
+      `<hr><h2>📌 마무리</h2><p>정리</p>` +
+      `</div>` +
+      `<div data-research-radar-closing=""></div>` +
+      `<h2>학회 안내</h2><p><a href="${toc}">안내 속 권호</a></p>`,
+  ).window;
+  assert.equal(removeJournalIssueMentionsHtml(document, links), 2);
+  const describe = (parent: Element) =>
+    [...parent.children].map(
+      (element) => `${element.tagName.toLowerCase()}:${element.textContent}`,
+    );
+  assert.deepEqual(
+    describe(document.querySelector('[data-research-radar-body]')!),
+    [
+      'h1:2026년 10월 31일 문화유산 소식',
+      'hr:',
+      'h2:📮 2026년 10월 31일 브리핑',
+      'p:오늘은 한국고고학보',
+      'hr:',
+      'h2:🎓 학술대회·학술행사',
+      'p:학술대회',
+      'hr:',
+      'h2:📌 마무리',
+      'p:정리',
+    ],
+  );
+  assert.match(document.body.textContent ?? '', /공지 속 권호/);
+  assert.match(document.body.textContent ?? '', /안내 속 권호/);
+
+  // 문단으로 감싼 목록 항목도 항목째 지우고, 다른 항목과 목록은 남긴다.
+  const { document: listed } = new JSDOM(
+    `<div data-research-radar-body=""><h2>📮 브리핑</h2><p>오늘</p>` +
+      `<h2>🎓 학술</h2><ul><li><p><a href="${toc}">학술지 소식</a></p></li><li><p>다른 소식</p></li></ul></div>`,
+  ).window;
+  assert.equal(removeJournalIssueMentionsHtml(listed, links), 1);
+  assert.deepEqual(
+    [...listed.querySelectorAll('li')].map((item) => item.textContent),
+    ['다른 소식'],
+  );
+
+  // 본문 영역이 없는 문서는 손대지 않는다.
+  const { document: bare } = new JSDOM(
+    `<h2>📮 브리핑</h2><h2>🎓 학술</h2><p><a href="${toc}">발간</a></p>`,
+  ).window;
+  assert.equal(removeJournalIssueMentionsHtml(bare, links), 0);
 });

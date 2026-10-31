@@ -4,6 +4,11 @@ import type {
   RewriteNewsletterTitlePromptContext,
 } from '@llm-newsletter-kit/core';
 
+import {
+  JOURNAL_ISSUE_CONTENT_TYPE,
+  JOURNAL_ISSUE_SECTION_HEADING,
+} from '../journals/constants';
+
 /**
  * Category order. Categories listed here are emitted first, in this order;
  * anything else follows, ordered by how consequential it is.
@@ -174,6 +179,10 @@ ${LEADING_CATEGORIES.map((c, i) => `   ${i + 1}) ${c}`).join('\n')}
    각 분류는 Heading 2(\`##\`)를 쓴다. 분류 안에서는 중요한 것부터 배치한다.
    같은 내용이 여러 출처에서 왔다면 가장 자세한 것을 기준으로 한 번만 쓴다.
 
+   \`구분\`이 \`${JOURNAL_ISSUE_CONTENT_TYPE}\`인 소식은 어느 분류에도 넣지 않는다. 그 표는
+   \`## ${JOURNAL_ISSUE_SECTION_HEADING}\` 섹션으로 자동으로 들어간다. 대신 제목과 브리핑을 고를 때는
+   다른 소식과 똑같이 중요도로 견주고, 더 중요하면 제목이나 브리핑에 올린다.
+
 3. **마무리**: 생성하는 본문의 마지막 섹션은 \`## 📌 마무리\`로 쓴다.
 
    오늘 다룬 주요 소식을 한 문단으로 정리한다. 행사명 뒤에 날짜를 괄호로 덧붙인다.
@@ -273,12 +282,17 @@ ${titleRules(context)}
             ? `\n**게시일:** ${article.publishedDate}`
             : '';
 
+          const kind =
+            article.contentType === JOURNAL_ISSUE_CONTENT_TYPE
+              ? `**구분:** ${JOURNAL_ISSUE_CONTENT_TYPE} — 이 소식은 \`## ${JOURNAL_ISSUE_SECTION_HEADING}\` 섹션에 표로 자동으로 실린다. 본문 분류 섹션에 쓰지 않는다. 제목과 브리핑에서는 다른 소식과 같은 기준으로 다룰 수 있다.`
+              : `**구분:** ${article.contentType}`;
+
           return `## 소식 ${index + 1}
 **제목:** ${article.title}
 **URL:** ${article.url}
 **중요도:** ${article.importanceScore}/10
 **태그:** ${tags}
-**구분:** ${article.contentType}${published}${image}
+${kind}${published}${image}
 **본문:**
 ${article.detailContent}`;
         })

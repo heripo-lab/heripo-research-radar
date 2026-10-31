@@ -7,13 +7,12 @@ import {
   LEADING_CATEGORIES,
   TRAILING_CATEGORY,
 } from '../prompts/generate-newsletter';
+import {
+  JOURNAL_ISSUE_CONTENT_TYPE,
+  JOURNAL_ISSUE_SECTION_HEADING,
+} from './constants';
 
-/**
- * Heading of the journal issue section. It names papers rather than journals
- * so papers from other sources can join it later, and it stays distinct from
- * any heading the model writes.
- */
-export const JOURNAL_ISSUE_SECTION_HEADING = '📖 새로 나온 논문';
+export { JOURNAL_ISSUE_CONTENT_TYPE, JOURNAL_ISSUE_SECTION_HEADING };
 
 /** Authors listed per paper before the rest are counted. */
 const AUTHOR_LIMIT = 3;
@@ -176,3 +175,156 @@ export function insertJournalIssueHtml(
   target.before(section);
   if (rule?.tagName === 'HR') target.before(rule.cloneNode(true));
 }
+
+/** Compares links the way the model may have written them. */
+function normalizeLink(url: string): string {
+  try {
+    return new URL(url.replaceAll('&amp;', '&').trim()).href.replace(/\/$/, '');
+  } catch {
+    return url.trim();
+  }
+}
+
+/** Every link the journal section owns: each issue's table of contents and its papers. */
+export function journalIssueLinks(issues: JournalIssue[]): Set<string> {
+  return new Set(
+    issues.flatMap((issue) =>
+      [issue.url, ...issue.papers.map((paper) => paper.url)].map(normalizeLink),
+    ),
+  );
+}
+
+const TABLE_SEPARATOR = /^\s*\|?\s*:?-{3,}/;
+
+/**
+ * The briefing heading the prompt asks for in both modes (`📮 {date} 브리핑`).
+ * Matching its text, not its position, keeps the guard off the briefing when
+ * an H1 title precedes it or the template puts notices before the body.
+ */
+function isBriefingHeading(text: string): boolean {
+  return /브리핑\s*$/.test(text.replace(/\s+/g, ' ').trim());
+}
+
+/**
+ * Removes body lines the model wrote about the injected issues.
+ *
+ * The prompt keeps those issues out of the body sections, since the rendered
+ * table stands for them; this is the deterministic guard behind it. The
+ * briefing, and anything before the first section, may name them like any
+ * other news and is left alone. Elsewhere every line linking an issue or one
+ * of its papers is dropped, then table headers left without rows and headings
+ * left without content.
+ */
+export function removeJournalIssueMentionsMarkdown(
+  content: string,
+  links: Set<string>,
+): { content: string; removed: number } {
+  if (links.size === 0) return { content, removed: 0 };
+  const mentions = (line: string) =>
+    [...line.matchAll(/\]\(([^)\s]+)\)|(https?:\/\/[^\s)<>|]+)/g)].some(
+      (match) => links.has(normalizeLink(match[1] ?? match[2])),
+    );
+  let removed = 0;
+  const kept = content.split(/(?=^## )/m).map((section) => {
+    const [heading] = section.split('\n', 1);
+    if (!heading.startsWith('## ') || isBriefingHeading(heading.slice(3)))
+      return section;
+    const lines = section.split('\n');
+    const filtered = lines.filter(
+      (line, lineIndex) => lineIndex === 0 || !mentions(line),
+    );
+    if (filtered.length === lines.length) return section;
+    removed += lines.length - filtered.length;
+    // Drop a table header and separator whose rows were all removed.
+    const cleaned = filtered.filter((line, lineIndex) => {
+      const next = filtered[lineIndex + 1] ?? '';
+      const previous = filtered[lineIndex - 1] ?? '';
+      const after = filtered[lineIndex + 2] ?? '';
+      if (TABLE_SEPARATOR.test(next) && line.trim().startsWith('|'))
+        return after.trim().startsWith('|');
+      if (TABLE_SEPARATOR.test(line) && previous.trim().startsWith('|'))
+        return next.trim().startsWith('|');
+      return true;
+    });
+    return cleaned.slice(1).some((line) => line.trim())
+      ? cleaned.join('\n')
+      : '';
+  });
+  return { content: kept.join(''), removed };
+}
+
+/**
+ * HTML counterpart of {@link removeJournalIssueMentionsMarkdown}, applied to the
+ * body core rendered before the journal section is inserted.
+ *
+ * Only the model's body (`data-research-radar-body`) is searched, so notices
+ * the template adds before or after it are never touched. Within it the
+ * guarded sections start at the heading after the briefing, or at the first
+ * heading when there is no briefing heading.
+ */
+export function removeJournalIssueMentionsHtml(
+  document: Document,
+  links: Set<string>,
+): number {
+  const body = document.querySelector('[data-research-radar-body]');
+  if (links.size === 0 || !body) return 0;
+  const headings = [...body.querySelectorAll('h2')];
+  const briefing = headings.findIndex((heading) =>
+    isBriefingHeading(heading.textContent ?? ''),
+  );
+  const guarded = headings.slice(briefing + 1);
+  const start = guarded[0];
+  if (!start) return 0;
+  const touched = new Set<Element>();
+  for (const anchor of body.querySelectorAll('a[href]')) {
+    if (!links.has(normalizeLink(anchor.getAttribute('href') ?? ''))) continue;
+    if (!(start.compareDocumentPosition(anchor) & FOLLOWING)) continue;
+    const block = removableBlock(anchor, body);
+    if (block) touched.add(block);
+  }
+  const containers = new Set<Element>();
+  for (const block of touched) {
+    // Only tables and lists of the body, never the template's layout table.
+    const container = block.closest('table, ul, ol');
+    if (container && body.contains(container)) containers.add(container);
+    block.remove();
+  }
+  for (const container of containers)
+    if (
+      !container.querySelector(
+        container.tagName === 'TABLE' ? 'tbody tr' : 'li',
+      )
+    )
+      container.remove();
+  // A heading whose section is now empty goes, with the rule before it.
+  if (touched.size > 0)
+    for (const heading of guarded) {
+      const next = heading.nextElementSibling;
+      if (next && next.tagName !== 'H2' && next.tagName !== 'HR') continue;
+      const rule = heading.previousElementSibling;
+      if (rule?.tagName === 'HR') rule.remove();
+      heading.remove();
+    }
+  return touched.size;
+}
+
+/**
+ * The block to drop for a link: its table row or list item, whole even when its
+ * text sits in a paragraph, otherwise its paragraph. The search stops at the
+ * body, which itself sits inside the template's layout table.
+ */
+function removableBlock(anchor: Element, body: Element): Element | null {
+  let paragraph: Element | null = null;
+  for (
+    let element: Element | null = anchor;
+    element && element !== body;
+    element = element.parentElement
+  ) {
+    if (element.tagName === 'TR' || element.tagName === 'LI') return element;
+    if (element.tagName === 'P') paragraph ??= element;
+  }
+  return paragraph;
+}
+
+/** `Node.DOCUMENT_POSITION_FOLLOWING`, without needing a window. */
+const FOLLOWING = 4;
