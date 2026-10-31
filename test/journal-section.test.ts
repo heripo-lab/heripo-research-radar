@@ -552,6 +552,17 @@ test('모델이 본문 섹션에 쓴 권호·논문 줄은 지우고 브리핑�
   assert.match(document.body.textContent ?? '', /공지 속 권호/);
   assert.match(document.body.textContent ?? '', /안내 속 권호/);
 
+  // 문단으로 감싼 목록 항목도 항목째 지우고, 다른 항목과 목록은 남긴다.
+  const { document: listed } = new JSDOM(
+    `<div data-research-radar-body=""><h2>📮 브리핑</h2><p>오늘</p>` +
+      `<h2>🎓 학술</h2><ul><li><p><a href="${toc}">학술지 소식</a></p></li><li><p>다른 소식</p></li></ul></div>`,
+  ).window;
+  assert.equal(removeJournalIssueMentionsHtml(listed, links), 1);
+  assert.deepEqual(
+    [...listed.querySelectorAll('li')].map((item) => item.textContent),
+    ['다른 소식'],
+  );
+
   // 본문 영역이 없는 문서는 손대지 않는다.
   const { document: bare } = new JSDOM(
     `<h2>📮 브리핑</h2><h2>🎓 학술</h2><p><a href="${toc}">발간</a></p>`,

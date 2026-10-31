@@ -279,13 +279,14 @@ export function removeJournalIssueMentionsHtml(
   for (const anchor of body.querySelectorAll('a[href]')) {
     if (!links.has(normalizeLink(anchor.getAttribute('href') ?? ''))) continue;
     if (!(start.compareDocumentPosition(anchor) & FOLLOWING)) continue;
-    const block = anchor.closest('tr, li, p');
-    if (block && body.contains(block)) touched.add(block);
+    const block = removableBlock(anchor, body);
+    if (block) touched.add(block);
   }
   const containers = new Set<Element>();
   for (const block of touched) {
+    // Only tables and lists of the body, never the template's layout table.
     const container = block.closest('table, ul, ol');
-    if (container) containers.add(container);
+    if (container && body.contains(container)) containers.add(container);
     block.remove();
   }
   for (const container of containers)
@@ -305,6 +306,24 @@ export function removeJournalIssueMentionsHtml(
       heading.remove();
     }
   return touched.size;
+}
+
+/**
+ * The block to drop for a link: its table row or list item, whole even when its
+ * text sits in a paragraph, otherwise its paragraph. The search stops at the
+ * body, which itself sits inside the template's layout table.
+ */
+function removableBlock(anchor: Element, body: Element): Element | null {
+  let paragraph: Element | null = null;
+  for (
+    let element: Element | null = anchor;
+    element && element !== body;
+    element = element.parentElement
+  ) {
+    if (element.tagName === 'TR' || element.tagName === 'LI') return element;
+    if (element.tagName === 'P') paragraph ??= element;
+  }
+  return paragraph;
 }
 
 /** `Node.DOCUMENT_POSITION_FOLLOWING`, without needing a window. */
