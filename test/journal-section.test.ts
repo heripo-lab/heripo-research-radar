@@ -72,7 +72,7 @@ test('관심 가질 논문을 관심 순 표로 보여주고 나머지는 편수
 
   assert.match(
     markdown,
-    /^## 📖 새로 나온 학술지\n\n\*\*\[한국고고학보 제3호\]\(https:\/\/www\.kci\.go\.kr\/.+VOL1\)\*\* · 2026년 9월 · 논문 6편\n\n\| 논문 \| 저자 \|/,
+    /^## 📖 새로 나온 논문\n\n\*\*\[한국고고학보 제3호\]\(https:\/\/www\.kci\.go\.kr\/.+VOL1\)\*\* · 2026년 9월 · 논문 6편\n\n\| 논문 \| 저자 \|/,
   );
   assert.deepEqual(
     tableRows(markdown).map((row) => /논문(\d)/.exec(row)?.[1]),
@@ -174,7 +174,7 @@ test('관심 논문이 없으면 표 없이 주제만 알리고, 저자가 많�
 });
 
 test('섹션은 학술대회 뒤 발굴조사보고서 앞에 넣고, 그 분류가 없으면 다음 고정 분류 앞에 넣는다', () => {
-  const section = '## 📖 새로 나온 학술지\n\n내용';
+  const section = '## 📖 새로 나온 논문\n\n내용';
   const body = (...headings: string[]) =>
     headings.map((heading) => `## ${heading}\n\n본문`).join('\n\n');
   const placed = (...headings: string[]) =>
@@ -193,7 +193,7 @@ test('섹션은 학술대회 뒤 발굴조사보고서 앞에 넣고, 그 분류
     ),
     [
       '🎓 학술대회·학술행사',
-      '📖 새로 나온 학술지',
+      '📖 새로 나온 논문',
       '📋 발굴조사보고서 (신규 제출)',
       '⛏️ 발굴현장 공개',
       '📑 사업·입찰 공고',
@@ -204,7 +204,7 @@ test('섹션은 학술대회 뒤 발굴조사보고서 앞에 넣고, 그 분류
     placed('🎓 학술대회·학술행사', '⛏️ 발굴현장 공개', '💼 채용·공고'),
     [
       '🎓 학술대회·학술행사',
-      '📖 새로 나온 학술지',
+      '📖 새로 나온 논문',
       '⛏️ 발굴현장 공개',
       '💼 채용·공고',
     ],
@@ -212,13 +212,13 @@ test('섹션은 학술대회 뒤 발굴조사보고서 앞에 넣고, 그 분류
   // 모델이 이름 붙인 분류는 기준으로 쓸 수 없어 그 뒤의 고정 분류 앞에 들어간다.
   assert.deepEqual(placed('🏛️ 정책·제도', '📌 마무리'), [
     '🏛️ 정책·제도',
-    '📖 새로 나온 학술지',
+    '📖 새로 나온 논문',
     '📌 마무리',
   ]);
 });
 
 test('섹션은 사업·입찰 앞, 없으면 마무리 앞, 둘 다 없으면 끝에 넣는다', () => {
-  const section = '## 📖 새로 나온 학술지\n\n내용';
+  const section = '## 📖 새로 나온 논문\n\n내용';
   assert.equal(
     insertJournalIssueMarkdown(
       '## 🎓 학술\n\nA\n\n## 📑 사업·입찰 공고\n\nB\n\n## 📌 마무리\n\nC',
@@ -369,12 +369,12 @@ test('주입 권호는 모델 후보에서 빼서 사업·입찰 앞 표로 렌�
     [1, 11, 10],
   );
   assert.ok(
-    saved.newsletter.content.indexOf('## 📖 새로 나온 학술지') <
+    saved.newsletter.content.indexOf('## 📖 새로 나온 논문') <
       saved.newsletter.content.indexOf('## 📑 사업·입찰 공고'),
   );
   assert.ok(
     saved.newsletter.content.indexOf('## 🎓 학술') <
-      saved.newsletter.content.indexOf('## 📖 새로 나온 학술지'),
+      saved.newsletter.content.indexOf('## 📖 새로 나온 논문'),
   );
 
   const document = new JSDOM(saved.newsletter.htmlBody).window.document;

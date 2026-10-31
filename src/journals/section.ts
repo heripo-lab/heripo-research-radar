@@ -8,8 +8,12 @@ import {
   TRAILING_CATEGORY,
 } from '../prompts/generate-newsletter';
 
-/** Heading of the journal issue section. Distinct from any 학술지 heading the model writes. */
-export const JOURNAL_ISSUE_SECTION_HEADING = '📖 새로 나온 학술지';
+/**
+ * Heading of the journal issue section. It names papers rather than journals
+ * so papers from other sources can join it later, and it stays distinct from
+ * any heading the model writes.
+ */
+export const JOURNAL_ISSUE_SECTION_HEADING = '📖 새로 나온 논문';
 
 /** Authors listed per paper before the rest are counted. */
 const AUTHOR_LIMIT = 3;
