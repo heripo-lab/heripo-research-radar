@@ -175,3 +175,122 @@ export function insertJournalIssueHtml(
   target.before(section);
   if (rule?.tagName === 'HR') target.before(rule.cloneNode(true));
 }
+
+/** Compares links the way the model may have written them. */
+function normalizeLink(url: string): string {
+  try {
+    return new URL(url.replaceAll('&amp;', '&').trim()).href.replace(/\/$/, '');
+  } catch {
+    return url.trim();
+  }
+}
+
+/** Every link the journal section owns: each issue's table of contents and its papers. */
+export function journalIssueLinks(issues: JournalIssue[]): Set<string> {
+  return new Set(
+    issues.flatMap((issue) =>
+      [issue.url, ...issue.papers.map((paper) => paper.url)].map(normalizeLink),
+    ),
+  );
+}
+
+const TABLE_SEPARATOR = /^\s*\|?\s*:?-{3,}/;
+
+/**
+ * Removes body lines the model wrote about the injected issues.
+ *
+ * The prompt keeps those issues out of the body sections, since the rendered
+ * table stands for them; this is the deterministic guard behind it. The first
+ * section (the briefing) may name them like any other news and is left alone.
+ * Elsewhere every line linking an issue or one of its papers is dropped, then
+ * table headers left without rows and headings left without content.
+ */
+export function removeJournalIssueMentionsMarkdown(
+  content: string,
+  links: Set<string>,
+): { content: string; removed: number } {
+  if (links.size === 0) return { content, removed: 0 };
+  const mentions = (line: string) =>
+    [...line.matchAll(/\]\(([^)\s]+)\)|(https?:\/\/[^\s)<>|]+)/g)].some(
+      (match) => links.has(normalizeLink(match[1] ?? match[2])),
+    );
+  const sections = content.split(/(?=^## )/m);
+  let removed = 0;
+  const kept = sections.map((section, index) => {
+    if (index === 0 || (index === 1 && !sections[0].trim())) return section;
+    const lines = section.split('\n');
+    const filtered = lines.filter(
+      (line, lineIndex) => lineIndex === 0 || !mentions(line),
+    );
+    if (filtered.length === lines.length) return section;
+    removed += lines.length - filtered.length;
+    // Drop a table header and separator whose rows were all removed.
+    const cleaned = filtered.filter((line, lineIndex) => {
+      const next = filtered[lineIndex + 1] ?? '';
+      const previous = filtered[lineIndex - 1] ?? '';
+      const after = filtered[lineIndex + 2] ?? '';
+      if (TABLE_SEPARATOR.test(next) && line.trim().startsWith('|'))
+        return after.trim().startsWith('|');
+      if (TABLE_SEPARATOR.test(line) && previous.trim().startsWith('|'))
+        return next.trim().startsWith('|');
+      return true;
+    });
+    return cleaned.slice(1).some((line) => line.trim())
+      ? cleaned.join('\n')
+      : '';
+  });
+  return { content: kept.join(''), removed };
+}
+
+/**
+ * HTML counterpart of {@link removeJournalIssueMentionsMarkdown}, applied to the
+ * body core rendered before the journal section is inserted.
+ */
+export function removeJournalIssueMentionsHtml(
+  document: Document,
+  links: Set<string>,
+): number {
+  const headings = [...document.querySelectorAll('h2')];
+  const afterBriefing = headings[1];
+  if (links.size === 0 || !afterBriefing) return 0;
+  const touched = new Set<Element>();
+  for (const anchor of document.querySelectorAll('a[href]')) {
+    if (!links.has(normalizeLink(anchor.getAttribute('href') ?? ''))) continue;
+    // Only the body sections; the briefing precedes the second heading.
+    if (!(afterBriefing.compareDocumentPosition(anchor) & FOLLOWING)) continue;
+    const block = anchor.closest('tr, li, p');
+    if (block) touched.add(block);
+  }
+  const containers = new Set<Element>();
+  for (const block of touched) {
+    const container = block.closest('table, ul, ol');
+    if (container) containers.add(container);
+    block.remove();
+  }
+  for (const container of containers)
+    if (
+      !container.querySelector(
+        container.tagName === 'TABLE' ? 'tbody tr' : 'li',
+      )
+    )
+      container.remove();
+  // A heading whose section is now empty goes, with the rule before it.
+  if (touched.size > 0)
+    for (const heading of headings.slice(1)) {
+      const next = heading.nextElementSibling;
+      if (
+        next &&
+        next.tagName !== 'H2' &&
+        next.tagName !== 'HR' &&
+        !next.hasAttribute('data-research-radar-closing')
+      )
+        continue;
+      const rule = heading.previousElementSibling;
+      if (rule?.tagName === 'HR') rule.remove();
+      heading.remove();
+    }
+  return touched.size;
+}
+
+/** `Node.DOCUMENT_POSITION_FOLLOWING`, without needing a window. */
+const FOLLOWING = 4;

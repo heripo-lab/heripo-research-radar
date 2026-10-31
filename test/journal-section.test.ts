@@ -15,6 +15,9 @@ import {
   JOURNAL_ISSUE_CONTENT_TYPE,
   insertJournalIssueHtml,
   insertJournalIssueMarkdown,
+  journalIssueLinks,
+  removeJournalIssueMentionsHtml,
+  removeJournalIssueMentionsMarkdown,
   renderJournalIssueSection,
 } from '../src/journals/section';
 import { createJournalPaperSelector } from '../src/journals/select';
@@ -321,6 +324,7 @@ const unknownJournal = article(11, {
   url: 'https://www.kci.go.kr/unknown',
   targetUrl: JOURNAL_ISSUE_LIST_URL,
 });
+let removedMentions = 0;
 const unexpected = () => {
   throw new Error('unexpected');
 };
@@ -357,6 +361,7 @@ function providerWith(
     undefined,
     {
       load,
+      onBodyMentionsRemoved: (removed) => (removedMentions += removed),
       select: createJournalPaperSelector({
         audience: '한국고고학회 회원',
         model: answer({
@@ -410,15 +415,15 @@ test('주입 권호는 자동 섹션 표시를 달아 모델 후보로 넘기고
   );
   assert.equal(listed.match(/자동으로 실린다/g)?.length, 1);
 
-  const content =
-    '## 🎓 학술\n\n[기사1](https://example.com/1)\n\n## 📑 사업·입찰 공고\n\n| 사업 |\n\n## 📌 마무리\n\n정리';
+  // 모델이 지시와 달리 본문에 권호를 쓴 줄은 저장 전에 지운다.
+  const content = `## 📮 브리핑\n\n오늘 소식\n\n## 🎓 학술\n\n[기사1](https://example.com/1)\n\n[권호 소식](${issue.url})\n\n## 📑 사업·입찰 공고\n\n| 사업 |\n\n## 📌 마무리\n\n정리`;
   await provider.saveNewsletter({
     newsletter: {
       title: '제목',
       content,
       htmlBody: provider.htmlTemplate.html.replace(
         '{{NEWSLETTER_CONTENT}}',
-        '<h2>🎓 학술</h2><p>기사1</p><h2>📑 사업·입찰 공고</h2><p>입찰</p><h2>📌 마무리</h2><p>정리</p>',
+        `<h2>📮 브리핑</h2><p>오늘 소식</p><h2>🎓 학술</h2><p>기사1</p><p><a href="${issue.url}">권호 소식</a></p><h2>📑 사업·입찰 공고</h2><p>입찰</p><h2>📌 마무리</h2><p>정리</p>`,
       ),
       date: '2026-10-29',
       issueOrder: 1,
@@ -431,6 +436,9 @@ test('주입 권호는 자동 섹션 표시를 달아 모델 후보로 넘기고
     saved.usedArticles.map((used) => used.id),
     [1, 10, 11],
   );
+  assert.equal(removedMentions, 1);
+  assert.doesNotMatch(saved.newsletter.content, /권호 소식/);
+  assert.doesNotMatch(saved.newsletter.htmlBody, /권호 소식/);
   assert.ok(
     saved.newsletter.content.indexOf('## 📖 새로 나온 논문') <
       saved.newsletter.content.indexOf('## 📑 사업·입찰 공고'),
@@ -460,5 +468,67 @@ test('권호를 불러오지 못하면 모든 학술지 기사를 모델에게 �
   assert.deepEqual(
     (await provider.fetchArticleCandidates()).map((candidate) => candidate.id),
     [1, 10, 11],
+  );
+});
+
+test('모델이 본문 섹션에 쓴 권호·논문 줄은 지우고 브리핑의 언급은 남긴다', () => {
+  const links = journalIssueLinks([issue]);
+  const toc = issue.url.replace('&', '&amp;');
+  const markdown = [
+    `## 📮 브리핑`,
+    ``,
+    `오늘은 [한국고고학보 제3호](${issue.url})가 나왔습니다.`,
+    ``,
+    `## 🎓 학술대회·학술행사`,
+    ``,
+    `[학술대회](https://example.com/1) 안내입니다.`,
+    `[한국고고학보 제3호](${toc}) 발간 소식입니다.`,
+    ``,
+    `## 📚 학술지 소식`,
+    ``,
+    `| 논문 | 저자 |`,
+    `| --- | --- |`,
+    `| [${issue.papers[0].title}](${issue.papers[0].url}) | 홍길동 |`,
+    ``,
+    `## 📌 마무리`,
+    ``,
+    `정리`,
+  ].join('\n');
+  const result = removeJournalIssueMentionsMarkdown(markdown, links);
+  assert.equal(result.removed, 2);
+  assert.match(result.content, /오늘은 \[한국고고학보 제3호\]/);
+  assert.match(result.content, /\[학술대회\]\(https:\/\/example\.com\/1\)/);
+  assert.doesNotMatch(result.content, /발간 소식입니다/);
+  // 표 행이 모두 빠진 섹션은 제목과 표 머리까지 지운다.
+  assert.doesNotMatch(result.content, /학술지 소식|\| 논문 \| 저자 \|/);
+  assert.match(result.content, /## 📌 마무리\n\n정리$/);
+  assert.deepEqual(removeJournalIssueMentionsMarkdown(markdown, new Set()), {
+    content: markdown,
+    removed: 0,
+  });
+
+  const { document } = new JSDOM(
+    `<hr><h2>📮 브리핑</h2><p>오늘은 <a href="${toc}">한국고고학보</a></p>` +
+      `<hr><h2>🎓 학술대회·학술행사</h2><p><a href="https://example.com/1">학술대회</a></p><p><a href="${toc}">발간</a></p>` +
+      `<hr><h2>📚 학술지 소식</h2><table><thead><tr><th>논문</th></tr></thead><tbody><tr><td><a href="${issue.papers[0].url}">논문</a></td></tr></tbody></table>` +
+      `<hr><h2>📌 마무리</h2><p>정리</p><div data-research-radar-closing=""></div>`,
+  ).window;
+  assert.equal(removeJournalIssueMentionsHtml(document, links), 2);
+  assert.deepEqual(
+    [...document.body.children].map(
+      (element) => `${element.tagName.toLowerCase()}:${element.textContent}`,
+    ),
+    [
+      'hr:',
+      'h2:📮 브리핑',
+      'p:오늘은 한국고고학보',
+      'hr:',
+      'h2:🎓 학술대회·학술행사',
+      'p:학술대회',
+      'hr:',
+      'h2:📌 마무리',
+      'p:정리',
+      'div:',
+    ],
   );
 });
