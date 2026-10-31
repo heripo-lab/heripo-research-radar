@@ -7,13 +7,12 @@ import {
   LEADING_CATEGORIES,
   TRAILING_CATEGORY,
 } from '../prompts/generate-newsletter';
+import {
+  JOURNAL_ISSUE_CONTENT_TYPE,
+  JOURNAL_ISSUE_SECTION_HEADING,
+} from './constants';
 
-/**
- * Heading of the journal issue section. It names papers rather than journals
- * so papers from other sources can join it later, and it stays distinct from
- * any heading the model writes.
- */
-export const JOURNAL_ISSUE_SECTION_HEADING = '📖 새로 나온 논문';
+export { JOURNAL_ISSUE_CONTENT_TYPE, JOURNAL_ISSUE_SECTION_HEADING };
 
 /** Authors listed per paper before the rest are counted. */
 const AUTHOR_LIMIT = 3;

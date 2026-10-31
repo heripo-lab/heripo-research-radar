@@ -32,6 +32,7 @@ import {
 } from '../deadlines/reminders';
 import { collectNewsletterDeadlines } from '../deadlines/section';
 import {
+  JOURNAL_ISSUE_CONTENT_TYPE,
   insertJournalIssueHtml,
   insertJournalIssueMarkdown,
   renderJournalIssueSection,
@@ -174,8 +175,15 @@ export class ContentGenerateProvider implements CoreContentGenerateProvider {
       const issue = issuesByUrl.get(article.url);
       return issue ? [{ article, issue }] : [];
     });
+    // Held issues stay candidates, so they count toward publication and can
+    // lead the title and briefing like any other news. The marker keeps them
+    // out of the body sections, where the rendered table stands for them.
     const held = new Set(this.heldJournalIssues.map(({ article }) => article));
-    return candidates.filter((article) => !held.has(article));
+    return candidates.map((article) =>
+      held.has(article)
+        ? { ...article, contentType: JOURNAL_ISSUE_CONTENT_TYPE }
+        : article,
+    );
   }
 
   /**
@@ -243,17 +251,10 @@ export class ContentGenerateProvider implements CoreContentGenerateProvider {
     closing.outerHTML = closingDocument.querySelector(
       '[data-research-radar-closing]',
     )!.outerHTML;
-    // Core hands back only the candidates the model saw; the held-aside
-    // journal articles are part of this issue too.
-    const usedIds = new Set(usedArticles.map((article) => article.id));
+    // Held journal articles are candidates the model saw, so core already
+    // hands them back with the rest.
     return this.newsletterRepository.saveNewsletter({
       ...input,
-      usedArticles: [
-        ...usedArticles,
-        ...this.heldJournalIssues
-          .map(({ article }) => article)
-          .filter((article) => !usedIds.has(article.id)),
-      ],
       newsletter: {
         ...newsletter,
         content: `${insertJournalIssueMarkdown(newsletter.content, journalMarkdown)}${markdown ? `\n\n<!-- research-radar-deadline-reminders -->\n${markdown}` : ''}${share ? `\n\n<!-- research-radar-share-notice -->\n${share}` : ''}`,

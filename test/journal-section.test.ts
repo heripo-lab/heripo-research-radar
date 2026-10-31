@@ -12,13 +12,16 @@ import { test } from 'node:test';
 
 import { createJournalIssueLoader } from '../src/journals/loader';
 import {
+  JOURNAL_ISSUE_CONTENT_TYPE,
   insertJournalIssueHtml,
   insertJournalIssueMarkdown,
   renderJournalIssueSection,
 } from '../src/journals/section';
 import { createJournalPaperSelector } from '../src/journals/select';
 import { JOURNAL_ISSUE_LIST_URL } from '../src/parsers/journal-issue.parser';
+import { researchRadarPromptProvider } from '../src/prompts';
 import { ContentGenerateProvider } from '../src/providers/content-generate.provider';
+import { DateService } from '../src/services/date.service';
 
 const paper = (index: number, authors = [`저자${index}`]) => ({
   title: `논문${index}`,
@@ -365,7 +368,7 @@ function providerWith(
   );
 }
 
-test('주입 권호는 모델 후보에서 빼서 사업·입찰 앞 표로 렌더링하고 사용 기사에 되붙인다', async () => {
+test('주입 권호는 자동 섹션 표시를 달아 모델 후보로 넘기고, 사업·입찰 앞 표로 렌더링한다', async () => {
   let saved:
     | { newsletter: Newsletter; usedArticles: ArticleForGenerateContent[] }
     | undefined;
@@ -375,11 +378,37 @@ test('주입 권호는 모델 후보에서 빼서 사업·입찰 앞 표로 렌�
   );
 
   const candidates = await provider.fetchArticleCandidates();
-  // 출처에 없는 권호는 모델에게 그대로 넘긴다.
+  // 주입 권호도 다른 소식과 같은 후보다. 표시만 달아 본문 섹션에 쓰지 않게 하고,
+  // 출처에 없는 권호는 일반 기사로 그대로 넘긴다.
   assert.deepEqual(
-    candidates.map((candidate) => candidate.id),
-    [1, 11],
+    candidates.map((candidate) => [candidate.id, candidate.contentType]),
+    [
+      [1, article(1).contentType],
+      [10, JOURNAL_ISSUE_CONTENT_TYPE],
+      [11, unknownJournal.contentType],
+    ],
   );
+  const prompt =
+    researchRadarPromptProvider.contentGenerate!.generateNewsletter!;
+  const context = {
+    newsletterBrandName: '한국고고학회 뉴스레터',
+    expertFields: ['고고학'],
+    outputLanguage: '한국어',
+    targetArticles: candidates,
+    dateService: new DateService('2026-10-29'),
+    freeFormIntro: true,
+    subscribePageUrl: 'https://heripo.app/research-radar/subscribe',
+  };
+  assert.match(
+    prompt.system!(context),
+    /`구분`이 `자동 섹션: 📖 새로 나온 논문`인 소식은 어느 분류에도 넣지 않는다/,
+  );
+  const listed = prompt.user!(context);
+  assert.match(
+    listed,
+    /\*\*구분:\*\* 자동 섹션: 📖 새로 나온 논문 — 이 소식은 `## 📖 새로 나온 논문` 섹션에 표로 자동으로 실린다/,
+  );
+  assert.equal(listed.match(/자동으로 실린다/g)?.length, 1);
 
   const content =
     '## 🎓 학술\n\n[기사1](https://example.com/1)\n\n## 📑 사업·입찰 공고\n\n| 사업 |\n\n## 📌 마무리\n\n정리';
@@ -400,7 +429,7 @@ test('주입 권호는 모델 후보에서 빼서 사업·입찰 앞 표로 렌�
   assert.ok(saved);
   assert.deepEqual(
     saved.usedArticles.map((used) => used.id),
-    [1, 11, 10],
+    [1, 10, 11],
   );
   assert.ok(
     saved.newsletter.content.indexOf('## 📖 새로 나온 논문') <
