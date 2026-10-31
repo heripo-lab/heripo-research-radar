@@ -519,7 +519,7 @@ ${options.heripolabNewsMarkdown}
                 : ''
             }
 
-            {{NEWSLETTER_CONTENT}}
+            <div data-research-radar-body="">{{NEWSLETTER_CONTENT}}</div>
 
             ${
               options?.journalIssuesMarkdown

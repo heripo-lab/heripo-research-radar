@@ -197,13 +197,23 @@ export function journalIssueLinks(issues: JournalIssue[]): Set<string> {
 const TABLE_SEPARATOR = /^\s*\|?\s*:?-{3,}/;
 
 /**
+ * The briefing heading the prompt asks for in both modes (`📮 {date} 브리핑`).
+ * Matching its text, not its position, keeps the guard off the briefing when
+ * an H1 title precedes it or the template puts notices before the body.
+ */
+function isBriefingHeading(text: string): boolean {
+  return /브리핑\s*$/.test(text.replace(/\s+/g, ' ').trim());
+}
+
+/**
  * Removes body lines the model wrote about the injected issues.
  *
  * The prompt keeps those issues out of the body sections, since the rendered
- * table stands for them; this is the deterministic guard behind it. The first
- * section (the briefing) may name them like any other news and is left alone.
- * Elsewhere every line linking an issue or one of its papers is dropped, then
- * table headers left without rows and headings left without content.
+ * table stands for them; this is the deterministic guard behind it. The
+ * briefing, and anything before the first section, may name them like any
+ * other news and is left alone. Elsewhere every line linking an issue or one
+ * of its papers is dropped, then table headers left without rows and headings
+ * left without content.
  */
 export function removeJournalIssueMentionsMarkdown(
   content: string,
@@ -214,10 +224,11 @@ export function removeJournalIssueMentionsMarkdown(
     [...line.matchAll(/\]\(([^)\s]+)\)|(https?:\/\/[^\s)<>|]+)/g)].some(
       (match) => links.has(normalizeLink(match[1] ?? match[2])),
     );
-  const sections = content.split(/(?=^## )/m);
   let removed = 0;
-  const kept = sections.map((section, index) => {
-    if (index === 0 || (index === 1 && !sections[0].trim())) return section;
+  const kept = content.split(/(?=^## )/m).map((section) => {
+    const [heading] = section.split('\n', 1);
+    if (!heading.startsWith('## ') || isBriefingHeading(heading.slice(3)))
+      return section;
     const lines = section.split('\n');
     const filtered = lines.filter(
       (line, lineIndex) => lineIndex === 0 || !mentions(line),
@@ -245,21 +256,31 @@ export function removeJournalIssueMentionsMarkdown(
 /**
  * HTML counterpart of {@link removeJournalIssueMentionsMarkdown}, applied to the
  * body core rendered before the journal section is inserted.
+ *
+ * Only the model's body (`data-research-radar-body`) is searched, so notices
+ * the template adds before or after it are never touched. Within it the
+ * guarded sections start at the heading after the briefing, or at the first
+ * heading when there is no briefing heading.
  */
 export function removeJournalIssueMentionsHtml(
   document: Document,
   links: Set<string>,
 ): number {
-  const headings = [...document.querySelectorAll('h2')];
-  const afterBriefing = headings[1];
-  if (links.size === 0 || !afterBriefing) return 0;
+  const body = document.querySelector('[data-research-radar-body]');
+  if (links.size === 0 || !body) return 0;
+  const headings = [...body.querySelectorAll('h2')];
+  const briefing = headings.findIndex((heading) =>
+    isBriefingHeading(heading.textContent ?? ''),
+  );
+  const guarded = headings.slice(briefing + 1);
+  const start = guarded[0];
+  if (!start) return 0;
   const touched = new Set<Element>();
-  for (const anchor of document.querySelectorAll('a[href]')) {
+  for (const anchor of body.querySelectorAll('a[href]')) {
     if (!links.has(normalizeLink(anchor.getAttribute('href') ?? ''))) continue;
-    // Only the body sections; the briefing precedes the second heading.
-    if (!(afterBriefing.compareDocumentPosition(anchor) & FOLLOWING)) continue;
+    if (!(start.compareDocumentPosition(anchor) & FOLLOWING)) continue;
     const block = anchor.closest('tr, li, p');
-    if (block) touched.add(block);
+    if (block && body.contains(block)) touched.add(block);
   }
   const containers = new Set<Element>();
   for (const block of touched) {
@@ -276,15 +297,9 @@ export function removeJournalIssueMentionsHtml(
       container.remove();
   // A heading whose section is now empty goes, with the rule before it.
   if (touched.size > 0)
-    for (const heading of headings.slice(1)) {
+    for (const heading of guarded) {
       const next = heading.nextElementSibling;
-      if (
-        next &&
-        next.tagName !== 'H2' &&
-        next.tagName !== 'HR' &&
-        !next.hasAttribute('data-research-radar-closing')
-      )
-        continue;
+      if (next && next.tagName !== 'H2' && next.tagName !== 'HR') continue;
       const rule = heading.previousElementSibling;
       if (rule?.tagName === 'HR') rule.remove();
       heading.remove();

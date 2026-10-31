@@ -474,11 +474,7 @@ test('권호를 불러오지 못하면 모든 학술지 기사를 모델에게 �
 test('모델이 본문 섹션에 쓴 권호·논문 줄은 지우고 브리핑의 언급은 남긴다', () => {
   const links = journalIssueLinks([issue]);
   const toc = issue.url.replace('&', '&amp;');
-  const markdown = [
-    `## 📮 브리핑`,
-    ``,
-    `오늘은 [한국고고학보 제3호](${issue.url})가 나왔습니다.`,
-    ``,
+  const body = [
     `## 🎓 학술대회·학술행사`,
     ``,
     `[학술대회](https://example.com/1) 안내입니다.`,
@@ -493,34 +489,57 @@ test('모델이 본문 섹션에 쓴 권호·논문 줄은 지우고 브리핑�
     `## 📌 마무리`,
     ``,
     `정리`,
-  ].join('\n');
-  const result = removeJournalIssueMentionsMarkdown(markdown, links);
-  assert.equal(result.removed, 2);
-  assert.match(result.content, /오늘은 \[한국고고학보 제3호\]/);
-  assert.match(result.content, /\[학술대회\]\(https:\/\/example\.com\/1\)/);
-  assert.doesNotMatch(result.content, /발간 소식입니다/);
-  // 표 행이 모두 빠진 섹션은 제목과 표 머리까지 지운다.
-  assert.doesNotMatch(result.content, /학술지 소식|\| 논문 \| 저자 \|/);
-  assert.match(result.content, /## 📌 마무리\n\n정리$/);
-  assert.deepEqual(removeJournalIssueMentionsMarkdown(markdown, new Set()), {
-    content: markdown,
+  ];
+  const briefing = [
+    `## 📮 2026년 10월 31일 브리핑`,
+    ``,
+    `오늘은 [한국고고학보 제3호](${issue.url})가 나왔습니다.`,
+    ``,
+  ];
+  // KRAS 모드는 브리핑으로, 일반 모드는 H1 머리말 다음 브리핑으로 시작한다.
+  for (const opening of [[], ['# 2026년 10월 31일 문화유산 소식', '']]) {
+    const markdown = [...opening, ...briefing, ...body].join('\n');
+    const result = removeJournalIssueMentionsMarkdown(markdown, links);
+    assert.equal(result.removed, 2);
+    assert.match(result.content, /오늘은 \[한국고고학보 제3호\]/);
+    assert.match(result.content, /## 📮 2026년 10월 31일 브리핑/);
+    assert.match(result.content, /\[학술대회\]\(https:\/\/example\.com\/1\)/);
+    assert.doesNotMatch(result.content, /발간 소식입니다/);
+    // 표 행이 모두 빠진 섹션은 제목과 표 머리까지 지운다.
+    assert.doesNotMatch(result.content, /학술지 소식|\| 논문 \| 저자 \|/);
+    assert.match(result.content, /## 📌 마무리\n\n정리$/);
+  }
+  const plain = [...briefing, ...body].join('\n');
+  assert.deepEqual(removeJournalIssueMentionsMarkdown(plain, new Set()), {
+    content: plain,
     removed: 0,
   });
 
+  // 템플릿이 본문 앞뒤에 넣는 공지는 건드리지 않는다.
   const { document } = new JSDOM(
-    `<hr><h2>📮 브리핑</h2><p>오늘은 <a href="${toc}">한국고고학보</a></p>` +
+    `<h2>학회 소식</h2><p><a href="${toc}">공지 속 권호</a></p>` +
+      `<h2>heripo lab 소식</h2><p>소식</p>` +
+      `<div data-research-radar-body="">` +
+      `<h1>2026년 10월 31일 문화유산 소식</h1>` +
+      `<hr><h2>📮 2026년 10월 31일 브리핑</h2><p>오늘은 <a href="${toc}">한국고고학보</a></p>` +
       `<hr><h2>🎓 학술대회·학술행사</h2><p><a href="https://example.com/1">학술대회</a></p><p><a href="${toc}">발간</a></p>` +
       `<hr><h2>📚 학술지 소식</h2><table><thead><tr><th>논문</th></tr></thead><tbody><tr><td><a href="${issue.papers[0].url}">논문</a></td></tr></tbody></table>` +
-      `<hr><h2>📌 마무리</h2><p>정리</p><div data-research-radar-closing=""></div>`,
+      `<hr><h2>📌 마무리</h2><p>정리</p>` +
+      `</div>` +
+      `<div data-research-radar-closing=""></div>` +
+      `<h2>학회 안내</h2><p><a href="${toc}">안내 속 권호</a></p>`,
   ).window;
   assert.equal(removeJournalIssueMentionsHtml(document, links), 2);
-  assert.deepEqual(
-    [...document.body.children].map(
+  const describe = (parent: Element) =>
+    [...parent.children].map(
       (element) => `${element.tagName.toLowerCase()}:${element.textContent}`,
-    ),
+    );
+  assert.deepEqual(
+    describe(document.querySelector('[data-research-radar-body]')!),
     [
+      'h1:2026년 10월 31일 문화유산 소식',
       'hr:',
-      'h2:📮 브리핑',
+      'h2:📮 2026년 10월 31일 브리핑',
       'p:오늘은 한국고고학보',
       'hr:',
       'h2:🎓 학술대회·학술행사',
@@ -528,7 +547,14 @@ test('모델이 본문 섹션에 쓴 권호·논문 줄은 지우고 브리핑�
       'hr:',
       'h2:📌 마무리',
       'p:정리',
-      'div:',
     ],
   );
+  assert.match(document.body.textContent ?? '', /공지 속 권호/);
+  assert.match(document.body.textContent ?? '', /안내 속 권호/);
+
+  // 본문 영역이 없는 문서는 손대지 않는다.
+  const { document: bare } = new JSDOM(
+    `<h2>📮 브리핑</h2><h2>🎓 학술</h2><p><a href="${toc}">발간</a></p>`,
+  ).window;
+  assert.equal(removeJournalIssueMentionsHtml(bare, links), 0);
 });
