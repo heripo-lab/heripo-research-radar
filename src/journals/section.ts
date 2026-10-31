@@ -154,6 +154,10 @@ export function insertJournalIssueMarkdown(
 /**
  * Inserts the rendered section before the first anchor `<h2>` found, or before
  * `fallback` (the closing block) when neither heading is present.
+ *
+ * The body separates its sections with an `<hr>` before each heading. That
+ * rule stays above the journal section, so the same rule is repeated between
+ * the section and the heading it was placed before.
  */
 export function insertJournalIssueHtml(
   document: Document,
@@ -161,14 +165,14 @@ export function insertJournalIssueHtml(
   fallback: Element,
 ): void {
   const headings = [...document.querySelectorAll('h2')];
-  for (const anchor of JOURNAL_ISSUE_SECTION_ANCHORS) {
-    const heading = headings.find(
-      (element) => element.textContent?.replace(/\s+/g, ' ').trim() === anchor,
-    );
-    if (heading) {
-      heading.before(section);
-      return;
-    }
-  }
-  fallback.before(section);
+  const target =
+    JOURNAL_ISSUE_SECTION_ANCHORS.map((anchor) =>
+      headings.find(
+        (element) =>
+          element.textContent?.replace(/\s+/g, ' ').trim() === anchor,
+      ),
+    ).find((heading) => heading !== undefined) ?? fallback;
+  const rule = target.previousElementSibling;
+  target.before(section);
+  if (rule?.tagName === 'HR') target.before(rule.cloneNode(true));
 }

@@ -12,6 +12,7 @@ import { test } from 'node:test';
 
 import { createJournalIssueLoader } from '../src/journals/loader';
 import {
+  insertJournalIssueHtml,
   insertJournalIssueMarkdown,
   renderJournalIssueSection,
 } from '../src/journals/section';
@@ -215,6 +216,39 @@ test('섹션은 학술대회 뒤 발굴조사보고서 앞에 넣고, 그 분류
     '📖 새로 나온 논문',
     '📌 마무리',
   ]);
+});
+
+test('HTML 섹션은 다음 섹션과의 사이에도 구분선을 둔다', () => {
+  const { document } = new JSDOM(
+    '<p>학술</p><hr class="rule"><h2>📋 발굴조사보고서 (신규 제출)</h2><p>보고서</p><div id="closing"></div>',
+  ).window;
+  const section = document.createElement('div');
+  section.id = 'journals';
+  insertJournalIssueHtml(
+    document,
+    section,
+    document.querySelector('#closing')!,
+  );
+  assert.deepEqual(
+    [...document.body.children].map((element) =>
+      element.id ? `#${element.id}` : element.tagName.toLowerCase(),
+    ),
+    ['p', 'hr', '#journals', 'hr', 'h2', 'p', '#closing'],
+  );
+  assert.equal(document.querySelectorAll('hr.rule').length, 2);
+
+  // 기준 제목이 없으면 마무리 블록 앞에 넣고, 앞에 구분선이 없으면 더하지 않는다.
+  const { document: bare } = new JSDOM('<p>본문</p><div id="closing"></div>')
+    .window;
+  const fallback = bare.createElement('div');
+  fallback.id = 'journals';
+  insertJournalIssueHtml(bare, fallback, bare.querySelector('#closing')!);
+  assert.deepEqual(
+    [...bare.body.children].map((element) =>
+      element.id ? `#${element.id}` : element.tagName.toLowerCase(),
+    ),
+    ['p', '#journals', '#closing'],
+  );
 });
 
 test('섹션은 사업·입찰 앞, 없으면 마무리 앞, 둘 다 없으면 끝에 넣는다', () => {
