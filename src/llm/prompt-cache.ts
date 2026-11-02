@@ -42,11 +42,18 @@ const EPHEMERAL = { type: 'ephemeral' } as const;
  * Wrapping is unconditional on purpose. `providerOptions` is namespaced, so
  * OpenAI and Google ignore the Anthropic key, and an application that injects
  * its own `LanguageModel` into any slot gets the same treatment without having
- * to know which provider this package expected. Anthropic will not cache a
- * block below its own minimum (1,024 tokens, 2,048 on the small models) and
- * says so by simply not reporting a cache write — it is not an error, so no
- * length check is made here. In practice the scoring and generation prompts
- * clear it comfortably and the 나라장터 triage prompt does not.
+ * to know which provider this package expected.
+ *
+ * Anthropic will not cache a block below a minimum length, and that minimum is
+ * **per model** — published figures differ by several times between the small
+ * and large models, so do not hard-code one here or reason from a remembered
+ * number. A block under it is processed without caching rather than rejected,
+ * which is why no length check is made: a breakpoint that cannot fire costs
+ * nothing, and a length check against the wrong number would disable one that
+ * could. The rendered scoring prompt is around 5,200 characters and the
+ * 나라장터 triage prompt is 832; whether either clears the configured model's
+ * minimum is answered by `cacheWrite` in the reported usage, not by this
+ * comment.
  */
 export const withPromptCaching = (
   model: LanguageModel,
