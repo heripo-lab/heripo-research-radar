@@ -365,8 +365,14 @@ export interface NewsletterRepository {
  * stale rather than wrong: prune anything older than a few days.
  *
  * A run asks for about 2,100 keys at once, which is past what some clients will
- * put in a URL — chunk `load`, or send it as a request body. Neither call is
- * allowed to fail the crawl: an error is reported and the run judges normally.
+ * put in a URL — chunk `load`, or send it as a request body. Chunk it in
+ * parallel: `load` has roughly two seconds before the crawl stops waiting for
+ * it and judges the window itself, and a lookup that misses that deadline once
+ * is not consulted again for the rest of the run. A late answer is still used
+ * if it arrives, so a slow lookup costs time rather than correctness.
+ *
+ * Neither call is allowed to fail the crawl: an error is reported and the run
+ * judges normally.
  */
 export interface HeritageBidVerdictStore {
   /**

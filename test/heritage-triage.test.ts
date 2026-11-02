@@ -284,3 +284,75 @@ test('an empty index list stays a real verdict and is persisted', async () => {
   assert.deepEqual(fallbacks, []);
   assert.equal(rows.size, candidates.length);
 });
+
+/** A store whose lookup never answers, counting the attempts. */
+function stallingStore() {
+  const state = { loads: 0 };
+  const store: HeritageBidVerdictStore = {
+    load: () => {
+      state.loads += 1;
+      return new Promise(() => undefined);
+    },
+    save: () => Promise.resolve(),
+  };
+
+  return { state, store };
+}
+
+test('a stalled lookup does not take the crawl with it', async () => {
+  // Core aborts the crawl fetch at 10 seconds by calling `abort()` and never
+  // races the fetch promise, so a `load()` that simply never settles would
+  // hang the whole run — an optional cache stopping a crawl that does not
+  // need it.
+  const errors: [string, string][] = [];
+  const { state, store } = stallingStore();
+  const { model, state: llm } = openAiModel('{"keep":[0,2]}');
+  const triage = createHeritageBidTriage({
+    model,
+    store,
+    storeLoadTimeoutMs: 20,
+    onStoreError: (reason, operation) => errors.push([operation, reason]),
+  });
+
+  assert.deepEqual(await triage(candidates), KEPT);
+  assert.equal(llm.calls, 1, 'the window was judged rather than skipped');
+  assert.equal(errors.length, 1);
+  assert.equal(errors[0][0], 'load');
+
+  // Core retries the fetch up to five times. Asking a store that has already
+  // stalled would spend the budget again on every one of them.
+  const again = createHeritageBidTriage({
+    model,
+    store,
+    storeLoadTimeoutMs: 20,
+  });
+
+  await again(candidates);
+  assert.equal(state.loads, 2, 'a fresh instance may try once');
+
+  await triage([{ institution: '군산시', title: '군산 동국사 대웅전 보수' }]);
+  assert.equal(state.loads, 2, 'the stalled instance stopped asking');
+});
+
+test('an abort while the lookup stalls cancels instead of judging', async () => {
+  // Returning a verdict now would hand back a result nobody is waiting for
+  // while the model calls keep running and bill again on the next attempt.
+  const errors: string[] = [];
+  const { store } = stallingStore();
+  const { model, state: llm } = openAiModel('{"keep":[0,2]}');
+  const controller = new AbortController();
+  const triage = createHeritageBidTriage({
+    model,
+    store,
+    storeLoadTimeoutMs: 10_000,
+    onStoreError: (reason) => errors.push(reason),
+  });
+
+  const running = triage(candidates, controller.signal);
+
+  controller.abort(new Error('timeout after 10000ms'));
+
+  await assert.rejects(running, /timeout after 10000ms/);
+  assert.equal(llm.calls, 0, 'nothing was sent to the model');
+  assert.deepEqual(errors, [], 'an abort is not a store failure');
+});

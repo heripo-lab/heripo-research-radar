@@ -50,6 +50,13 @@ export type HeritageBidTriageOptions = {
    * Omit it and that half is judged again.
    */
   store?: HeritageBidVerdictStore;
+  /**
+   * How long {@link HeritageBidVerdictStore.load} may hold the crawl up.
+   *
+   * @internal A seam for the tests; production uses the default.
+   * @default 2000
+   */
+  storeLoadTimeoutMs?: number;
   /** Reports a batch that fell back to {@link isHeritageBidCandidate}. */
   onFallback?: (reason: string, batchSize: number) => void;
   /** Reports a store call that failed; the run then judges normally. */
@@ -72,6 +79,26 @@ export type HeritageBidTriageStats = {
 
 const DEFAULT_BATCH_SIZE = 100;
 const DEFAULT_CONCURRENCY = 24;
+
+/**
+ * How long a store lookup may hold the crawl up.
+ *
+ * The store is optional and the crawl is not, so a lookup that stalls must not
+ * take the run with it. Core aborts the crawl fetch at 10 seconds and only
+ * calls `abort()` — it does not race the fetch promise — so nothing outside
+ * this function will ever end a `load()` that simply never settles.
+ *
+ * Two seconds is the budget rather than a round number. The API collection in
+ * the same fetch takes about 5.8 seconds and triage's own wave 5 to 8, so a
+ * lookup costing more than about two turns the saving into a loss; and a limit
+ * much above four would let core's abort land first every time, which leaves
+ * the lookup looking fine and makes all five attempts pay the stall again. A
+ * lookup of some 2,100 keys should answer well inside a second.
+ */
+const DEFAULT_STORE_LOAD_TIMEOUT_MS = 2_000;
+
+/** A lookup that outlasted its budget, as distinct from one that failed. */
+const TIMED_OUT = Symbol('store.load timed out');
 
 /**
  * Asks for the indices to keep rather than a verdict per row.
@@ -335,6 +362,49 @@ async function triageBatch(
 }
 
 /**
+ * Waits for a store lookup, but not past what the crawl can afford.
+ *
+ * The lookup itself takes no `AbortSignal` — the interface is the
+ * application's to implement and keeping it to two plain methods is the point
+ * — so the budget is enforced here instead. An abort is rethrown rather than
+ * reported: core has stopped waiting, and the reasoning is the same as for a
+ * cancelled batch.
+ */
+async function loadWithinBudget(
+  load: Promise<ReadonlyMap<string, boolean>>,
+  timeoutMs: number,
+  signal: AbortSignal | undefined,
+): Promise<ReadonlyMap<string, boolean> | typeof TIMED_OUT> {
+  if (signal?.aborted) {
+    throw signal.reason;
+  }
+
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let onAbort: (() => void) | undefined;
+
+  try {
+    return await new Promise<ReadonlyMap<string, boolean> | typeof TIMED_OUT>(
+      (resolve, reject) => {
+        timer = setTimeout(() => resolve(TIMED_OUT), timeoutMs);
+
+        if (signal) {
+          onAbort = () => reject(signal.reason);
+          signal.addEventListener('abort', onAbort, { once: true });
+        }
+
+        load.then(resolve, reject);
+      },
+    );
+  } finally {
+    clearTimeout(timer);
+
+    if (onAbort) {
+      signal?.removeEventListener('abort', onAbort);
+    }
+  }
+}
+
+/**
  * Identifies what the verdicts in a store were made by.
  *
  * A verdict is only reusable while the thing that produced it is unchanged, so
@@ -396,6 +466,7 @@ export const createHeritageBidTriage = (
     batchSize = DEFAULT_BATCH_SIZE,
     concurrency = DEFAULT_CONCURRENCY,
     store,
+    storeLoadTimeoutMs = DEFAULT_STORE_LOAD_TIMEOUT_MS,
     onStoreError,
     onCacheStats,
   } = options;
@@ -414,6 +485,14 @@ export const createHeritageBidTriage = (
   const verdicts = new Map<string, boolean>();
   /** Model verdicts this process has not handed to the store yet. */
   const unsaved = new Set<string>();
+  /**
+   * Set once a lookup has outlasted its budget.
+   *
+   * Core retries the crawl fetch up to five times, so a store that stalls
+   * would otherwise cost the full budget on every one of them. One stall is
+   * enough to conclude the store is not helping this run.
+   */
+  let storeLookupDisabled = false;
 
   return async (candidates, signal) => {
     if (candidates.length === 0) {
@@ -425,7 +504,7 @@ export const createHeritageBidTriage = (
       verdicts.has(keys.get(c)!),
     ).length;
 
-    if (store) {
+    if (store && !storeLookupDisabled) {
       const missing = [
         ...new Set(
           candidates
@@ -435,15 +514,50 @@ export const createHeritageBidTriage = (
       ];
 
       if (missing.length > 0) {
+        // The lookup keeps its own promise even when the wait below gives up
+        // on it, so a store that is merely slow still fills the cache for
+        // core's next attempt. A verdict the model has made since is the
+        // fresher of the two and is left alone.
+        const loading = store.load(missing).then((rows) => {
+          for (const [key, verdict] of rows) {
+            if (!verdicts.has(key)) {
+              verdicts.set(key, verdict);
+            }
+          }
+
+          return rows;
+        });
+
+        // A rejection that lands after the wait gave up is reported there, not
+        // here; this only keeps it from going unhandled.
+        loading.catch(() => undefined);
+
         try {
           // Awaited, unlike the write: the whole point is to judge less, and a
           // verdict that arrives after the batches are built saves nothing.
-          for (const [key, verdict] of await store.load(missing)) {
-            verdicts.set(key, verdict);
+          const loaded = await loadWithinBudget(
+            loading,
+            storeLoadTimeoutMs,
+            signal,
+          );
+
+          if (loaded === TIMED_OUT) {
+            storeLookupDisabled = true;
+
+            onStoreError?.(
+              `load did not answer within ${storeLoadTimeoutMs}ms`,
+              'load',
+            );
           }
         } catch (error) {
+          // A cancelled crawl must propagate; core has already given up.
+          if (signal?.aborted) {
+            throw error;
+          }
+
           // A store that is down must not stop the crawl; the run simply pays
-          // for what it could not read.
+          // for what it could not read. A rejection is cheap, so unlike a
+          // stall it does not take the store out of the run.
           onStoreError?.(
             error instanceof Error ? error.message : String(error),
             'load',
