@@ -1,4 +1,10 @@
-import { type LanguageModel, Output, generateText, jsonSchema } from 'ai';
+import {
+  type LanguageModel,
+  NoObjectGeneratedError,
+  Output,
+  generateText,
+  jsonSchema,
+} from 'ai';
 
 import {
   type HeritageBidCandidate,
@@ -120,6 +126,65 @@ function buildUserPrompt(candidates: HeritageBidCandidate[]): string {
   return `다음 ${candidates.length}건 중 국가유산 업무와 관련될 가능성이 있는 공고의 번호만 골라라.\n\n${lines.join('\n')}`;
 }
 
+/**
+ * Reads the index list out of whatever shape the response arrived in.
+ *
+ * The output spec parses JSON but does not enforce the schema, so a model that
+ * answers with the bare `[0, 2]` instead of `{"keep": [0, 2]}` reaches us as a
+ * perfectly valid result whose `.keep` is `undefined`. Both shapes mean the
+ * same thing and both are accepted.
+ */
+function readKeep(value: unknown): number[] | undefined {
+  const keep = Array.isArray(value)
+    ? value
+    : ((value ?? undefined) as { keep?: unknown } | undefined)?.keep;
+
+  return Array.isArray(keep)
+    ? keep.filter((index): index is number => typeof index === 'number')
+    : undefined;
+}
+
+/**
+ * Recovers the index list from a response the output spec could not parse.
+ *
+ * Structured output is not uniform across providers: a model may fence its
+ * JSON, or — where the provider has no native schema support and the JSON tool
+ * was declined — answer in plain text. Falling straight back to
+ * {@link isHeritageBidCandidate} in those cases would quietly reinstate the
+ * regex this stage exists to replace, so the response is given one honest
+ * second reading first.
+ *
+ * Only parsed JSON counts. Scraping integers out of prose would read
+ * "100건 중 3번과 15번" as keeping rows 100, 3 and 15, which looks like a
+ * verdict and is not one.
+ */
+function salvageKeep(text: string | undefined): number[] | undefined {
+  if (!text) {
+    return undefined;
+  }
+
+  const unfenced = text
+    .replace(/^\s*```(?:json)?\s*/i, '')
+    .replace(/\s*```\s*$/, '');
+  const start = unfenced.search(/[[{]/);
+
+  if (start === -1) {
+    return undefined;
+  }
+
+  const end = unfenced.lastIndexOf(unfenced[start] === '[' ? ']' : '}');
+
+  if (end <= start) {
+    return undefined;
+  }
+
+  try {
+    return readKeep(JSON.parse(unfenced.slice(start, end + 1)));
+  } catch {
+    return undefined;
+  }
+}
+
 /** Applies the deterministic filter, which is what triage falls back to. */
 function deterministicVerdicts(candidates: HeritageBidCandidate[]): boolean[] {
   return candidates.map((candidate) => isHeritageBidCandidate(candidate));
@@ -130,34 +195,34 @@ async function triageBatch(
   { model, onFallback }: HeritageBidTriageOptions,
   signal?: AbortSignal,
 ): Promise<boolean[]> {
+  let keep: number[] | undefined;
+
   try {
-    const { output } = await generateText({
+    const result = await generateText({
       model,
       output: Output.object({ schema: KEEP_SCHEMA }),
       system: SYSTEM_PROMPT,
       prompt: buildUserPrompt(candidates),
       abortSignal: signal,
+      // The mode core settled on after Anthropic truncated structured output
+      // containing quotation marks. This schema holds only integers, but the
+      // JSON tool is the path Claude is known to answer reliably, and other
+      // providers ignore the key.
+      providerOptions: { anthropic: { structuredOutputMode: 'jsonTool' } },
     });
 
-    const verdicts = new Array<boolean>(candidates.length).fill(false);
-    let usable = false;
+    let output: unknown;
 
-    for (const index of output.keep) {
-      if (Number.isInteger(index) && index >= 0 && index < candidates.length) {
-        verdicts[index] = true;
-        usable = true;
-      }
+    try {
+      output = result.output;
+    } catch {
+      // `output` is a getter, and it throws when the step produced nothing the
+      // spec could read at all — a provider that answered with a tool call, or
+      // with no text. The raw text is still on the result either way.
+      output = undefined;
     }
 
-    // An empty selection is a legitimate answer for a batch of road works, but
-    // a selection that is entirely out of range is a malformed response wearing
-    // the right shape, and it must not read as "reject everything".
-    if (!usable && output.keep.length > 0) {
-      onFallback?.('every returned index was out of range', candidates.length);
-      return deterministicVerdicts(candidates);
-    }
-
-    return verdicts;
+    keep = readKeep(output) ?? salvageKeep(result.text);
   } catch (error) {
     // A cancelled crawl must fail the fetch, not quietly answer from the regex:
     // core has already given up on this attempt, and returning a list now would
@@ -167,13 +232,48 @@ async function triageBatch(
       throw error;
     }
 
-    onFallback?.(
-      error instanceof Error ? error.message : String(error),
-      candidates.length,
-    );
+    // Other providers reject inside `generateText` instead, carrying the raw
+    // text on the error rather than on a result.
+    keep = NoObjectGeneratedError.isInstance(error)
+      ? salvageKeep(error.text)
+      : undefined;
+
+    if (keep === undefined) {
+      onFallback?.(
+        error instanceof Error ? error.message : String(error),
+        candidates.length,
+      );
+
+      return deterministicVerdicts(candidates);
+    }
+  }
+
+  if (keep === undefined) {
+    onFallback?.('the response held no readable index list', candidates.length);
 
     return deterministicVerdicts(candidates);
   }
+
+  const verdicts = new Array<boolean>(candidates.length).fill(false);
+  let usable = false;
+
+  for (const index of keep) {
+    if (Number.isInteger(index) && index >= 0 && index < candidates.length) {
+      verdicts[index] = true;
+      usable = true;
+    }
+  }
+
+  // An empty selection is a legitimate answer for a batch of road works, but
+  // a selection that is entirely out of range is a malformed response wearing
+  // the right shape, and it must not read as "reject everything".
+  if (!usable && keep.length > 0) {
+    onFallback?.('every returned index was out of range', candidates.length);
+
+    return deterministicVerdicts(candidates);
+  }
+
+  return verdicts;
 }
 
 /**
