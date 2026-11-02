@@ -192,6 +192,40 @@ test('every stage marks its instruction block for the Anthropic cache', async ()
       type: 'ephemeral',
     });
   }
+
+  // A model named through `extractDeadlineOptions` does not go through
+  // `resolveModel`, so it was the one stage the wrapper missed.
+  const deadline = new MockLanguageModelV4({
+    modelId: 'deadline',
+    doGenerate: {
+      content: [],
+      finishReason: { unified: 'stop' as const, raw: undefined },
+      usage: {
+        inputTokens: { total: 1, noCache: 1, cacheRead: 0, cacheWrite: 0 },
+        outputTokens: { total: 1, text: 1, reasoning: 0 },
+      },
+      warnings: [],
+    },
+  });
+
+  await configure({ extractDeadlineOptions: { model: deadline } });
+
+  const resolved = captured.analysisProvider.extractDeadlineOptions?.model;
+  if (!resolved || typeof resolved === 'string')
+    throw new Error('Unresolved model ID');
+
+  await resolved.doGenerate({
+    prompt: [
+      { role: 'system', content: 'instructions' },
+      { role: 'user', content: [{ type: 'text', text: 'article' }] },
+    ],
+  });
+
+  assert.deepEqual(
+    deadline.doGenerateCalls.at(-1)!.prompt[0].providerOptions?.anthropic
+      ?.cacheControl,
+    { type: 'ephemeral' },
+  );
 });
 
 test('omitted, empty and explicitly undefined configuration retain all defaults', async () => {

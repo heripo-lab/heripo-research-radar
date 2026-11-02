@@ -328,12 +328,18 @@ function createNewsletterGenerator(
       classifyTags: resolveModel('classifyTags'),
       analyzeImages: resolveModel('analyzeImages'),
       determineImportance: resolveModel('determineImportance'),
+      // Cached like every other stage: core sends this one a long instruction
+      // too, and a model named here would otherwise be the one place a Claude
+      // model pays full price for it on every article.
       extractDeadlines: dependencies.extractDeadlineOptions
         ? dependencies.extractDeadlineOptions.model === undefined
           ? resolveModel('determineImportance')
-          : typeof dependencies.extractDeadlineOptions.model === 'string'
-            ? openai(dependencies.extractDeadlineOptions.model)
-            : dependencies.extractDeadlineOptions.model
+          : cached(
+              typeof dependencies.extractDeadlineOptions.model === 'string'
+                ? openai(dependencies.extractDeadlineOptions.model)
+                : dependencies.extractDeadlineOptions.model,
+              'extractDeadlines',
+            )
         : undefined,
       includeEvents: dependencies.extractDeadlineOptions?.includeEvents,
     },
