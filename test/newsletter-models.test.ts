@@ -95,6 +95,22 @@ async function configure(
   };
 }
 
+/**
+ * Asserts a stage received the model it was given.
+ *
+ * Every resolved model is wrapped for prompt caching, so the object is no
+ * longer the one that went in. `wrapLanguageModel` keeps the provider and model
+ * id, which is what "the injected model reaches this stage" actually means;
+ * that the wrapper is there is asserted separately below.
+ */
+function assertSameModel(actual: LanguageModel, expected: LanguageModel) {
+  assert.equal(typeof actual, 'object');
+  if (typeof actual === 'string' || typeof expected === 'string')
+    throw new Error('Unresolved model ID');
+  assert.equal(actual.provider, expected.provider);
+  assert.equal(actual.modelId, expected.modelId);
+}
+
 function assertOpenAI(model: LanguageModel, modelId: string) {
   assert.equal(typeof model, 'object');
   if (typeof model === 'string') throw new Error('Unresolved model ID');
@@ -116,7 +132,7 @@ test('string overrides resolve to OpenAI models at all five stages', async () =>
   for (const stage of stages) assertOpenAI(actual[stage], ids[stage]);
 });
 
-test('provider objects and current SDK mocks retain identity at all five stages', async () => {
+test('provider objects and current SDK mocks reach all five stages intact', async () => {
   const anthropic = createAnthropic({ apiKey: 'test-anthropic-key' });
   const google = createGoogleGenerativeAI({ apiKey: 'test-google-key' });
   const openai = createOpenAI({ apiKey: 'test-openai-key' });
@@ -131,7 +147,51 @@ test('provider objects and current SDK mocks retain identity at all five stages'
     generateNewsletter: anthropic('newsletter'),
   };
   const actual = await configure({ models });
-  for (const stage of stages) assert.strictEqual(actual[stage], models[stage]);
+  for (const stage of stages) assertSameModel(actual[stage], models[stage]);
+});
+
+test('every stage marks its instruction block for the Anthropic cache', async () => {
+  // Core sends each stage's long instruction as a system message ahead of the
+  // article. OpenAI caches that prefix on its own; Anthropic caches nothing
+  // without the breakpoint, so a stage that loses the wrapper pays full price
+  // on Claude for every article and nothing fails loudly.
+  const mocks = Object.fromEntries(
+    stages.map((stage) => [
+      stage,
+      new MockLanguageModelV4({
+        modelId: stage,
+        doGenerate: {
+          content: [],
+          finishReason: { unified: 'stop' as const, raw: undefined },
+          usage: {
+            inputTokens: { total: 1, noCache: 1, cacheRead: 0, cacheWrite: 0 },
+            outputTokens: { total: 1, text: 1, reasoning: 0 },
+          },
+          warnings: [],
+        },
+      }),
+    ]),
+  ) as Record<keyof NewsletterModelConfig, MockLanguageModelV4>;
+
+  const actual = await configure({ models: mocks });
+
+  for (const stage of stages) {
+    const resolved = actual[stage];
+    if (typeof resolved === 'string') throw new Error('Unresolved model ID');
+
+    await resolved.doGenerate({
+      prompt: [
+        { role: 'system', content: 'instructions' },
+        { role: 'user', content: [{ type: 'text', text: 'article' }] },
+      ],
+    });
+
+    const [system] = mocks[stage].doGenerateCalls.at(-1)!.prompt;
+
+    assert.deepEqual(system.providerOptions?.anthropic?.cacheControl, {
+      type: 'ephemeral',
+    });
+  }
 });
 
 test('omitted, empty and explicitly undefined configuration retain all defaults', async () => {
@@ -149,7 +209,7 @@ test('omitted, empty and explicitly undefined configuration retain all defaults'
 test('partial configuration overrides only its selected stage', async () => {
   const model = new MockLanguageModelV4();
   const actual = await configure({ models: { classifyTags: model } });
-  assert.strictEqual(actual.classifyTags, model);
+  assertSameModel(actual.classifyTags, model);
   for (const stage of stages.filter((stage) => stage !== 'classifyTags')) {
     assertOpenAI(actual[stage], llmConfig.models[stage]);
   }
@@ -200,7 +260,7 @@ for (const provider of ['openai', 'anthropic', 'google'] as const) {
       });
       if (typeof generateNewsletter === 'string')
         assertOpenAI(actual.generateNewsletter, generateNewsletter);
-      else assert.strictEqual(actual.generateNewsletter, model);
+      else assertSameModel(actual.generateNewsletter, model);
     }
   });
 }
@@ -235,12 +295,12 @@ test('deadline extraction is opt in and resolves its model independently', async
     models: { determineImportance: importance },
     extractDeadlineOptions: {},
   });
-  assert.strictEqual(deadlineModel(), importance);
+  assertSameModel(deadlineModel()!, importance);
   await configure({ extractDeadlineOptions: { model: 'deadline-model' } });
   assertOpenAI(deadlineModel()!, 'deadline-model');
   const deadline = new MockLanguageModelV4({ modelId: 'deadline' });
   await configure({ extractDeadlineOptions: { model: deadline } });
-  assert.strictEqual(deadlineModel(), deadline);
+  assertSameModel(deadlineModel()!, deadline);
 });
 
 test('event extraction opt-in reaches the core analysis provider', async () => {
