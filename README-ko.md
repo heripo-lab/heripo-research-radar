@@ -414,7 +414,7 @@ npm run lint               # 소스 파일 린트
 npm run lint:fix           # 린트 및 자동 수정
 npm run lint:ci            # CI용 quiet 린트
 npm run typecheck          # 소스와 테스트 TypeScript 타입 체크
-npm test                   # 외부 호출 없는 모델 설정 회귀 테스트
+npm test                   # 외부 호출 없는 회귀 테스트(모델 연결·입찰 선별·마감일·학술지)
 
 # 포맷팅
 npm run format             # src/ 코드 포맷

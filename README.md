@@ -430,7 +430,7 @@ npm run lint               # lint source files
 npm run lint:fix           # lint with autofix
 npm run lint:ci            # quiet CI lint
 npm run typecheck          # TypeScript type-check (source and tests)
-npm test                   # offline model configuration regression tests
+npm test                   # offline regression tests (model wiring, triage, deadlines, journals)
 
 # formatting
 npm run format             # format src/ with Prettier
