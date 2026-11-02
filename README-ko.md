@@ -318,6 +318,8 @@ await generateNewsletter({
 });
 ```
 
+여기서 결정된 모든 모델은 — `contentGeneration`으로 넘긴 것까지 — 프로바이더 프롬프트 캐시가 양쪽 모두에서 작동하도록 래핑됩니다. 각 단계의 긴 지시문은 기사보다 앞선 system 메시지로 전송되며, OpenAI는 이 프리픽스를 자동으로 캐시합니다. Anthropic은 명시적 브레이크포인트 없이는 아무것도 캐시하지 않으므로, 래퍼가 그 system 메시지에 `cache_control`을 표시합니다. `providerOptions`는 네임스페이스로 구분되어 OpenAI·Google 요청은 바뀌지 않습니다. Anthropic은 최소 길이 미만인 블록을 캐시하지 않으며, 이 최소값은 모델마다 다르고 소형과 대형 사이에 몇 배까지 차이가 납니다. 미달인 블록은 오류가 아니라 그냥 캐시 없이 처리되므로 길이 검사는 하지 않습니다. 어느 단계가 실제로 캐시되는지는 호출마다 `llm.prompt.cache` 로그 이벤트가 보고하는 캐시 읽기·쓰기 토큰으로 확인합니다.
+
 Anthropic·Google로 뉴스레터를 생성하는 기존 `contentGeneration: { provider, apiKey, model? }` 경로도 호환성을 위해 유지합니다. 두 설정을 함께 전달하면 `models.generateNewsletter`가 우선합니다. `models.generateNewsletter`를 생략하거나 `undefined`로 전달하면 기존 `contentGeneration`의 프로바이더·모델 선택을 사용합니다. 두 설정 모두 없으면 `llmConfig.models.generateNewsletter`를 사용합니다. 모든 단계에 모델 객체를 전달해도 `openAIApiKey`는 계속 필수입니다.
 
 [src/config/index.ts](./src/config/index.ts)에는 한국어 출력(`outputLanguage: '한국어'`), 문화유산 분야(`expertField: ['문화유산']`), 브랜드명, `subscribePageUrl`, LLM `maxRetries: 5`, 체인 `stopAfterAttempt: 3`, 생성 `temperature: 0.3`이 정의되어 있습니다. 발행 설정은 `minimumArticleCountForIssue: 5`, `priorityArticleScoreThreshold: 8`이며 core 엔진에서 판정합니다. 잠금 파일의 core 3.1.1 구현은 중요도 8 이상 기사가 없을 때 후보가 **5개 이하이면 생략**합니다. 후보가 없으면 항상 생략합니다.
