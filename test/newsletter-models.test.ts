@@ -228,6 +228,88 @@ test('every stage marks its instruction block for the Anthropic cache', async ()
   );
 });
 
+const cacheProbe = (modelId: string) =>
+  new MockLanguageModelV4({
+    modelId,
+    doGenerate: {
+      content: [],
+      finishReason: { unified: 'stop' as const, raw: undefined },
+      usage: {
+        inputTokens: { total: 1, noCache: 1, cacheRead: 0, cacheWrite: 0 },
+        outputTokens: { total: 1, text: 1, reasoning: 0 },
+      },
+      warnings: [],
+    },
+  });
+
+const cachePrompt = [
+  { role: 'system' as const, content: 'instructions' },
+  { role: 'user' as const, content: [{ type: 'text' as const, text: 'article' }] },
+];
+
+test('a GPT-5.6+ stage asks for explicit mode and marks the instruction block', async () => {
+  // GPT 5.6 and later default to implicit mode, which places the breakpoint at
+  // the end of the latest eligible message — the article. Writes cost 1.25× the
+  // uncached rate and the article differs every call, so that write is paid for
+  // and never read back. Explicit mode moves the breakpoint to the part that
+  // actually repeats.
+  const gpt = cacheProbe('gpt-6-sol');
+  const actual = await configure({ models: { determineImportance: gpt } });
+  const resolved = actual.determineImportance;
+  if (typeof resolved === 'string') throw new Error('Unresolved model ID');
+
+  await resolved.doGenerate({ prompt: cachePrompt });
+
+  const call = gpt.doGenerateCalls.at(-1)!;
+  assert.deepEqual(call.providerOptions?.openai?.promptCacheOptions, {
+    mode: 'explicit',
+  });
+  assert.deepEqual(call.prompt[0].providerOptions?.openai, {
+    promptCacheBreakpoint: { mode: 'explicit' },
+  });
+  // Marking the article as well would cache it and never hit twice.
+  assert.equal(call.prompt[1].providerOptions?.openai, undefined);
+});
+
+test('the OpenAI breakpoint is withheld where it would be rejected or overridden', async () => {
+  // Models before GPT-5.6 reject both fields outright, and a non-OpenAI model
+  // has no use for them — only the Anthropic marker is unconditional.
+  for (const modelId of ['gpt-4o', 'claude-sonnet-4-6', 'o3-mini']) {
+    const probe = cacheProbe(modelId);
+    const actual = await configure({ models: { classifyTags: probe } });
+    const resolved = actual.classifyTags;
+    if (typeof resolved === 'string') throw new Error('Unresolved model ID');
+
+    await resolved.doGenerate({ prompt: cachePrompt });
+
+    const call = probe.doGenerateCalls.at(-1)!;
+    assert.equal(call.providerOptions?.openai, undefined, modelId);
+    assert.equal(call.prompt[0].providerOptions?.openai, undefined, modelId);
+    assert.deepEqual(
+      call.prompt[0].providerOptions?.anthropic?.cacheControl,
+      { type: 'ephemeral' },
+      modelId,
+    );
+  }
+
+  // A caller that already chose a mode has decided this question itself.
+  const chosen = cacheProbe('gpt-6-luna');
+  const actual = await configure({ models: { classifyTags: chosen } });
+  const resolved = actual.classifyTags;
+  if (typeof resolved === 'string') throw new Error('Unresolved model ID');
+
+  await resolved.doGenerate({
+    prompt: cachePrompt,
+    providerOptions: { openai: { promptCacheOptions: { mode: 'implicit' } } },
+  });
+
+  const call = chosen.doGenerateCalls.at(-1)!;
+  assert.deepEqual(call.providerOptions?.openai?.promptCacheOptions, {
+    mode: 'implicit',
+  });
+  assert.equal(call.prompt[0].providerOptions?.openai, undefined);
+});
+
 test('omitted, empty and explicitly undefined configuration retain all defaults', async () => {
   for (const models of [
     undefined,
