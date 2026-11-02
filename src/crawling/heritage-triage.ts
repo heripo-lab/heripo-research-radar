@@ -1,4 +1,14 @@
-import { type LanguageModel, Output, generateText, jsonSchema } from 'ai';
+import type { HeritageBidVerdictStore } from '../types/dependencies';
+
+import {
+  type JSONSchema7,
+  type LanguageModel,
+  NoObjectGeneratedError,
+  Output,
+  generateText,
+  jsonSchema,
+} from 'ai';
+import { createHash } from 'node:crypto';
 
 import {
   type HeritageBidCandidate,
@@ -31,12 +41,64 @@ export type HeritageBidTriageOptions = {
    * @default 24
    */
   concurrency?: number;
+  /**
+   * Keeps verdicts between runs.
+   *
+   * The in-memory cache below only spans one `generateNewsletter()` call, which
+   * is enough for core's retry but not for tomorrow: the window is 48 hours and
+   * the run is daily, so half of what arrives was already judged yesterday.
+   * Omit it and that half is judged again.
+   */
+  store?: HeritageBidVerdictStore;
+  /**
+   * How long {@link HeritageBidVerdictStore.load} may hold the crawl up.
+   *
+   * @internal A seam for the tests; production uses the default.
+   * @default 2000
+   */
+  storeLoadTimeoutMs?: number;
   /** Reports a batch that fell back to {@link isHeritageBidCandidate}. */
   onFallback?: (reason: string, batchSize: number) => void;
+  /** Reports a store call that failed; the run then judges normally. */
+  onStoreError?: (reason: string, operation: 'load' | 'save') => void;
+  /** Reports where each call's verdicts came from. */
+  onCacheStats?: (stats: HeritageBidTriageStats) => void;
+};
+
+/** Where one triage call's verdicts came from. */
+export type HeritageBidTriageStats = {
+  /** Candidates asked about. */
+  candidates: number;
+  /** Answered from this run's own memory, including core's earlier attempts. */
+  fromMemory: number;
+  /** Answered from {@link HeritageBidVerdictStore}, so not billed. */
+  fromStore: number;
+  /** Sent to the model. */
+  judged: number;
 };
 
 const DEFAULT_BATCH_SIZE = 100;
 const DEFAULT_CONCURRENCY = 24;
+
+/**
+ * How long a store lookup may hold the crawl up.
+ *
+ * The store is optional and the crawl is not, so a lookup that stalls must not
+ * take the run with it. Core aborts the crawl fetch at 10 seconds and only
+ * calls `abort()` — it does not race the fetch promise — so nothing outside
+ * this function will ever end a `load()` that simply never settles.
+ *
+ * Two seconds is the budget rather than a round number. The API collection in
+ * the same fetch takes about 5.8 seconds and triage's own wave 5 to 8, so a
+ * lookup costing more than about two turns the saving into a loss; and a limit
+ * much above four would let core's abort land first every time, which leaves
+ * the lookup looking fine and makes all five attempts pay the stall again. A
+ * lookup of some 2,100 keys should answer well inside a second.
+ */
+const DEFAULT_STORE_LOAD_TIMEOUT_MS = 2_000;
+
+/** A lookup that outlasted its budget, as distinct from one that failed. */
+const TIMED_OUT = Symbol('store.load timed out');
 
 /**
  * Asks for the indices to keep rather than a verdict per row.
@@ -46,7 +108,7 @@ const DEFAULT_CONCURRENCY = 24;
  * mistake without failing. Indices carry their own alignment, and anything out
  * of range or repeated is discarded rather than trusted.
  */
-const KEEP_SCHEMA = jsonSchema<{ keep: number[] }>({
+const KEEP_JSON_SCHEMA: JSONSchema7 = {
   type: 'object',
   properties: {
     keep: {
@@ -57,7 +119,9 @@ const KEEP_SCHEMA = jsonSchema<{ keep: number[] }>({
   },
   required: ['keep'],
   additionalProperties: false,
-});
+};
+
+const KEEP_SCHEMA = jsonSchema<{ keep: number[] }>(KEEP_JSON_SCHEMA);
 
 const SYSTEM_PROMPT = `너는 대한민국 나라장터 입찰공고를 국가유산 뉴스레터용으로 선별한다.
 
@@ -120,44 +184,130 @@ function buildUserPrompt(candidates: HeritageBidCandidate[]): string {
   return `다음 ${candidates.length}건 중 국가유산 업무와 관련될 가능성이 있는 공고의 번호만 골라라.\n\n${lines.join('\n')}`;
 }
 
+/**
+ * Reads the index list out of whatever shape the response arrived in.
+ *
+ * The output spec parses JSON but does not enforce the schema, so a model that
+ * answers with the bare `[0, 2]` instead of `{"keep": [0, 2]}` reaches us as a
+ * perfectly valid result whose `.keep` is `undefined`. Both shapes mean the
+ * same thing and both are accepted.
+ *
+ * Every element must be an integer, or the whole list is refused. Dropping the
+ * bad ones instead would turn `[0, "2"]` into `[0]`, which keeps row 0, rejects
+ * row 2 and is indistinguishable downstream from a model that considered row 2
+ * and said no — `usable` is true, so the out-of-range guard never fires, the
+ * batch counts as the model's own work and the store persists it. `["0", "2"]`
+ * is the same failure with every row silently rejected.
+ */
+function readKeep(value: unknown): number[] | undefined {
+  const keep = Array.isArray(value)
+    ? value
+    : ((value ?? undefined) as { keep?: unknown } | undefined)?.keep;
+
+  if (!Array.isArray(keep)) {
+    return undefined;
+  }
+
+  // An empty list stays legitimate: a batch of road works has nothing to keep.
+  return keep.every((index) => Number.isInteger(index))
+    ? (keep as number[])
+    : undefined;
+}
+
+/**
+ * Recovers the index list from a response the output spec could not parse.
+ *
+ * Structured output is not uniform across providers: a model may fence its
+ * JSON, or — where the provider has no native schema support and the JSON tool
+ * was declined — answer in plain text. Falling straight back to
+ * {@link isHeritageBidCandidate} in those cases would quietly reinstate the
+ * regex this stage exists to replace, so the response is given one honest
+ * second reading first.
+ *
+ * Only parsed JSON counts. Scraping integers out of prose would read
+ * "100건 중 3번과 15번" as keeping rows 100, 3 and 15, which looks like a
+ * verdict and is not one.
+ */
+function salvageKeep(text: string | undefined): number[] | undefined {
+  if (!text) {
+    return undefined;
+  }
+
+  const unfenced = text
+    .replace(/^\s*```(?:json)?\s*/i, '')
+    .replace(/\s*```\s*$/, '');
+  const start = unfenced.search(/[[{]/);
+
+  if (start === -1) {
+    return undefined;
+  }
+
+  const end = unfenced.lastIndexOf(unfenced[start] === '[' ? ']' : '}');
+
+  if (end <= start) {
+    return undefined;
+  }
+
+  try {
+    return readKeep(JSON.parse(unfenced.slice(start, end + 1)));
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * One batch's verdicts, and whether the model made them.
+ *
+ * A fallback verdict is still worth keeping for the rest of the run so core's
+ * retry does not pay for the batch again, but it is the regex's answer, not the
+ * model's. Persisting it would fix the regex's known blind spots — 영양 하담고택,
+ * 윤선도원림 판석보 — onto those notices for as long as the rows live.
+ */
+type BatchVerdicts = { verdicts: boolean[]; fromModel: boolean };
+
 /** Applies the deterministic filter, which is what triage falls back to. */
-function deterministicVerdicts(candidates: HeritageBidCandidate[]): boolean[] {
-  return candidates.map((candidate) => isHeritageBidCandidate(candidate));
+function deterministicVerdicts(
+  candidates: HeritageBidCandidate[],
+): BatchVerdicts {
+  return {
+    verdicts: candidates.map((candidate) => isHeritageBidCandidate(candidate)),
+    fromModel: false,
+  };
 }
 
 async function triageBatch(
   candidates: HeritageBidCandidate[],
   { model, onFallback }: HeritageBidTriageOptions,
   signal?: AbortSignal,
-): Promise<boolean[]> {
+): Promise<BatchVerdicts> {
+  let keep: number[] | undefined;
+
   try {
-    const { output } = await generateText({
+    const result = await generateText({
       model,
       output: Output.object({ schema: KEEP_SCHEMA }),
       system: SYSTEM_PROMPT,
       prompt: buildUserPrompt(candidates),
       abortSignal: signal,
+      // The mode core settled on after Anthropic truncated structured output
+      // containing quotation marks. This schema holds only integers, but the
+      // JSON tool is the path Claude is known to answer reliably, and other
+      // providers ignore the key.
+      providerOptions: { anthropic: { structuredOutputMode: 'jsonTool' } },
     });
 
-    const verdicts = new Array<boolean>(candidates.length).fill(false);
-    let usable = false;
+    let output: unknown;
 
-    for (const index of output.keep) {
-      if (Number.isInteger(index) && index >= 0 && index < candidates.length) {
-        verdicts[index] = true;
-        usable = true;
-      }
+    try {
+      output = result.output;
+    } catch {
+      // `output` is a getter, and it throws when the step produced nothing the
+      // spec could read at all — a provider that answered with a tool call, or
+      // with no text. The raw text is still on the result either way.
+      output = undefined;
     }
 
-    // An empty selection is a legitimate answer for a batch of road works, but
-    // a selection that is entirely out of range is a malformed response wearing
-    // the right shape, and it must not read as "reject everything".
-    if (!usable && output.keep.length > 0) {
-      onFallback?.('every returned index was out of range', candidates.length);
-      return deterministicVerdicts(candidates);
-    }
-
-    return verdicts;
+    keep = readKeep(output) ?? salvageKeep(result.text);
   } catch (error) {
     // A cancelled crawl must fail the fetch, not quietly answer from the regex:
     // core has already given up on this attempt, and returning a list now would
@@ -167,13 +317,135 @@ async function triageBatch(
       throw error;
     }
 
-    onFallback?.(
-      error instanceof Error ? error.message : String(error),
-      candidates.length,
-    );
+    // Other providers reject inside `generateText` instead, carrying the raw
+    // text on the error rather than on a result.
+    keep = NoObjectGeneratedError.isInstance(error)
+      ? salvageKeep(error.text)
+      : undefined;
+
+    if (keep === undefined) {
+      onFallback?.(
+        error instanceof Error ? error.message : String(error),
+        candidates.length,
+      );
+
+      return deterministicVerdicts(candidates);
+    }
+  }
+
+  if (keep === undefined) {
+    onFallback?.('the response held no readable index list', candidates.length);
 
     return deterministicVerdicts(candidates);
   }
+
+  const verdicts = new Array<boolean>(candidates.length).fill(false);
+  let usable = false;
+
+  for (const index of keep) {
+    if (Number.isInteger(index) && index >= 0 && index < candidates.length) {
+      verdicts[index] = true;
+      usable = true;
+    }
+  }
+
+  // An empty selection is a legitimate answer for a batch of road works, but
+  // a selection that is entirely out of range is a malformed response wearing
+  // the right shape, and it must not read as "reject everything".
+  if (!usable && keep.length > 0) {
+    onFallback?.('every returned index was out of range', candidates.length);
+
+    return deterministicVerdicts(candidates);
+  }
+
+  return { verdicts, fromModel: true };
+}
+
+/**
+ * Calls a store method so that a synchronous throw arrives as a rejection.
+ *
+ * The interface returns promises, but the body behind it is the application's
+ * own code and nothing stops it throwing before it ever reaches an `await` — a
+ * client that was never initialised, a config read that fails. Thrown that way
+ * the error sidesteps both guards here, because the lookup's `try` is entered
+ * after `load()` has already been called and the write's `.catch` is attached
+ * to a promise that was never returned. An optional cache would then fail the
+ * crawl it is specifically not allowed to fail.
+ */
+function callStore<T>(work: () => Promise<T>): Promise<T> {
+  return Promise.resolve().then(work);
+}
+
+/**
+ * Waits for a store lookup, but not past what the crawl can afford.
+ *
+ * The lookup itself takes no `AbortSignal` — the interface is the
+ * application's to implement and keeping it to two plain methods is the point
+ * — so the budget is enforced here instead. An abort is rethrown rather than
+ * reported: core has stopped waiting, and the reasoning is the same as for a
+ * cancelled batch.
+ */
+async function loadWithinBudget(
+  load: Promise<ReadonlyMap<string, boolean>>,
+  timeoutMs: number,
+  signal: AbortSignal | undefined,
+): Promise<ReadonlyMap<string, boolean> | typeof TIMED_OUT> {
+  if (signal?.aborted) {
+    throw signal.reason;
+  }
+
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let onAbort: (() => void) | undefined;
+
+  try {
+    return await new Promise<ReadonlyMap<string, boolean> | typeof TIMED_OUT>(
+      (resolve, reject) => {
+        timer = setTimeout(() => resolve(TIMED_OUT), timeoutMs);
+
+        if (signal) {
+          onAbort = () => reject(signal.reason);
+          signal.addEventListener('abort', onAbort, { once: true });
+        }
+
+        load.then(resolve, reject);
+      },
+    );
+  } finally {
+    clearTimeout(timer);
+
+    if (onAbort) {
+      signal?.removeEventListener('abort', onAbort);
+    }
+  }
+}
+
+/**
+ * Identifies what the verdicts in a store were made by.
+ *
+ * A verdict is only reusable while the thing that produced it is unchanged, so
+ * the fingerprint covers the selection rules (the system prompt), the shape the
+ * answer is asked for (the user prompt line and the schema) and the model. Edit
+ * any of them and every key changes, which retires the old rows instead of
+ * silently serving yesterday's judgement under today's rules. The alternative —
+ * a version constant bumped by hand — is one edit away from being wrong, and
+ * the failure is invisible.
+ */
+function fingerprintOf(model: LanguageModel): string {
+  const modelIdentity =
+    typeof model === 'string' ? model : `${model.provider}:${model.modelId}`;
+
+  return createHash('sha256')
+    .update(
+      [
+        SYSTEM_PROMPT,
+        // Rendering one empty row pins the line format and `identityOf` along
+        // with the instruction, without pinning the batch size.
+        buildUserPrompt([{ institution: '', title: '' }]),
+        JSON.stringify(KEEP_JSON_SCHEMA),
+        modelIdentity,
+      ].join('\u0000'),
+    )
+    .digest('hex');
 }
 
 /**
@@ -188,6 +460,14 @@ async function triageBatch(
  * request costs about 15 calls a day, so the judgement can be made by something
  * that reads them.
  *
+ * Verdicts are cached in two places. The in-memory map spans one run and exists
+ * for core's retry: core aborts the first attempt at 10 seconds and tries again
+ * with a longer budget, and without it every attempt would pay for the whole
+ * window. An optional {@link HeritageBidVerdictStore} spans runs, which is what
+ * the 48-hour window and a daily schedule need — half of each window was judged
+ * yesterday, and almost all of that half is rejections, which never reach the
+ * article table and so cannot be recognised any other way.
+ *
  * It never fails open: an error, or a response whose indices are unusable, falls
  * back to {@link isHeritageBidCandidate} for that batch rather than admitting
  * every notice into per-article scoring. Omitting triage entirely leaves the
@@ -197,22 +477,114 @@ async function triageBatch(
 export const createHeritageBidTriage = (
   options: HeritageBidTriageOptions,
 ): HeritageBidTriage => {
-  const { batchSize = DEFAULT_BATCH_SIZE, concurrency = DEFAULT_CONCURRENCY } =
-    options;
+  const {
+    batchSize = DEFAULT_BATCH_SIZE,
+    concurrency = DEFAULT_CONCURRENCY,
+    store,
+    storeLoadTimeoutMs = DEFAULT_STORE_LOAD_TIMEOUT_MS,
+    onStoreError,
+    onCacheStats,
+  } = options;
 
-  // Verdicts survive across calls so core's retry resumes rather than restarts.
-  // Core aborts the first attempt at 10 seconds and tries again with a longer
-  // budget; without this, every attempt would pay for the whole window again.
-  const verdicts = new Map<string, boolean>();
+  const fingerprint = fingerprintOf(options.model);
+
+  // Keying on exactly what the model is shown is what keeps the cache honest:
+  // key on less and two notices it judged separately become one, and the second
+  // verdict silently overwrites the first. The hash keeps every key the same
+  // length, because the store is asked about some 2,100 of them at once.
   const keyOf = (candidate: HeritageBidCandidate) =>
-    identityOf(candidate).join('\u0000');
+    createHash('sha256')
+      .update([fingerprint, ...identityOf(candidate)].join('\u0000'))
+      .digest('hex');
+
+  const verdicts = new Map<string, boolean>();
+  /** Model verdicts this process has not handed to the store yet. */
+  const unsaved = new Set<string>();
+  /**
+   * Set once a lookup has outlasted its budget.
+   *
+   * Core retries the crawl fetch up to five times, so a store that stalls
+   * would otherwise cost the full budget on every one of them. One stall is
+   * enough to conclude the store is not helping this run.
+   */
+  let storeLookupDisabled = false;
 
   return async (candidates, signal) => {
     if (candidates.length === 0) {
       return [];
     }
 
-    const pending = candidates.filter((c) => !verdicts.has(keyOf(c)));
+    const keys = new Map(candidates.map((c) => [c, keyOf(c)] as const));
+    const fromMemory = candidates.filter((c) =>
+      verdicts.has(keys.get(c)!),
+    ).length;
+
+    if (store && !storeLookupDisabled) {
+      const missing = [
+        ...new Set(
+          candidates
+            .map((c) => keys.get(c)!)
+            .filter((key) => !verdicts.has(key)),
+        ),
+      ];
+
+      if (missing.length > 0) {
+        // The lookup keeps its own promise even when the wait below gives up
+        // on it, so a store that is merely slow still fills the cache for
+        // core's next attempt. A verdict the model has made since is the
+        // fresher of the two and is left alone.
+        const loading = callStore(() => store.load(missing)).then((rows) => {
+          for (const [key, verdict] of rows) {
+            if (!verdicts.has(key)) {
+              verdicts.set(key, verdict);
+            }
+          }
+
+          return rows;
+        });
+
+        // A rejection that lands after the wait gave up is reported there, not
+        // here; this only keeps it from going unhandled.
+        loading.catch(() => undefined);
+
+        try {
+          // Awaited, unlike the write: the whole point is to judge less, and a
+          // verdict that arrives after the batches are built saves nothing.
+          const loaded = await loadWithinBudget(
+            loading,
+            storeLoadTimeoutMs,
+            signal,
+          );
+
+          if (loaded === TIMED_OUT) {
+            storeLookupDisabled = true;
+
+            onStoreError?.(
+              `load did not answer within ${storeLoadTimeoutMs}ms`,
+              'load',
+            );
+          }
+        } catch (error) {
+          // A cancelled crawl must propagate; core has already given up.
+          if (signal?.aborted) {
+            throw error;
+          }
+
+          // A store that is down must not stop the crawl; the run simply pays
+          // for what it could not read. A rejection is cheap, so unlike a
+          // stall it does not take the store out of the run.
+          onStoreError?.(
+            error instanceof Error ? error.message : String(error),
+            'load',
+          );
+        }
+      }
+    }
+
+    const fromStore =
+      candidates.filter((c) => verdicts.has(keys.get(c)!)).length - fromMemory;
+
+    const pending = candidates.filter((c) => !verdicts.has(keys.get(c)!));
     const batches: HeritageBidCandidate[][] = [];
 
     for (let index = 0; index < pending.length; index += batchSize) {
@@ -229,7 +601,13 @@ export const createHeritageBidTriage = (
           const decided = await triageBatch(batch, options, signal);
 
           batch.forEach((candidate, index) => {
-            verdicts.set(keyOf(candidate), decided[index]);
+            const key = keys.get(candidate)!;
+
+            verdicts.set(key, decided.verdicts[index]);
+
+            if (decided.fromModel) {
+              unsaved.add(key);
+            }
           });
         }
       },
@@ -239,6 +617,36 @@ export const createHeritageBidTriage = (
     // crawl needs; completed batches stay cached for the next attempt.
     await Promise.all(workers);
 
-    return candidates.map((c) => verdicts.get(keyOf(c)) ?? false);
+    onCacheStats?.({
+      candidates: candidates.length,
+      fromMemory,
+      fromStore,
+      judged: pending.length,
+    });
+
+    if (store && unsaved.size > 0 && !signal?.aborted) {
+      const pendingWrite = new Map(
+        [...unsaved].map((key) => [key, verdicts.get(key)!] as const),
+      );
+
+      unsaved.clear();
+
+      // Deliberately not awaited. This runs inside the crawl fetch that core
+      // times out at 10 seconds, and the saving is meant to make that budget
+      // easier to hit, not harder; the run continues for minutes afterwards, so
+      // the write has time to land.
+      void callStore(() => store.save(pendingWrite)).catch((error: unknown) => {
+        for (const key of pendingWrite.keys()) {
+          unsaved.add(key);
+        }
+
+        onStoreError?.(
+          error instanceof Error ? error.message : String(error),
+          'save',
+        );
+      });
+    }
+
+    return candidates.map((c) => verdicts.get(keys.get(c)!) ?? false);
   };
 };

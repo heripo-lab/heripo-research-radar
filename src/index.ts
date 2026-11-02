@@ -12,6 +12,7 @@ export type {
   ArticleRepository,
   ExcavationReport,
   ExcavationReportSource,
+  HeritageBidVerdictStore,
   JournalIssue,
   JournalIssuePaper,
   JournalIssueSource,

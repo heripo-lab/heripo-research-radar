@@ -241,16 +241,17 @@ publicationDate)`에 전달하고 결과를 `templateOptions.deadlineRemindersMa
 
 ### 선택적 생성 설정
 
-| 옵션                     | 동작                                                                                                                                     |
-| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| `logger`                 | `console` 등 core의 `AppLogger` 구현                                                                                                     |
-| `publishDate`            | 실제 달력에 존재하는 `YYYY-MM-DD` 날짜. 잘못된 값은 오류 발생. 생략하면 서버 시간대와 무관하게 `Asia/Seoul`(KST)의 현재 날짜 사용        |
-| `customFetch`            | 크롤링과 파서 내부 API 요청에 사용할 `typeof fetch` 구현(예: 프록시 어댑터). LLM 요청에는 적용되지 않음                                  |
-| `templateOptions`        | 기본/KRAS 브랜딩과 Markdown 섹션 설정(아래 참고)                                                                                         |
-| `promptProvider`         | 패키지 자체 LLM 프롬프트를 통째로 대체하는 core `PromptProvider`. 생략하면 패키지 프롬프트를 쓰고, 정의되지 않은 단계는 core 기본값 사용 |
-| `excavationReportSource` | 국가유산청 발굴조사 보고서를 애플리케이션이 주입. 주입하면 해당 게시판은 크롤링하지 않음. 생략하면 기존대로 크롤링                       |
-| `journalIssueSource`     | KCI 등 새로 발간된 학술지 권호를 애플리케이션이 주입. 권호 하나가 기사 하나가 됨. 생략하면 해당 타깃은 수집하지 않음                     |
-| `previewNewsletter`      | 저장된 `Newsletter`를 조회하고 전달한 core `EmailService`로 미리보기 발송                                                                |
+| 옵션                      | 동작                                                                                                                                     |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `logger`                  | `console` 등 core의 `AppLogger` 구현                                                                                                     |
+| `publishDate`             | 실제 달력에 존재하는 `YYYY-MM-DD` 날짜. 잘못된 값은 오류 발생. 생략하면 서버 시간대와 무관하게 `Asia/Seoul`(KST)의 현재 날짜 사용        |
+| `customFetch`             | 크롤링과 파서 내부 API 요청에 사용할 `typeof fetch` 구현(예: 프록시 어댑터). LLM 요청에는 적용되지 않음                                  |
+| `templateOptions`         | 기본/KRAS 브랜딩과 Markdown 섹션 설정(아래 참고)                                                                                         |
+| `promptProvider`          | 패키지 자체 LLM 프롬프트를 통째로 대체하는 core `PromptProvider`. 생략하면 패키지 프롬프트를 쓰고, 정의되지 않은 단계는 core 기본값 사용 |
+| `excavationReportSource`  | 국가유산청 발굴조사 보고서를 애플리케이션이 주입. 주입하면 해당 게시판은 크롤링하지 않음. 생략하면 기존대로 크롤링                       |
+| `journalIssueSource`      | KCI 등 새로 발간된 학술지 권호를 애플리케이션이 주입. 권호 하나가 기사 하나가 됨. 생략하면 해당 타깃은 수집하지 않음                     |
+| `heritageBidVerdictStore` | 나라장터 선별 판정을 실행 사이에 보관. 겹치는 절반을 다시 묻지 않음. 생략하면 매 실행이 윈도 전체를 판정                                 |
+| `previewNewsletter`       | 저장된 `Newsletter`를 조회하고 전달한 core `EmailService`로 미리보기 발송                                                                |
 
 `previewNewsletter`에는 `fetchNewsletterForPreview: () => Promise<Newsletter>`, `emailService`(`send(message)` 구현), `emailMessage`(core `EmailMessage`에서 `subject`, `html`, `text`를 제외한 값)가 필요합니다. 세 필드는 core가 채우며, 생성된 뉴스레터가 없으면 미리보기를 발송하지 않습니다. 조회 콜백은 이번 실행에서 저장한 회차를 반환하도록 구현하세요.
 
@@ -317,6 +318,8 @@ await generateNewsletter({
 });
 ```
 
+여기서 결정된 모든 모델은 — `contentGeneration`으로 넘긴 것까지 — 프로바이더 프롬프트 캐시가 양쪽 모두에서 작동하도록 래핑됩니다. 각 단계의 긴 지시문은 기사보다 앞선 system 메시지로 전송되며, OpenAI는 이 프리픽스를 자동으로 캐시합니다. Anthropic은 명시적 브레이크포인트 없이는 아무것도 캐시하지 않으므로, 래퍼가 그 system 메시지에 `cache_control`을 표시합니다. `providerOptions`는 네임스페이스로 구분되어 OpenAI·Google 요청은 바뀌지 않습니다. Anthropic은 최소 길이 미만인 블록을 캐시하지 않으며, 이 최소값은 모델마다 다르고 소형과 대형 사이에 몇 배까지 차이가 납니다. 미달인 블록은 오류가 아니라 그냥 캐시 없이 처리되므로 길이 검사는 하지 않습니다. 어느 단계가 실제로 캐시되는지는 호출마다 `llm.prompt.cache` 로그 이벤트가 보고하는 캐시 읽기·쓰기 토큰으로 확인합니다.
+
 Anthropic·Google로 뉴스레터를 생성하는 기존 `contentGeneration: { provider, apiKey, model? }` 경로도 호환성을 위해 유지합니다. 두 설정을 함께 전달하면 `models.generateNewsletter`가 우선합니다. `models.generateNewsletter`를 생략하거나 `undefined`로 전달하면 기존 `contentGeneration`의 프로바이더·모델 선택을 사용합니다. 두 설정 모두 없으면 `llmConfig.models.generateNewsletter`를 사용합니다. 모든 단계에 모델 객체를 전달해도 `openAIApiKey`는 계속 필수입니다.
 
 [src/config/index.ts](./src/config/index.ts)에는 한국어 출력(`outputLanguage: '한국어'`), 문화유산 분야(`expertField: ['문화유산']`), 브랜드명, `subscribePageUrl`, LLM `maxRetries: 5`, 체인 `stopAfterAttempt: 3`, 생성 `temperature: 0.3`이 정의되어 있습니다. 발행 설정은 `minimumArticleCountForIssue: 5`, `priorityArticleScoreThreshold: 8`이며 core 엔진에서 판정합니다. 잠금 파일의 core 3.1.1 구현은 중요도 8 이상 기사가 없을 때 후보가 **5개 이하이면 생략**합니다. 후보가 없으면 항상 생략합니다.
@@ -334,7 +337,9 @@ Anthropic·Google로 뉴스레터를 생성하는 기존 `contentGeneration: { p
 
 주석 처리된 것은 발굴조사 현황공개 1개뿐입니다. 정보가 파편적이고 뉴스레터 가치가 낮습니다. robots.txt가 제한하는 게시판도 설정에는 그대로 두고 런타임 검사에서 거부하므로, 사이트별 정책을 설정 파일에 손으로 반영할 필요가 없습니다. 현재 정책 기준으로 73개 중 14개가 거부됩니다.
 
-타깃 3개는 크롤링이 아니라 data.go.kr 오픈 API에서 읽습니다. 채용 그룹의 나라일터(`PblJobService`)·알리오(`recruitment`), 입찰 그룹의 나라장터(`BidPublicInfoService`)입니다. 인증키는 `publicDataApiKey`로 주입하며, 생략하면 해당 타깃은 요청 없이 빈 목록을 반환합니다. 세 게시판은 전국 공공부문 채용과 조달 공고를 모두 담고 있어 분석 단계 이전에 걸러냅니다. 채용 게시판은 `src/crawling/heritage-job-filter.ts`를 쓰며 제외어가 모두 직무 명사라 패턴으로 버팁니다(약 2%, 하루 2.6건 통과). 나라장터는 `src/crawling/heritage-triage.ts`가 제목 100건씩을 저렴한 모델에 묻습니다. 한국어에서 유산 여부는 부분문자열로 판정할 수 없기 때문이며, 배치가 실패하면 기존 정규식이 폴백으로 판단합니다.
+타깃 3개는 크롤링이 아니라 data.go.kr 오픈 API에서 읽습니다. 채용 그룹의 나라일터(`PblJobService`)·알리오(`recruitment`), 입찰 그룹의 나라장터(`BidPublicInfoService`)입니다. 인증키는 `publicDataApiKey`로 주입하며, 생략하면 해당 타깃은 요청 없이 빈 목록을 반환합니다. 세 게시판은 전국 공공부문 채용과 조달 공고를 모두 담고 있어 분석 단계 이전에 걸러냅니다. 채용 게시판은 `src/crawling/heritage-job-filter.ts`를 쓰며 제외어가 모두 직무 명사라 패턴으로 버팁니다(약 2%, 하루 2.6건 통과). 나라장터는 `src/crawling/heritage-triage.ts`가 제목 100건씩을 저렴한 모델에 묻습니다. 한국어에서 유산 여부는 부분문자열로 판정할 수 없기 때문이며, 배치가 실패하면 기존 정규식이 폴백으로 판단합니다. 응답은 스키마 객체든 맨 배열이든 코드펜스로 감싼 텍스트든 모두 받아들이므로, 프로바이더의 출력 관행 때문에 배치가 조용히 정규식으로 되돌아가지 않습니다. 단 JSON으로 파싱된 것만 인정하며 산문 속 숫자는 긁지 않습니다. 인덱스 목록은 통째로 받거나 통째로 버립니다. `[0, "2"]`에서 `"2"`만 걸러내면 남는 목록이 그 행을 실제로 탈락시킨 판정과 구별되지 않기 때문입니다.
+
+판정은 두 곳에 캐시됩니다. 실행 안에서는 메모리에 보관하며, 이는 core의 재시도를 위한 것입니다. core는 크롤 요청을 10초에 중단하고 다시 부르므로 캐시가 없으면 매 시도가 윈도 전체를 다시 과금합니다. 실행 사이에는 선택 옵션 `heritageBidVerdictStore`가 보관합니다. 윈도는 48시간인데 실행은 하루 한 번이라 매 윈도의 절반은 어제 판정한 것이고, 트리아지는 통과분만 넘기므로 그 절반은 대부분 `saveCrawledArticles`에 닿은 적 없는 탈락분이어서 기사 테이블로는 알아볼 수 없습니다. 키는 모델이 보는 공고 내용에 프롬프트·스키마·모델 ID의 지문을 더해 해시한 값이라, 선별 기준을 고치거나 프로바이더를 바꾸면 기존 행을 재사용하지 않고 폐기합니다. 정규식 폴백이 만든 판정은 저장하지 않으며, `crawl.g2b.triage.cache`가 각 호출의 판정 출처를 기록합니다. 저장소는 크롤링을 실패시킬 수 없습니다. 오류는 보고하고 그대로 판정을 진행하며, 약 2초 안에 응답하지 않는 조회는 두고 갑니다. core는 크롤 요청을 10초에 중단하되 fetch 프로미스를 경쟁시키지 않으므로, 끝내 완료되지 않는 `load()`는 그대로 두면 실행을 멈춥니다. 늦게 도착한 응답은 그대로 쓰지만, 한 번 지연된 저장소는 그 실행에서 더 묻지 않습니다.
 
 새로 발간된 학술지 권호는 크롤링하지 않습니다. 애플리케이션이 `journalIssueSource`로 주입하고(heripo-web은 KCI 논문 카탈로그에서 읽음) `KCI_학술지_신간` 타깃이 이를 그대로 제공하므로, 타깃 URL로는 요청하지 않습니다. 권호 하나가 기사 하나가 됩니다. `uniqId`는 권호의 `externalId`, URL은 권호의 `url`입니다. `usedArticles`에는 애플리케이션의 기사 ID와 URL만 실리므로, 저장된 뉴스레터가 소개한 권호는 `saveCrawledArticles`에서 저장해 둔 `uniqId`나 권호 URL로 기록합니다. 채점 단계가 읽는 기사 본문에는 여러 논문이 공유한 키워드와 함께 수록 논문 전체의 저자·키워드·300자로 자른 초록이 들어갑니다. 출처를 주지 않으면 빈 목록을 반환합니다. 기존 국립문화유산연구원 헤리티지:역사와 과학·보존과학연구 게시판 크롤링을 대체합니다.
 
@@ -411,7 +416,7 @@ npm run lint               # 소스 파일 린트
 npm run lint:fix           # 린트 및 자동 수정
 npm run lint:ci            # CI용 quiet 린트
 npm run typecheck          # 소스와 테스트 TypeScript 타입 체크
-npm test                   # 외부 호출 없는 모델 설정 회귀 테스트
+npm test                   # 외부 호출 없는 회귀 테스트(모델 연결·입찰 선별·마감일·학술지)
 
 # 포맷팅
 npm run format             # src/ 코드 포맷

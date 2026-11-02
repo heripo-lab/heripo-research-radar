@@ -18,6 +18,7 @@ import type { ContentOptions } from './config';
 import type {
   ArticleRepository,
   ExcavationReportSource,
+  HeritageBidVerdictStore,
   JournalIssueSource,
   NewsletterRepository,
   NewsletterTemplateOptions,
@@ -34,6 +35,7 @@ import { createHeritageBidTriage } from '~/crawling/heritage-triage';
 import { createDeadlineReminderSelector } from '~/deadlines/select';
 import { createJournalIssueLoader } from '~/journals/loader';
 import { createJournalPaperSelector } from '~/journals/select';
+import { withPromptCaching } from '~/llm/prompt-cache';
 
 import { contentOptions, llmConfig, newsletterConfig } from './config';
 import { researchRadarPromptProvider } from './prompts';
@@ -181,6 +183,17 @@ export interface NewsletterGeneratorDependencies {
   publicDataApiKey?: string;
 
   /**
+   * Storage for 나라장터 triage verdicts (optional).
+   *
+   * The window is 48 hours and the run is daily, so half of every window was
+   * already judged by the previous run — almost all of it rejections, which
+   * never reach `saveCrawledArticles` and so cannot be recognised from the
+   * article table. Supply a store and that half is read back instead of being
+   * sent to the model again; omit it and each run judges the whole window.
+   */
+  heritageBidVerdictStore?: HeritageBidVerdictStore;
+
+  /**
    * LLM prompt overrides (optional).
    *
    * When provided, this replaces Research Radar's own prompt provider entirely
@@ -244,10 +257,27 @@ function createNewsletterGenerator(
   const openai = createOpenAI({
     apiKey: dependencies.openAIApiKey,
   });
+  // Every model this run uses goes through here, so the Anthropic cache
+  // breakpoint reaches core's calls — which this package cannot otherwise
+  // reach — as well as its own.
+  const cached = (model: LanguageModel, task: string): LanguageModel =>
+    withPromptCaching(model, {
+      onUsage: (usage) => {
+        dependencies.logger?.debug({
+          event: 'llm.prompt.cache',
+          data: { task, ...usage },
+        });
+      },
+    });
+
   // Resolve each task separately so even explicit undefined keeps its default.
   const resolveModel = (task: keyof NewsletterModelConfig): LanguageModel => {
-    const model = dependencies.models?.[task] ?? llmConfig.models[task];
-    return typeof model === 'string' ? openai(model) : model;
+    const configured = dependencies.models?.[task] ?? llmConfig.models[task];
+
+    return cached(
+      typeof configured === 'string' ? openai(configured) : configured,
+      task,
+    );
   };
 
   const dateService = new DateService(dependencies.publishDate);
@@ -270,10 +300,23 @@ function createNewsletterGenerator(
     // deterministic filter stays behind it as the fallback.
     createHeritageBidTriage({
       model: resolveModel('heritageBidTriage'),
+      store: dependencies.heritageBidVerdictStore,
       onFallback: (reason, batchSize) => {
         dependencies.logger?.info({
           event: 'crawl.g2b.triage.fallback',
           data: { reason, batchSize },
+        });
+      },
+      onStoreError: (reason, operation) => {
+        dependencies.logger?.error({
+          event: 'crawl.g2b.triage.store.failed',
+          data: { reason, operation },
+        });
+      },
+      onCacheStats: (stats) => {
+        dependencies.logger?.info({
+          event: 'crawl.g2b.triage.cache',
+          data: stats,
         });
       },
     }),
@@ -285,12 +328,18 @@ function createNewsletterGenerator(
       classifyTags: resolveModel('classifyTags'),
       analyzeImages: resolveModel('analyzeImages'),
       determineImportance: resolveModel('determineImportance'),
+      // Cached like every other stage: core sends this one a long instruction
+      // too, and a model named here would otherwise be the one place a Claude
+      // model pays full price for it on every article.
       extractDeadlines: dependencies.extractDeadlineOptions
         ? dependencies.extractDeadlineOptions.model === undefined
           ? resolveModel('determineImportance')
-          : typeof dependencies.extractDeadlineOptions.model === 'string'
-            ? openai(dependencies.extractDeadlineOptions.model)
-            : dependencies.extractDeadlineOptions.model
+          : cached(
+              typeof dependencies.extractDeadlineOptions.model === 'string'
+                ? openai(dependencies.extractDeadlineOptions.model)
+                : dependencies.extractDeadlineOptions.model,
+              'extractDeadlines',
+            )
         : undefined,
       includeEvents: dependencies.extractDeadlineOptions?.includeEvents,
     },
@@ -323,7 +372,10 @@ function createNewsletterGenerator(
     dependencies.models?.generateNewsletter !== undefined
       ? resolveModel('generateNewsletter')
       : dependencies.contentGeneration
-        ? createContentGenerationModel(dependencies.contentGeneration)
+        ? cached(
+            createContentGenerationModel(dependencies.contentGeneration),
+            'generateNewsletter',
+          )
         : resolveModel('generateNewsletter');
 
   const contentGenerateProvider = new ContentGenerateProvider(
