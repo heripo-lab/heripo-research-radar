@@ -356,3 +356,31 @@ test('an abort while the lookup stalls cancels instead of judging', async () => 
   assert.equal(llm.calls, 0, 'nothing was sent to the model');
   assert.deepEqual(errors, [], 'an abort is not a store failure');
 });
+
+test('a store that throws synchronously does not fail the crawl', async () => {
+  // Both guards here are attached to a promise, so an implementation that
+  // throws before returning one — an uninitialised client, a config read that
+  // fails — would sidestep them and take the crawl down with the cache.
+  const errors: [string, string][] = [];
+  const { model, state } = openAiModel('{"keep":[0,2]}');
+  const triage = createHeritageBidTriage({
+    model,
+    store: {
+      load: () => {
+        throw new Error('no client');
+      },
+      save: () => {
+        throw new Error('no client');
+      },
+    },
+    onStoreError: (reason, operation) => errors.push([operation, reason]),
+  });
+
+  assert.deepEqual(await triage(candidates), KEPT);
+  assert.equal(state.calls, 1, 'the window was judged rather than skipped');
+  await new Promise(setImmediate);
+  assert.deepEqual(errors.map(([operation]) => operation).sort(), [
+    'load',
+    'save',
+  ]);
+});

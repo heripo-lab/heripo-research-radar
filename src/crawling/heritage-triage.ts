@@ -362,6 +362,21 @@ async function triageBatch(
 }
 
 /**
+ * Calls a store method so that a synchronous throw arrives as a rejection.
+ *
+ * The interface returns promises, but the body behind it is the application's
+ * own code and nothing stops it throwing before it ever reaches an `await` — a
+ * client that was never initialised, a config read that fails. Thrown that way
+ * the error sidesteps both guards here, because the lookup's `try` is entered
+ * after `load()` has already been called and the write's `.catch` is attached
+ * to a promise that was never returned. An optional cache would then fail the
+ * crawl it is specifically not allowed to fail.
+ */
+function callStore<T>(work: () => Promise<T>): Promise<T> {
+  return Promise.resolve().then(work);
+}
+
+/**
  * Waits for a store lookup, but not past what the crawl can afford.
  *
  * The lookup itself takes no `AbortSignal` — the interface is the
@@ -518,7 +533,7 @@ export const createHeritageBidTriage = (
         // on it, so a store that is merely slow still fills the cache for
         // core's next attempt. A verdict the model has made since is the
         // fresher of the two and is left alone.
-        const loading = store.load(missing).then((rows) => {
+        const loading = callStore(() => store.load(missing)).then((rows) => {
           for (const [key, verdict] of rows) {
             if (!verdicts.has(key)) {
               verdicts.set(key, verdict);
@@ -620,7 +635,7 @@ export const createHeritageBidTriage = (
       // times out at 10 seconds, and the saving is meant to make that budget
       // easier to hit, not harder; the run continues for minutes afterwards, so
       // the write has time to land.
-      void store.save(pendingWrite).catch((error: unknown) => {
+      void callStore(() => store.save(pendingWrite)).catch((error: unknown) => {
         for (const key of pendingWrite.keys()) {
           unsaved.add(key);
         }

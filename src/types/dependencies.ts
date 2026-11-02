@@ -372,7 +372,9 @@ export interface NewsletterRepository {
  * if it arrives, so a slow lookup costs time rather than correctness.
  *
  * Neither call is allowed to fail the crawl: an error is reported and the run
- * judges normally.
+ * judges normally. That holds whether the failure arrives as a rejection or is
+ * thrown outright before a promise is ever returned, so an implementation does
+ * not have to defend its own synchronous paths.
  */
 export interface HeritageBidVerdictStore {
   /**
