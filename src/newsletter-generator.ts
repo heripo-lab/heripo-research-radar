@@ -18,6 +18,7 @@ import type { ContentOptions } from './config';
 import type {
   ArticleRepository,
   ExcavationReportSource,
+  HeritageBidVerdictStore,
   JournalIssueSource,
   NewsletterRepository,
   NewsletterTemplateOptions,
@@ -182,6 +183,17 @@ export interface NewsletterGeneratorDependencies {
   publicDataApiKey?: string;
 
   /**
+   * Storage for 나라장터 triage verdicts (optional).
+   *
+   * The window is 48 hours and the run is daily, so half of every window was
+   * already judged by the previous run — almost all of it rejections, which
+   * never reach `saveCrawledArticles` and so cannot be recognised from the
+   * article table. Supply a store and that half is read back instead of being
+   * sent to the model again; omit it and each run judges the whole window.
+   */
+  heritageBidVerdictStore?: HeritageBidVerdictStore;
+
+  /**
    * LLM prompt overrides (optional).
    *
    * When provided, this replaces Research Radar's own prompt provider entirely
@@ -288,10 +300,23 @@ function createNewsletterGenerator(
     // deterministic filter stays behind it as the fallback.
     createHeritageBidTriage({
       model: resolveModel('heritageBidTriage'),
+      store: dependencies.heritageBidVerdictStore,
       onFallback: (reason, batchSize) => {
         dependencies.logger?.info({
           event: 'crawl.g2b.triage.fallback',
           data: { reason, batchSize },
+        });
+      },
+      onStoreError: (reason, operation) => {
+        dependencies.logger?.error({
+          event: 'crawl.g2b.triage.store.failed',
+          data: { reason, operation },
+        });
+      },
+      onCacheStats: (stats) => {
+        dependencies.logger?.info({
+          event: 'crawl.g2b.triage.cache',
+          data: stats,
         });
       },
     }),

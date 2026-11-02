@@ -349,3 +349,34 @@ export interface NewsletterRepository {
     usedArticles: ArticleForGenerateContent[];
   }): Promise<{ id: string | number }>;
 }
+
+/**
+ * Storage for 나라장터 triage verdicts, so a judgement outlives its run.
+ *
+ * The 48-hour window and a daily run overlap by half, and the overlap is almost
+ * entirely rejections — notices the model threw out, which never reach
+ * `saveCrawledArticles` and so cannot be recognised from the article table.
+ * Without somewhere to keep them, every run pays to re-judge yesterday's half.
+ *
+ * Keys are 64-character lowercase hex. They cover the notice as the model sees
+ * it **and** a fingerprint of the prompt, schema and model id, so editing the
+ * selection rules or switching providers starts a fresh generation of keys and
+ * never reuses a verdict the current configuration did not make. Old rows go
+ * stale rather than wrong: prune anything older than a few days.
+ *
+ * A run asks for about 2,100 keys at once, which is past what some clients will
+ * put in a URL — chunk `load`, or send it as a request body. Neither call is
+ * allowed to fail the crawl: an error is reported and the run judges normally.
+ */
+export interface HeritageBidVerdictStore {
+  /**
+   * Verdicts for the keys that are known. Unknown keys are simply absent.
+   */
+  load(keys: readonly string[]): Promise<ReadonlyMap<string, boolean>>;
+
+  /**
+   * Persists verdicts the model made. Verdicts that came from the
+   * deterministic fallback are never passed here.
+   */
+  save(verdicts: ReadonlyMap<string, boolean>): Promise<void>;
+}

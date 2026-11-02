@@ -1,10 +1,14 @@
+import type { HeritageBidVerdictStore } from '../types/dependencies';
+
 import {
+  type JSONSchema7,
   type LanguageModel,
   NoObjectGeneratedError,
   Output,
   generateText,
   jsonSchema,
 } from 'ai';
+import { createHash } from 'node:crypto';
 
 import {
   type HeritageBidCandidate,
@@ -37,8 +41,33 @@ export type HeritageBidTriageOptions = {
    * @default 24
    */
   concurrency?: number;
+  /**
+   * Keeps verdicts between runs.
+   *
+   * The in-memory cache below only spans one `generateNewsletter()` call, which
+   * is enough for core's retry but not for tomorrow: the window is 48 hours and
+   * the run is daily, so half of what arrives was already judged yesterday.
+   * Omit it and that half is judged again.
+   */
+  store?: HeritageBidVerdictStore;
   /** Reports a batch that fell back to {@link isHeritageBidCandidate}. */
   onFallback?: (reason: string, batchSize: number) => void;
+  /** Reports a store call that failed; the run then judges normally. */
+  onStoreError?: (reason: string, operation: 'load' | 'save') => void;
+  /** Reports where each call's verdicts came from. */
+  onCacheStats?: (stats: HeritageBidTriageStats) => void;
+};
+
+/** Where one triage call's verdicts came from. */
+export type HeritageBidTriageStats = {
+  /** Candidates asked about. */
+  candidates: number;
+  /** Answered from this run's own memory, including core's earlier attempts. */
+  fromMemory: number;
+  /** Answered from {@link HeritageBidVerdictStore}, so not billed. */
+  fromStore: number;
+  /** Sent to the model. */
+  judged: number;
 };
 
 const DEFAULT_BATCH_SIZE = 100;
@@ -52,7 +81,7 @@ const DEFAULT_CONCURRENCY = 24;
  * mistake without failing. Indices carry their own alignment, and anything out
  * of range or repeated is discarded rather than trusted.
  */
-const KEEP_SCHEMA = jsonSchema<{ keep: number[] }>({
+const KEEP_JSON_SCHEMA: JSONSchema7 = {
   type: 'object',
   properties: {
     keep: {
@@ -63,7 +92,9 @@ const KEEP_SCHEMA = jsonSchema<{ keep: number[] }>({
   },
   required: ['keep'],
   additionalProperties: false,
-});
+};
+
+const KEEP_SCHEMA = jsonSchema<{ keep: number[] }>(KEEP_JSON_SCHEMA);
 
 const SYSTEM_PROMPT = `너는 대한민국 나라장터 입찰공고를 국가유산 뉴스레터용으로 선별한다.
 
@@ -185,16 +216,31 @@ function salvageKeep(text: string | undefined): number[] | undefined {
   }
 }
 
+/**
+ * One batch's verdicts, and whether the model made them.
+ *
+ * A fallback verdict is still worth keeping for the rest of the run so core's
+ * retry does not pay for the batch again, but it is the regex's answer, not the
+ * model's. Persisting it would fix the regex's known blind spots — 영양 하담고택,
+ * 윤선도원림 판석보 — onto those notices for as long as the rows live.
+ */
+type BatchVerdicts = { verdicts: boolean[]; fromModel: boolean };
+
 /** Applies the deterministic filter, which is what triage falls back to. */
-function deterministicVerdicts(candidates: HeritageBidCandidate[]): boolean[] {
-  return candidates.map((candidate) => isHeritageBidCandidate(candidate));
+function deterministicVerdicts(
+  candidates: HeritageBidCandidate[],
+): BatchVerdicts {
+  return {
+    verdicts: candidates.map((candidate) => isHeritageBidCandidate(candidate)),
+    fromModel: false,
+  };
 }
 
 async function triageBatch(
   candidates: HeritageBidCandidate[],
   { model, onFallback }: HeritageBidTriageOptions,
   signal?: AbortSignal,
-): Promise<boolean[]> {
+): Promise<BatchVerdicts> {
   let keep: number[] | undefined;
 
   try {
@@ -273,7 +319,36 @@ async function triageBatch(
     return deterministicVerdicts(candidates);
   }
 
-  return verdicts;
+  return { verdicts, fromModel: true };
+}
+
+/**
+ * Identifies what the verdicts in a store were made by.
+ *
+ * A verdict is only reusable while the thing that produced it is unchanged, so
+ * the fingerprint covers the selection rules (the system prompt), the shape the
+ * answer is asked for (the user prompt line and the schema) and the model. Edit
+ * any of them and every key changes, which retires the old rows instead of
+ * silently serving yesterday's judgement under today's rules. The alternative —
+ * a version constant bumped by hand — is one edit away from being wrong, and
+ * the failure is invisible.
+ */
+function fingerprintOf(model: LanguageModel): string {
+  const modelIdentity =
+    typeof model === 'string' ? model : `${model.provider}:${model.modelId}`;
+
+  return createHash('sha256')
+    .update(
+      [
+        SYSTEM_PROMPT,
+        // Rendering one empty row pins the line format and `identityOf` along
+        // with the instruction, without pinning the batch size.
+        buildUserPrompt([{ institution: '', title: '' }]),
+        JSON.stringify(KEEP_JSON_SCHEMA),
+        modelIdentity,
+      ].join('\u0000'),
+    )
+    .digest('hex');
 }
 
 /**
@@ -288,6 +363,14 @@ async function triageBatch(
  * request costs about 15 calls a day, so the judgement can be made by something
  * that reads them.
  *
+ * Verdicts are cached in two places. The in-memory map spans one run and exists
+ * for core's retry: core aborts the first attempt at 10 seconds and tries again
+ * with a longer budget, and without it every attempt would pay for the whole
+ * window. An optional {@link HeritageBidVerdictStore} spans runs, which is what
+ * the 48-hour window and a daily schedule need — half of each window was judged
+ * yesterday, and almost all of that half is rejections, which never reach the
+ * article table and so cannot be recognised any other way.
+ *
  * It never fails open: an error, or a response whose indices are unusable, falls
  * back to {@link isHeritageBidCandidate} for that batch rather than admitting
  * every notice into per-article scoring. Omitting triage entirely leaves the
@@ -297,22 +380,70 @@ async function triageBatch(
 export const createHeritageBidTriage = (
   options: HeritageBidTriageOptions,
 ): HeritageBidTriage => {
-  const { batchSize = DEFAULT_BATCH_SIZE, concurrency = DEFAULT_CONCURRENCY } =
-    options;
+  const {
+    batchSize = DEFAULT_BATCH_SIZE,
+    concurrency = DEFAULT_CONCURRENCY,
+    store,
+    onStoreError,
+    onCacheStats,
+  } = options;
 
-  // Verdicts survive across calls so core's retry resumes rather than restarts.
-  // Core aborts the first attempt at 10 seconds and tries again with a longer
-  // budget; without this, every attempt would pay for the whole window again.
-  const verdicts = new Map<string, boolean>();
+  const fingerprint = fingerprintOf(options.model);
+
+  // Keying on exactly what the model is shown is what keeps the cache honest:
+  // key on less and two notices it judged separately become one, and the second
+  // verdict silently overwrites the first. The hash keeps every key the same
+  // length, because the store is asked about some 2,100 of them at once.
   const keyOf = (candidate: HeritageBidCandidate) =>
-    identityOf(candidate).join('\u0000');
+    createHash('sha256')
+      .update([fingerprint, ...identityOf(candidate)].join('\u0000'))
+      .digest('hex');
+
+  const verdicts = new Map<string, boolean>();
+  /** Model verdicts this process has not handed to the store yet. */
+  const unsaved = new Set<string>();
 
   return async (candidates, signal) => {
     if (candidates.length === 0) {
       return [];
     }
 
-    const pending = candidates.filter((c) => !verdicts.has(keyOf(c)));
+    const keys = new Map(candidates.map((c) => [c, keyOf(c)] as const));
+    const fromMemory = candidates.filter((c) =>
+      verdicts.has(keys.get(c)!),
+    ).length;
+
+    if (store) {
+      const missing = [
+        ...new Set(
+          candidates
+            .map((c) => keys.get(c)!)
+            .filter((key) => !verdicts.has(key)),
+        ),
+      ];
+
+      if (missing.length > 0) {
+        try {
+          // Awaited, unlike the write: the whole point is to judge less, and a
+          // verdict that arrives after the batches are built saves nothing.
+          for (const [key, verdict] of await store.load(missing)) {
+            verdicts.set(key, verdict);
+          }
+        } catch (error) {
+          // A store that is down must not stop the crawl; the run simply pays
+          // for what it could not read.
+          onStoreError?.(
+            error instanceof Error ? error.message : String(error),
+            'load',
+          );
+        }
+      }
+    }
+
+    const fromStore =
+      candidates.filter((c) => verdicts.has(keys.get(c)!)).length - fromMemory;
+
+    const pending = candidates.filter((c) => !verdicts.has(keys.get(c)!));
     const batches: HeritageBidCandidate[][] = [];
 
     for (let index = 0; index < pending.length; index += batchSize) {
@@ -329,7 +460,13 @@ export const createHeritageBidTriage = (
           const decided = await triageBatch(batch, options, signal);
 
           batch.forEach((candidate, index) => {
-            verdicts.set(keyOf(candidate), decided[index]);
+            const key = keys.get(candidate)!;
+
+            verdicts.set(key, decided.verdicts[index]);
+
+            if (decided.fromModel) {
+              unsaved.add(key);
+            }
           });
         }
       },
@@ -339,6 +476,36 @@ export const createHeritageBidTriage = (
     // crawl needs; completed batches stay cached for the next attempt.
     await Promise.all(workers);
 
-    return candidates.map((c) => verdicts.get(keyOf(c)) ?? false);
+    onCacheStats?.({
+      candidates: candidates.length,
+      fromMemory,
+      fromStore,
+      judged: pending.length,
+    });
+
+    if (store && unsaved.size > 0 && !signal?.aborted) {
+      const pendingWrite = new Map(
+        [...unsaved].map((key) => [key, verdicts.get(key)!] as const),
+      );
+
+      unsaved.clear();
+
+      // Deliberately not awaited. This runs inside the crawl fetch that core
+      // times out at 10 seconds, and the saving is meant to make that budget
+      // easier to hit, not harder; the run continues for minutes afterwards, so
+      // the write has time to land.
+      void store.save(pendingWrite).catch((error: unknown) => {
+        for (const key of pendingWrite.keys()) {
+          unsaved.add(key);
+        }
+
+        onStoreError?.(
+          error instanceof Error ? error.message : String(error),
+          'save',
+        );
+      });
+    }
+
+    return candidates.map((c) => verdicts.get(keys.get(c)!) ?? false);
   };
 };
