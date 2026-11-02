@@ -244,3 +244,43 @@ test('a store that is down lets the run judge normally', async () => {
     'save',
   ]);
 });
+
+test('a partly non-integer index list is refused rather than trimmed', async () => {
+  // `[0, "2"]` trimmed to `[0]` keeps row 0 and rejects row 2, which is exactly
+  // what a real verdict rejecting row 2 looks like: `usable` is true, so the
+  // out-of-range guard stays quiet and the store persists it as the model's.
+  for (const body of ['{"keep":[0,"2"]}', '{"keep":["0","2"]}']) {
+    const { store, rows, drain } = fakeStore();
+    const fallbacks: string[] = [];
+    const { model } = openAiModel(body);
+    const triage = createHeritageBidTriage({
+      model,
+      store,
+      onFallback: (reason) => fallbacks.push(reason),
+    });
+
+    assert.deepEqual(await triage(candidates), REGEX_FALLBACK, body);
+    await drain();
+    assert.equal(fallbacks.length, 1, body);
+    assert.equal(rows.size, 0, `${body} must not be persisted`);
+  }
+});
+
+test('an empty index list stays a real verdict and is persisted', async () => {
+  // A batch of road works has nothing to keep, and that answer is worth saving;
+  // it is only indistinguishable from the fallback by what reaches the store.
+  const { store, rows, drain } = fakeStore();
+  const fallbacks: string[] = [];
+  const { model, state } = openAiModel('{"keep":[]}');
+  const triage = createHeritageBidTriage({
+    model,
+    store,
+    onFallback: (reason) => fallbacks.push(reason),
+  });
+
+  assert.deepEqual(await triage(candidates), [false, false, false]);
+  await drain();
+  assert.equal(state.calls, 1);
+  assert.deepEqual(fallbacks, []);
+  assert.equal(rows.size, candidates.length);
+});

@@ -164,14 +164,26 @@ function buildUserPrompt(candidates: HeritageBidCandidate[]): string {
  * answers with the bare `[0, 2]` instead of `{"keep": [0, 2]}` reaches us as a
  * perfectly valid result whose `.keep` is `undefined`. Both shapes mean the
  * same thing and both are accepted.
+ *
+ * Every element must be an integer, or the whole list is refused. Dropping the
+ * bad ones instead would turn `[0, "2"]` into `[0]`, which keeps row 0, rejects
+ * row 2 and is indistinguishable downstream from a model that considered row 2
+ * and said no — `usable` is true, so the out-of-range guard never fires, the
+ * batch counts as the model's own work and the store persists it. `["0", "2"]`
+ * is the same failure with every row silently rejected.
  */
 function readKeep(value: unknown): number[] | undefined {
   const keep = Array.isArray(value)
     ? value
     : ((value ?? undefined) as { keep?: unknown } | undefined)?.keep;
 
-  return Array.isArray(keep)
-    ? keep.filter((index): index is number => typeof index === 'number')
+  if (!Array.isArray(keep)) {
+    return undefined;
+  }
+
+  // An empty list stays legitimate: a batch of road works has nothing to keep.
+  return keep.every((index) => Number.isInteger(index))
+    ? (keep as number[])
     : undefined;
 }
 
