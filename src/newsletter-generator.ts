@@ -257,8 +257,8 @@ function createNewsletterGenerator(
   const openai = createOpenAI({
     apiKey: dependencies.openAIApiKey,
   });
-  // Every model this run uses goes through here, so the Anthropic cache
-  // breakpoint reaches core's calls — which this package cannot otherwise
+  // Every model this run uses goes through here, so both providers' cache
+  // breakpoints reach core's calls — which this package cannot otherwise
   // reach — as well as its own.
   const cached = (model: LanguageModel, task: string): LanguageModel =>
     withPromptCaching(model, {
@@ -329,8 +329,9 @@ function createNewsletterGenerator(
       analyzeImages: resolveModel('analyzeImages'),
       determineImportance: resolveModel('determineImportance'),
       // Cached like every other stage: core sends this one a long instruction
-      // too, and a model named here would otherwise be the one place a Claude
-      // model pays full price for it on every article.
+      // too, and a model named here would otherwise be the one place that
+      // instruction is billed in full on Claude, or cached behind the article
+      // on GPT, for every article.
       extractDeadlines: dependencies.extractDeadlineOptions
         ? dependencies.extractDeadlineOptions.model === undefined
           ? resolveModel('determineImportance')

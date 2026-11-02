@@ -152,9 +152,10 @@ test('provider objects and current SDK mocks reach all five stages intact', asyn
 
 test('every stage marks its instruction block for the Anthropic cache', async () => {
   // Core sends each stage's long instruction as a system message ahead of the
-  // article. OpenAI caches that prefix on its own; Anthropic caches nothing
-  // without the breakpoint, so a stage that loses the wrapper pays full price
-  // on Claude for every article and nothing fails loudly.
+  // article, and that block is what both providers' breakpoints mark. Anthropic
+  // caches nothing without one, so a stage that loses the wrapper pays full
+  // price on Claude for every article and nothing fails loudly. The OpenAI half
+  // of the same marking is asserted in the two tests below.
   const mocks = Object.fromEntries(
     stages.map((stage) => [
       stage,

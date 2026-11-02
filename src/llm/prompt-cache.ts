@@ -77,6 +77,19 @@ export const supportsOpenAICacheBreakpoints = (modelId: string): boolean => {
  * us anyway, since triage alone sends 22 requests at once against a guideline
  * of roughly 15 per minute per key.
  *
+ * Both providers also refuse to cache a block that is too short, and the
+ * consequence differs. OpenAI's minimum is 1,024 tokens on GPT-5.6 and later,
+ * which the 832-character 나라장터 triage instruction does not reach — so that
+ * stage caches nothing on GPT either way, and explicit mode still wins there by
+ * stopping the write it was paying for the article. Anthropic's minimum is
+ * **per model** and published figures differ by several times between the small
+ * and large ones, so do not hard-code one here or reason from a remembered
+ * number. A block under either minimum is processed without caching rather than
+ * rejected, which is why no length check is made: a breakpoint that cannot fire
+ * costs nothing, while a check against the wrong number would disable one that
+ * could. Whether a given stage clears its model's minimum is answered by
+ * `cacheWrite` in the reported usage, not by this comment.
+ *
  * The breakpoint goes on the last system message for both providers rather
  * than anywhere later: the prefix up to and including the marked block is what
  * gets cached, so marking the user turn would cache the article too and never
@@ -88,16 +101,6 @@ export const supportsOpenAICacheBreakpoints = (modelId: string): boolean => {
  * know which provider this package expected. A caller that has already chosen
  * `promptCacheOptions` keeps its own choice.
  *
- * Anthropic will not cache a block below a minimum length, and that minimum is
- * **per model** — published figures differ by several times between the small
- * and large models, so do not hard-code one here or reason from a remembered
- * number. A block under it is processed without caching rather than rejected,
- * which is why no length check is made: a breakpoint that cannot fire costs
- * nothing, and a length check against the wrong number would disable one that
- * could. The rendered scoring prompt is around 5,200 characters and the
- * 나라장터 triage prompt is 832; whether either clears the configured model's
- * minimum is answered by `cacheWrite` in the reported usage, not by this
- * comment.
  */
 export const withPromptCaching = (
   model: LanguageModel,
