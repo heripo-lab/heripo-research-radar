@@ -67,10 +67,10 @@ For academic publications:
 ## Installation
 
 ```bash
-npm install @heripo/research-radar '@llm-newsletter-kit/core@~3.1.1'
+npm install @heripo/research-radar '@llm-newsletter-kit/core@~3.2.0'
 ```
 
-**Requirements**: Node.js 24.22.1 or newer within 24.x, or >= 26.12.1, and an ESM application. Node.js 25 is not supported. The package exports `dist/index.js` and TypeScript declarations (`dist/index.d.ts`), with a JavaScript sourcemap. The core engine is a peer dependency; the current supported range is `~3.1.1`. Core 3.1.1 is required for recent-title guarding and source-grounded deadline extraction. It also includes the crawl-timeout retry handling and generation self-verification retry cap required by Radar.
+**Requirements**: Node.js 24.22.1 or newer within 24.x, or >= 26.12.1, and an ESM application. Node.js 25 is not supported. The package exports `dist/index.js` and TypeScript declarations (`dist/index.d.ts`), with a JavaScript sourcemap. The core engine is a peer dependency; the current supported range is `~3.2.0`. Core 3.2.0 is required for byte-based image analysis with `analyzeImagesOptions.customFetch` and integer importance scores. Recent-title guarding, source-grounded deadline extraction, the crawl-timeout retry handling and the generation self-verification retry cap that Radar relies on came with 3.1.1.
 
 An OpenAI API key is always required and supplies all default models. The optional compatibility path for Anthropic or Google newsletter generation additionally requires that provider's key. Keys are passed explicitly to the library; load environment variables in your application.
 
@@ -151,8 +151,8 @@ Candidate selection belongs to your repository. Persist `usedArticles` associati
 
 ### Recent titles and source deadlines
 
-These APIs use the published core 3.1.1 package. The peer dependency requires
-`~3.1.1`, and `npm ci` installs the locked package without a local core link.
+These APIs use the published core 3.2.0 package. The peer dependency requires
+`~3.2.0`, and `npm ci` installs the locked package without a local core link.
 
 - Implement optional `NewsletterRepository.findRecentPublishedTitles({ fromInclusive, toExclusive })`
   to enable the title guard. Radar supplies the seven calendar days before the
@@ -337,9 +337,9 @@ Every model resolved here — including one supplied through `contentGeneration`
 
 The optional `contentGeneration: { provider, apiKey, model? }` compatibility path still supports Anthropic and Google for newsletter generation. `models.generateNewsletter` takes precedence when both are supplied. If `models.generateNewsletter` is omitted or `undefined`, the existing `contentGeneration` provider/model selection applies; without either option, generation uses `llmConfig.models.generateNewsletter`. `openAIApiKey` remains required even when supplying model objects for every stage.
 
-Image analysis downloads each article's images through the same `customFetch` and robots.txt gate as crawling, so a proxy or TLS workaround the application needs for a board applies to its images too. This requires `@llm-newsletter-kit/core` 3.2 or later, which sends image bytes instead of URLs; earlier cores ignore the fetch. The analysis prompt asks for two labelled paragraphs: `시각 맥락` describes what the images show, and `이미지 속 정보` carries legible text read from them — event names, dates, venues, organisers and deadlines that a poster-only notice leaves out of its body. The generation prompt may cite `이미지 속 정보` to fill in such facts, prefers the body when the two disagree, and treats everything else in the image analysis as context only. Deadline extraction still ignores image analysis.
+Image analysis downloads each article's images through the same `customFetch` and robots.txt gate as crawling, so a proxy or TLS workaround the application needs for a board applies to its images too. Core 3.2 downloads the images and sends their bytes instead of URLs, refusing non-public addresses. The analysis prompt asks for two labelled paragraphs: `시각 맥락` describes what the images show, and `이미지 속 정보` carries legible text read from them — event names, dates, venues, organisers and deadlines that a poster-only notice leaves out of its body. The generation prompt may cite `이미지 속 정보` to fill in such facts, prefers the body when the two disagree, and treats everything else in the image analysis as context only. Deadline extraction still ignores image analysis.
 
-[src/config/index.ts](./src/config/index.ts) defines Korean output (`outputLanguage: '한국어'`), the cultural heritage domain (`expertField: ['문화유산']`), brand name, `subscribePageUrl`, LLM `maxRetries: 5`, chain `stopAfterAttempt: 3`, and generation `temperature: 0.3`. Publication settings are `minimumArticleCountForIssue: 5` and `priorityArticleScoreThreshold: 8`; the core engine evaluates them. In the locked core 3.1.1 implementation, the count check skips **5 or fewer** candidates unless at least one has importance score >= 8. An empty candidate list is always skipped.
+[src/config/index.ts](./src/config/index.ts) defines Korean output (`outputLanguage: '한국어'`), the cultural heritage domain (`expertField: ['문화유산']`), brand name, `subscribePageUrl`, LLM `maxRetries: 5`, chain `stopAfterAttempt: 3`, and generation `temperature: 0.3`. Publication settings are `minimumArticleCountForIssue: 5` and `priorityArticleScoreThreshold: 8`; the core engine evaluates them. In the locked core 3.2.0 implementation, the count check skips **5 or fewer** candidates unless at least one has importance score >= 8. An empty candidate list is always skipped.
 
 ## Crawling targets and parsers
 

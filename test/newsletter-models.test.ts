@@ -448,12 +448,7 @@ test('image analysis downloads through the crawl fetch behind the robots.txt gat
     await generateNewsletter({ ...dependencies, customFetch: crawlFetch }),
     'test-issue',
   );
-  // Read loosely: the installed core may predate `customFetch` on this option.
-  const imageFetch = (
-    captured.analysisProvider.analyzeImagesOptions as {
-      customFetch?: typeof fetch;
-    }
-  ).customFetch;
+  const imageFetch = captured.analysisProvider.analyzeImagesOptions.customFetch;
   assert.ok(imageFetch);
 
   const allowed = await imageFetch('https://board.example.com/upload/a.jpg');

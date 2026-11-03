@@ -66,10 +66,10 @@ Powered by LLM Newsletter Kit
 ## 설치
 
 ```bash
-npm install @heripo/research-radar '@llm-newsletter-kit/core@~3.1.1'
+npm install @heripo/research-radar '@llm-newsletter-kit/core@~3.2.0'
 ```
 
-**요구사항**: Node.js 24.x에서는 24.22.1 이상, 또는 Node.js 26.12.1 이상과 ESM 애플리케이션이 필요합니다. Node.js 25는 지원하지 않습니다. 패키지는 `dist/index.js`, TypeScript 선언 파일(`dist/index.d.ts`), JavaScript 소스맵을 제공합니다. Core 엔진은 peer dependency이며 현재 지원 범위는 `~3.1.1`입니다. 최근 제목 중복 방지와 원문 근거 기반 마감일 추출을 위해 core 3.1.1 이상이 필요합니다. 이 버전에는 Radar가 의존하는 크롤링 타임아웃 재시도 처리와 생성 자가검증 재시도 상한도 포함됩니다.
+**요구사항**: Node.js 24.x에서는 24.22.1 이상, 또는 Node.js 26.12.1 이상과 ESM 애플리케이션이 필요합니다. Node.js 25는 지원하지 않습니다. 패키지는 `dist/index.js`, TypeScript 선언 파일(`dist/index.d.ts`), JavaScript 소스맵을 제공합니다. Core 엔진은 peer dependency이며 현재 지원 범위는 `~3.2.0`입니다. `analyzeImagesOptions.customFetch`를 쓰는 바이트 기반 이미지 분석과 정수 중요도 점수를 위해 core 3.2.0이 필요합니다. Radar가 의존하는 최근 제목 중복 방지, 원문 근거 기반 마감일 추출, 크롤링 타임아웃 재시도 처리, 생성 자가검증 재시도 상한은 3.1.1부터 포함됐습니다.
 
 기사 분석에는 OpenAI API 키가 필요합니다. 콘텐츠 생성에는 선택한 프로바이더(OpenAI / Anthropic / Google)의 키가 필요하며, OpenAI를 선택하면 같은 키를 사용할 수 있습니다. 라이브러리에 키를 명시적으로 전달하므로 환경변수 로딩은 애플리케이션에서 처리하세요.
 
@@ -150,8 +150,8 @@ export async function runNewsletter(repositories: {
 
 ### 최근 제목과 원문 마감 추출
 
-이 API는 배포된 core 3.1.1 패키지를 사용합니다. 피어 의존성 범위는
-`~3.1.1`이며 `npm ci`로 로컬 core 연결 없이 잠금 파일의 패키지를 설치합니다.
+이 API는 배포된 core 3.2.0 패키지를 사용합니다. 피어 의존성 범위는
+`~3.2.0`이며 `npm ci`로 로컬 core 연결 없이 잠금 파일의 패키지를 설치합니다.
 
 - 선택적 `NewsletterRepository.findRecentPublishedTitles({ fromInclusive, toExclusive })`를
   구현하면 제목 중복 방지를 켭니다. Radar는 발행일 직전 7일의 날짜 범위를
@@ -323,9 +323,9 @@ await generateNewsletter({
 
 Anthropic·Google로 뉴스레터를 생성하는 기존 `contentGeneration: { provider, apiKey, model? }` 경로도 호환성을 위해 유지합니다. 두 설정을 함께 전달하면 `models.generateNewsletter`가 우선합니다. `models.generateNewsletter`를 생략하거나 `undefined`로 전달하면 기존 `contentGeneration`의 프로바이더·모델 선택을 사용합니다. 두 설정 모두 없으면 `llmConfig.models.generateNewsletter`를 사용합니다. 모든 단계에 모델 객체를 전달해도 `openAIApiKey`는 계속 필수입니다.
 
-이미지 분석은 기사 이미지를 크롤링과 같은 `customFetch`와 robots.txt 게이트로 내려받습니다. 그래서 애플리케이션이 게시판에 필요로 하는 프록시나 TLS 우회가 그 게시판의 이미지에도 똑같이 적용됩니다. 이미지 URL 대신 바이트를 보내는 `@llm-newsletter-kit/core` 3.2 이상이 필요하며, 이전 core는 이 fetch를 무시합니다. 분석 프롬프트는 레이블을 붙인 두 문단을 요구합니다. `시각 맥락`은 이미지에 보이는 것을 설명하고, `이미지 속 정보`는 이미지에서 또렷하게 읽은 글자 — 포스터만 올리고 본문은 비워 둔 공지에서 빠지는 행사명·일시·장소·주최·마감 — 를 담습니다. 생성 프롬프트는 이런 사실을 보충할 때 `이미지 속 정보`를 인용할 수 있고, 본문과 다르면 본문을 따르며, 이미지 분석의 나머지는 맥락으로만 씁니다. 마감 추출은 여전히 이미지 분석을 쓰지 않습니다.
+이미지 분석은 기사 이미지를 크롤링과 같은 `customFetch`와 robots.txt 게이트로 내려받습니다. 그래서 애플리케이션이 게시판에 필요로 하는 프록시나 TLS 우회가 그 게시판의 이미지에도 똑같이 적용됩니다. core 3.2는 이미지를 직접 내려받아 URL 대신 바이트로 보내며, 공개 주소가 아니면 요청하지 않습니다. 분석 프롬프트는 레이블을 붙인 두 문단을 요구합니다. `시각 맥락`은 이미지에 보이는 것을 설명하고, `이미지 속 정보`는 이미지에서 또렷하게 읽은 글자 — 포스터만 올리고 본문은 비워 둔 공지에서 빠지는 행사명·일시·장소·주최·마감 — 를 담습니다. 생성 프롬프트는 이런 사실을 보충할 때 `이미지 속 정보`를 인용할 수 있고, 본문과 다르면 본문을 따르며, 이미지 분석의 나머지는 맥락으로만 씁니다. 마감 추출은 여전히 이미지 분석을 쓰지 않습니다.
 
-[src/config/index.ts](./src/config/index.ts)에는 한국어 출력(`outputLanguage: '한국어'`), 문화유산 분야(`expertField: ['문화유산']`), 브랜드명, `subscribePageUrl`, LLM `maxRetries: 5`, 체인 `stopAfterAttempt: 3`, 생성 `temperature: 0.3`이 정의되어 있습니다. 발행 설정은 `minimumArticleCountForIssue: 5`, `priorityArticleScoreThreshold: 8`이며 core 엔진에서 판정합니다. 잠금 파일의 core 3.1.1 구현은 중요도 8 이상 기사가 없을 때 후보가 **5개 이하이면 생략**합니다. 후보가 없으면 항상 생략합니다.
+[src/config/index.ts](./src/config/index.ts)에는 한국어 출력(`outputLanguage: '한국어'`), 문화유산 분야(`expertField: ['문화유산']`), 브랜드명, `subscribePageUrl`, LLM `maxRetries: 5`, 체인 `stopAfterAttempt: 3`, 생성 `temperature: 0.3`이 정의되어 있습니다. 발행 설정은 `minimumArticleCountForIssue: 5`, `priorityArticleScoreThreshold: 8`이며 core 엔진에서 판정합니다. 잠금 파일의 core 3.2.0 구현은 중요도 8 이상 기사가 없을 때 후보가 **5개 이하이면 생략**합니다. 후보가 없으면 항상 생략합니다.
 
 ## 크롤링 대상과 파서
 
