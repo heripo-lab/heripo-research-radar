@@ -22,6 +22,7 @@ import type {
   JournalIssueSource,
   NewsletterRepository,
   NewsletterTemplateOptions,
+  SubmittedPaperSource,
   TagRepository,
   TaskRepository,
 } from './types/dependencies';
@@ -34,7 +35,10 @@ import { GenerateNewsletter } from '@llm-newsletter-kit/core';
 import { createHeritageBidTriage } from '~/crawling/heritage-triage';
 import { createImageFetch } from '~/crawling/source-fetch';
 import { createDeadlineReminderSelector } from '~/deadlines/select';
-import { createJournalIssueLoader } from '~/journals/loader';
+import {
+  createJournalIssueLoader,
+  createSourceLoader,
+} from '~/journals/loader';
 import { createJournalPaperSelector } from '~/journals/select';
 import { withPromptCaching } from '~/llm/prompt-cache';
 
@@ -173,6 +177,19 @@ export interface NewsletterGeneratorDependencies {
    * saved newsletter introduced.
    */
   journalIssueSource?: JournalIssueSource;
+
+  /**
+   * Supplies submitted papers to introduce in this run (optional): theses and
+   * journal papers outside KCI that authors applied for and an administrator
+   * entered after review.
+   *
+   * They are rendered in the journal section after the KCI issues when the
+   * newsletter is saved, without being crawled, scored or shown to a model,
+   * and do not count toward the publication criteria. The ones rendered come
+   * back in `saveNewsletter`'s `submittedPapers`; a run that saves no
+   * newsletter consumes none.
+   */
+  submittedPaperSource?: SubmittedPaperSource;
 
   /**
    * data.go.kr service key for the 나라일터 and 알리오 job boards (optional).
@@ -407,8 +424,8 @@ function createNewsletterGenerator(
         });
       },
     }),
-    loadJournalIssues && {
-      load: loadJournalIssues,
+    (loadJournalIssues || dependencies.submittedPaperSource) && {
+      load: loadJournalIssues ?? (async () => []),
       // Choosing papers is a relevance judgement for the readers, like
       // importance, so it reuses that model.
       select: createJournalPaperSelector({
@@ -433,6 +450,18 @@ function createNewsletterGenerator(
         dependencies.logger?.info({
           event: 'newsletter.journals.body.removed',
           data: { removed },
+        });
+      },
+      loadSubmittedPapers:
+        dependencies.submittedPaperSource &&
+        createSourceLoader(
+          dependencies.submittedPaperSource,
+          'submitted paper source',
+        ),
+      onSubmittedPapersUnavailable: (reason) => {
+        dependencies.logger?.error({
+          event: 'newsletter.submitted_papers.load.failed',
+          data: { reason },
         });
       },
     },

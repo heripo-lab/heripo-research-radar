@@ -502,3 +502,31 @@ test('image analysis prompt is registered and labels what the newsletter may cit
   );
   assert.ok(!generateSystem.includes('세부 사실을 본문에 인용하지 않는다'));
 });
+
+test('a submitted paper source alone wires the journal section rendering', async () => {
+  const paper = {
+    id: 's1',
+    title: '논문',
+    authors: ['저자'],
+    venue: '고려대학교',
+    url: 'https://example.com/s1',
+  };
+  assert.equal(
+    await generateNewsletter({
+      ...dependencies,
+      submittedPaperSource: async () => [paper],
+    }),
+    'test-issue',
+  );
+  const rendering = (
+    captured.contentGenerateProvider as unknown as {
+      journalIssues?: {
+        load: () => Promise<unknown[]>;
+        loadSubmittedPapers?: () => Promise<unknown[]>;
+      };
+    }
+  ).journalIssues;
+  assert.ok(rendering?.loadSubmittedPapers);
+  assert.deepEqual(await rendering.load(), []);
+  assert.deepEqual(await rendering.loadSubmittedPapers(), [paper]);
+});

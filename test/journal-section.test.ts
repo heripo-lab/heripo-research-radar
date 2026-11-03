@@ -3,13 +3,18 @@ import type {
   Newsletter,
 } from '@llm-newsletter-kit/core';
 
-import type { JournalIssue } from '../src/types/dependencies';
+import type { JournalIssue, SubmittedPaper } from '../src/types/dependencies';
 
 import { MockLanguageModelV4 } from 'ai/test';
 import { JSDOM } from 'jsdom';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
+import {
+  PAPER_SUBMISSION_FORM_URL,
+  PAPER_SUBMISSION_NOTICE,
+  SUBMITTED_PAPERS_LABEL,
+} from '../src/journals/constants';
 import { createJournalIssueLoader } from '../src/journals/loader';
 import {
   JOURNAL_ISSUE_CONTENT_TYPE,
@@ -25,6 +30,7 @@ import { JOURNAL_ISSUE_LIST_URL } from '../src/parsers/journal-issue.parser';
 import { researchRadarPromptProvider } from '../src/prompts';
 import { ContentGenerateProvider } from '../src/providers/content-generate.provider';
 import { DateService } from '../src/services/date.service';
+import { createNewsletterHtmlTemplate } from '../src/templates/newsletter-html';
 
 const paper = (index: number, authors = [`저자${index}`]) => ({
   title: `논문${index}`,
@@ -568,4 +574,197 @@ test('모델이 본문 섹션에 쓴 권호·논문 줄은 지우고 브리핑�
     `<h2>📮 브리핑</h2><h2>🎓 학술</h2><p><a href="${toc}">발간</a></p>`,
   ).window;
   assert.equal(removeJournalIssueMentionsHtml(bare, links), 0);
+});
+
+test('the journal section closes with the paper submission notice only when asked', () => {
+  const entry = { issue, selection: null };
+
+  const kras = renderJournalIssueSection([entry], { submissionNotice: true });
+  assert.ok(kras.endsWith(`\n\n${PAPER_SUBMISSION_NOTICE}`));
+  assert.ok(kras.includes(`](${PAPER_SUBMISSION_FORM_URL})`));
+
+  assert.ok(
+    !renderJournalIssueSection([entry]).includes(PAPER_SUBMISSION_FORM_URL),
+  );
+  assert.equal(renderJournalIssueSection([], { submissionNotice: true }), '');
+});
+
+test('the sources section names the KCI API and, for KRAS, the submission form', () => {
+  const sources = (html: string) => {
+    const document = new JSDOM(html).window.document;
+    const heading = [...document.querySelectorAll('h2')].find((element) =>
+      element.textContent?.includes('뉴스레터 출처'),
+    )!;
+    const paragraphs: string[] = [];
+    for (
+      let element = heading.nextElementSibling;
+      element && element.tagName === 'P';
+      element = element.nextElementSibling
+    )
+      paragraphs.push(element.innerHTML);
+    return paragraphs.join('\n');
+  };
+
+  const standard = sources(createNewsletterHtmlTemplate());
+  assert.match(standard, /KCI\)<\/a> Open API/);
+  assert.ok(!standard.includes(PAPER_SUBMISSION_FORM_URL));
+
+  const kras = sources(
+    createNewsletterHtmlTemplate({ isKrasNewsletter: true }),
+  );
+  assert.match(kras, /KCI\)<\/a> Open API/);
+  assert.ok(kras.includes(`href="${PAPER_SUBMISSION_FORM_URL}"`));
+});
+
+const thesis: SubmittedPaper = {
+  id: 'submission-1',
+  title: '청동기시대 주거지의 *화재* 양상',
+  authors: ['김신청'],
+  venue: '고려대학교',
+  url: 'https://dcollection.korea.ac.kr/thesis/1',
+};
+const journalPaper: SubmittedPaper = {
+  id: 'submission-2',
+  title: '삼국시대 토기 연구',
+  authors: ['이저자', '박공저'],
+  venue: '지역고고학 | 제3호',
+  url: 'javascript:alert(1)',
+};
+
+test('submitted papers render after the issues as an escaped table', () => {
+  const onlySubmitted = renderJournalIssueSection([], {
+    submittedPapers: [thesis, journalPaper],
+  });
+  assert.equal(
+    onlySubmitted,
+    [
+      '## 📖 새로 나온 논문',
+      '',
+      `**${SUBMITTED_PAPERS_LABEL}**`,
+      '',
+      '| 논문 | 저자 | 학술지·학교 |',
+      '| --- | --- | --- |',
+      '| [청동기시대 주거지의 \\*화재\\* 양상](https://dcollection.korea.ac.kr/thesis/1) | 김신청 | 고려대학교 |',
+      // A non-http(s) URL renders the title without a link.
+      '| 삼국시대 토기 연구 | 이저자, 박공저 | 지역고고학 \\| 제3호 |',
+    ].join('\n'),
+  );
+
+  const both = renderJournalIssueSection([{ issue, selection: null }], {
+    submittedPapers: [thesis],
+    submissionNotice: true,
+  });
+  const order = [
+    issue.journalName,
+    SUBMITTED_PAPERS_LABEL,
+    PAPER_SUBMISSION_NOTICE,
+  ].map((text) => both.indexOf(text));
+  assert.ok(
+    order.every((index, i) => index >= 0 && (i === 0 || index > order[i - 1])),
+  );
+});
+
+function submittedProvider(
+  loadSubmittedPapers: () => Promise<SubmittedPaper[]>,
+  onSave: (input: {
+    newsletter: Newsletter;
+    usedArticles: ArticleForGenerateContent[];
+    submittedPapers: SubmittedPaper[];
+  }) => void,
+  onSubmittedPapersUnavailable?: (reason: string) => void,
+) {
+  return new ContentGenerateProvider(
+    new MockLanguageModelV4(),
+    {
+      findByUrls: unexpected,
+      saveCrawledArticles: unexpected,
+      findUnscoredArticles: unexpected,
+      updateAnalysis: unexpected,
+      findCandidatesForNewsletter: async () => [article(1)],
+    },
+    {
+      getNextIssueOrder: async () => 1,
+      saveNewsletter: async (input) => {
+        onSave(input);
+        return { id: 1 };
+      },
+    },
+    { isKrasNewsletter: true, verifiedDeadlineReminders: [] },
+    undefined,
+    undefined,
+    {
+      load: async () => [],
+      loadSubmittedPapers,
+      onSubmittedPapersUnavailable,
+    },
+  );
+}
+
+async function saveWith(provider: ContentGenerateProvider) {
+  const candidates = await provider.fetchArticleCandidates();
+  await provider.saveNewsletter({
+    newsletter: {
+      title: '제목',
+      content: '## 📮 브리핑\n\n오늘 소식\n\n## 📌 마무리\n\n정리',
+      htmlBody: provider.htmlTemplate.html.replace(
+        '{{NEWSLETTER_CONTENT}}',
+        '<h2>📮 브리핑</h2><p>오늘 소식</p><h2>📌 마무리</h2><p>정리</p>',
+      ),
+      date: '2026-11-03',
+      issueOrder: 1,
+    },
+    usedArticles: candidates,
+  });
+}
+
+test('submitted papers alone render the section and come back as consumed', async () => {
+  let calls = 0;
+  let saved:
+    { newsletter: Newsletter; submittedPapers: SubmittedPaper[] } | undefined;
+  const provider = submittedProvider(
+    async () => {
+      calls += 1;
+      return [thesis];
+    },
+    (input) => (saved = input),
+  );
+
+  await provider.fetchArticleCandidates();
+  // Read only when a newsletter is saved, so a skipped run consumes nothing.
+  assert.equal(calls, 0);
+
+  await saveWith(provider);
+  assert.equal(calls, 1);
+  assert.ok(saved);
+  assert.deepEqual(
+    saved.submittedPapers.map(({ id }) => id),
+    ['submission-1'],
+  );
+  for (const body of [saved.newsletter.content, saved.newsletter.htmlBody]) {
+    assert.ok(body.includes(SUBMITTED_PAPERS_LABEL));
+    assert.ok(body.includes('고려대학교'));
+  }
+  assert.ok(
+    saved.newsletter.content.indexOf(SUBMITTED_PAPERS_LABEL) <
+      saved.newsletter.content.indexOf('## 📌 마무리'),
+  );
+});
+
+test('a failing submitted paper source leaves them out and still saves', async () => {
+  const reasons: string[] = [];
+  let saved:
+    { newsletter: Newsletter; submittedPapers: SubmittedPaper[] } | undefined;
+  const provider = submittedProvider(
+    async () => {
+      throw new Error('db down');
+    },
+    (input) => (saved = input),
+    (reason) => reasons.push(reason),
+  );
+
+  await saveWith(provider);
+  assert.ok(saved);
+  assert.deepEqual(saved.submittedPapers, []);
+  assert.deepEqual(reasons, ['db down']);
+  assert.ok(!saved.newsletter.content.includes(SUBMITTED_PAPERS_LABEL));
 });

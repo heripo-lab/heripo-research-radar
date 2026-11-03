@@ -1,4 +1,8 @@
-import type { JournalIssue, JournalIssuePaper } from '../types/dependencies';
+import type {
+  JournalIssue,
+  JournalIssuePaper,
+  SubmittedPaper,
+} from '../types/dependencies';
 import type { JournalPaperSelection } from './select';
 
 import { escapeLabel } from '../deadlines/reminders';
@@ -10,6 +14,8 @@ import {
 import {
   JOURNAL_ISSUE_CONTENT_TYPE,
   JOURNAL_ISSUE_SECTION_HEADING,
+  PAPER_SUBMISSION_NOTICE,
+  SUBMITTED_PAPERS_LABEL,
 } from './constants';
 
 export { JOURNAL_ISSUE_CONTENT_TYPE, JOURNAL_ISSUE_SECTION_HEADING };
@@ -100,18 +106,62 @@ function renderIssue({ issue, selection }: JournalIssueSectionEntry): string {
   return lines.join('\n');
 }
 
-/** Renders the whole section, or '' when there is no issue to show. */
-export function renderJournalIssueSection(
-  entries: JournalIssueSectionEntry[],
-): string {
-  if (entries.length === 0) return '';
+/** Only http(s) links are rendered; anything else is left unlinked. */
+function isLinkable(url: string): boolean {
+  if (!URL.canParse(url)) return false;
+  const { protocol } = new URL(url);
+  return protocol === 'http:' || protocol === 'https:';
+}
+
+function submittedPaperLink(paper: SubmittedPaper): string {
+  const title = escapeLabel(paper.title.trim());
+  const url = paper.url.trim();
+  return isLinkable(url) ? `[${title}](${url})` : title;
+}
+
+/**
+ * Renders submitted papers as a table like a KCI issue's, with the journal or
+ * university in its own column. Every value was typed in by an administrator,
+ * so all of it is escaped.
+ */
+function renderSubmittedPapers(papers: SubmittedPaper[]): string {
   return [
-    `## ${JOURNAL_ISSUE_SECTION_HEADING}`,
+    `**${SUBMITTED_PAPERS_LABEL}**`,
     '',
-    ...entries.flatMap((entry, index) =>
-      index === 0 ? [renderIssue(entry)] : ['', renderIssue(entry)],
+    '| 논문 | 저자 | 학술지·학교 |',
+    '| --- | --- | --- |',
+    ...papers.map(
+      (paper) =>
+        `| ${submittedPaperLink(paper)} | ${cell(formatAuthors(paper.authors))} | ${escapeLabel(paper.venue.trim()) || '—'} |`,
     ),
   ].join('\n');
+}
+
+/**
+ * Renders the whole section, or '' when there is nothing to show.
+ *
+ * KCI issues come first, then `submittedPapers` under their own label so
+ * readers can tell them apart. `submissionNotice` closes the section with how
+ * authors outside KCI can apply.
+ */
+export function renderJournalIssueSection(
+  entries: JournalIssueSectionEntry[],
+  {
+    submissionNotice = false,
+    submittedPapers = [],
+  }: { submissionNotice?: boolean; submittedPapers?: SubmittedPaper[] } = {},
+): string {
+  if (entries.length === 0 && submittedPapers.length === 0) return '';
+  const blocks = [
+    ...entries.map(renderIssue),
+    ...(submittedPapers.length > 0
+      ? [renderSubmittedPapers(submittedPapers)]
+      : []),
+    ...(submissionNotice ? [PAPER_SUBMISSION_NOTICE] : []),
+  ];
+  return [`## ${JOURNAL_ISSUE_SECTION_HEADING}`, '', blocks.join('\n\n')].join(
+    '\n',
+  );
 }
 
 /**

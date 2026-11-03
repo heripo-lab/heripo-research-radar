@@ -3,6 +3,11 @@ import safeMarkdown2Html from 'safe-markdown2html';
 
 import { newsletterConfig } from '~/config';
 import {
+  JOURNAL_ISSUE_SECTION_HEADING,
+  PAPER_SUBMISSION_FORM_URL,
+  SUBMITTED_PAPERS_LABEL,
+} from '~/journals/constants';
+import {
   heripoLogoHtml,
   platformIntroHtml,
   poweredByFooterHtml,
@@ -592,6 +597,11 @@ ${options.heripolabNewsMarkdown}
 
             <h2 style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 24px; font-weight: bold; line-height: 1.3; color: #D2691E; margin: 0 0 16px 0; letter-spacing: -0.2px; border-left: 5px solid #D2691E; padding-left: 12px; background: none;">🔍 뉴스레터 출처</h2>
             <p style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.7; color: #444444; margin: 0 0 18px 0;">이 뉴스레터가 수집하는 모든 소식의 출처는 <a href="https://heripo.app/research-radar/sources" target="_blank">이곳에서</a> 확인할 수 있습니다. 새롭게 포함했으면 하는 출처나 오류가 있다면 <a href="https://github.com/heripo-lab/heripo-research-radar/issues" target="_blank">GitHub 이슈</a>로 알려주세요.</p>
+            <p style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.7; color: #444444; margin: 0 0 18px 0;"><strong>${JOURNAL_ISSUE_SECTION_HEADING}</strong>의 KCI 학술지 권호는 위 출처와 별개로 <a href="https://www.kci.go.kr" target="_blank">한국학술지인용색인(KCI)</a> Open API로 학술지 권호와 논문 정보를 받아 소개합니다.${
+              options?.isKrasNewsletter
+                ? ` ${SUBMITTED_PAPERS_LABEL}은 저자의 신청을 받아 검토를 거쳐 소개합니다. KCI에 등재되지 않은 학위논문이나 학술지 논문의 저자라면 <a href="${PAPER_SUBMISSION_FORM_URL}" target="_blank">신규 논문 소개 신청</a>으로 소개를 요청할 수 있습니다(게재 또는 학위 수여 후 6개월 이내, 논문 1편당 1회).`
+                : ''
+            }</p>
             <hr style="border: 0; border-top: 2px solid #D2691E; margin: 32px 0;">
             <h2 style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 24px; font-weight: bold; line-height: 1.3; color: #D2691E; margin: 0 0 16px 0; letter-spacing: -0.2px; border-left: 5px solid #D2691E; padding-left: 12px; background: none;">📅 발행 정책</h2>
             <p style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.7; color: #444444; margin: 0 0 18px 0;"><strong>${options?.isKrasNewsletter ? '한국고고학회 뉴스레터' : 'heripo 리서치 레이더'}</strong>는 매일 발행을 원칙으로 하되, 독자분들께 의미 있는 정보를 제공하기 위해 다음과 같은 발행 기준을 적용합니다:</p>
