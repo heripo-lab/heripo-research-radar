@@ -664,6 +664,28 @@ test('submitted papers render after the issues as an escaped table', () => {
   );
 });
 
+test('submitted paper URLs and authors cannot inject Markdown', () => {
+  const markdown = renderJournalIssueSection([], {
+    submittedPapers: [
+      {
+        id: 'x',
+        title: '논문',
+        authors: ['[이름](https://example.com)', '박|저자'],
+        venue: '대학교',
+        url: 'https://example.org/a) [추가 링크](https://evil.example',
+      },
+    ],
+  });
+  const row = markdown.split('\n').at(-1)!;
+
+  assert.equal(
+    row,
+    '| [논문](https://example.org/a%29%20%5B%EC%B6%94%EA%B0%80%20%EB%A7%81%ED%81%AC%5D%28https://evil.example) | \\[이름\\]\\(https://example.com\\), 박\\|저자 | 대학교 |',
+  );
+  // One link, and the author renders as text
+  assert.equal(row.match(/\]\(/g)?.length, 1);
+});
+
 function submittedProvider(
   loadSubmittedPapers: () => Promise<SubmittedPaper[]>,
   onSave: (input: {

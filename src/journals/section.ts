@@ -107,16 +107,27 @@ function renderIssue({ issue, selection }: JournalIssueSectionEntry): string {
 }
 
 /** Only http(s) links are rendered; anything else is left unlinked. */
-function isLinkable(url: string): boolean {
-  if (!URL.canParse(url)) return false;
-  const { protocol } = new URL(url);
-  return protocol === 'http:' || protocol === 'https:';
+/**
+ * Serializes an http(s) URL as a Markdown link destination, or returns null
+ * for anything else. `href` percent-encodes whitespace; the characters that
+ * would close the destination, open another link or end the table cell are
+ * encoded on top of it.
+ */
+function linkDestination(value: string): string | null {
+  if (!URL.canParse(value)) return null;
+  const url = new URL(value);
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') return null;
+  return url.href.replace(
+    /[()<>[\]|]/g,
+    (character) =>
+      `%${character.charCodeAt(0).toString(16).toUpperCase().padStart(2, '0')}`,
+  );
 }
 
 function submittedPaperLink(paper: SubmittedPaper): string {
   const title = escapeLabel(paper.title.trim());
-  const url = paper.url.trim();
-  return isLinkable(url) ? `[${title}](${url})` : title;
+  const url = linkDestination(paper.url.trim());
+  return url ? `[${title}](${url})` : title;
 }
 
 /**
@@ -132,7 +143,7 @@ function renderSubmittedPapers(papers: SubmittedPaper[]): string {
     '| --- | --- | --- |',
     ...papers.map(
       (paper) =>
-        `| ${submittedPaperLink(paper)} | ${cell(formatAuthors(paper.authors))} | ${escapeLabel(paper.venue.trim()) || '—'} |`,
+        `| ${submittedPaperLink(paper)} | ${escapeLabel(formatAuthors(paper.authors))} | ${escapeLabel(paper.venue.trim()) || '—'} |`,
     ),
   ].join('\n');
 }
