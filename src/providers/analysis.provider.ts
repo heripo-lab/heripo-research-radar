@@ -19,6 +19,12 @@ export interface AnalysisModels {
   extractDeadlines?: LanguageModel;
   /** Event extraction is enabled only together with extractDeadlines. */
   includeEvents?: boolean;
+  /**
+   * Fetch used to download article images for image analysis. Core 3.2 sends
+   * the image bytes rather than their URLs, so this should apply the same
+   * proxy and robots.txt policy as crawling. Earlier cores ignore it.
+   */
+  imageFetch?: typeof fetch;
 }
 
 /**
@@ -28,7 +34,7 @@ export interface AnalysisModels {
  */
 export class AnalysisProvider implements CoreAnalysisProvider {
   classifyTagOptions: { model: LanguageModel };
-  analyzeImagesOptions: { model: LanguageModel };
+  analyzeImagesOptions: { model: LanguageModel; customFetch?: typeof fetch };
   extractDeadlineOptions?: CoreAnalysisProvider['extractDeadlineOptions'];
   determineScoreOptions: {
     model: LanguageModel;
@@ -70,6 +76,7 @@ export class AnalysisProvider implements CoreAnalysisProvider {
 
     this.analyzeImagesOptions = {
       model: models.analyzeImages,
+      customFetch: models.imageFetch,
     };
 
     if (models.extractDeadlines) {

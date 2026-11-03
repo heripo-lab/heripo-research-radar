@@ -430,3 +430,41 @@ test('event extraction opt-in reaches the core analysis provider', async () => {
     assert.ok(captured.analysisProvider.extractDeadlineOptions?.model);
   }
 });
+
+test('image analysis downloads through the crawl fetch behind the robots.txt gate', async () => {
+  const requested: string[] = [];
+  const crawlFetch = (async (input: RequestInfo | URL) => {
+    const url = String(input);
+    requested.push(url);
+    if (url.endsWith('/robots.txt')) {
+      return new Response('User-agent: *\nDisallow: /private/\n');
+    }
+    return new Response(new Uint8Array([0xff, 0xd8, 0xff]), {
+      headers: { 'content-type': 'image/jpeg' },
+    });
+  }) as typeof fetch;
+
+  assert.equal(
+    await generateNewsletter({ ...dependencies, customFetch: crawlFetch }),
+    'test-issue',
+  );
+  // Read loosely: the installed core may predate `customFetch` on this option.
+  const imageFetch = (
+    captured.analysisProvider.analyzeImagesOptions as {
+      customFetch?: typeof fetch;
+    }
+  ).customFetch;
+  assert.ok(imageFetch);
+
+  const allowed = await imageFetch('https://board.example.com/upload/a.jpg');
+  assert.equal(allowed.headers.get('content-type'), 'image/jpeg');
+
+  const blocked = await imageFetch('https://board.example.com/private/b.jpg');
+  // An HTML placeholder, which core skips as not an image
+  assert.match(await blocked.text(), /^<!-- Blocked by robots\.txt/);
+
+  assert.deepEqual(requested, [
+    'https://board.example.com/robots.txt',
+    'https://board.example.com/upload/a.jpg',
+  ]);
+});

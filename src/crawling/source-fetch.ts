@@ -101,3 +101,28 @@ export function createResearchRadarFetch({
   // URL is never requested.
   return createJournalIssueFetch(withExcavationReports, journalIssueSource);
 }
+
+/**
+ * Fetch for downloading article images during image analysis.
+ *
+ * Images are requested from the boards and the CDNs they embed, so they go
+ * through the same robots.txt gate and injected fetch as crawling — a proxy
+ * or TLS workaround the application needs for a board applies to its images
+ * too. A disallowed image is answered with an HTML placeholder, which core
+ * skips as not an image. The board adapters are left out: they only rewrite
+ * list and detail URLs, never image URLs.
+ */
+export function createImageFetch(
+  customFetch?: typeof fetch,
+  logger?: AppLogger,
+): typeof fetch {
+  return createRobotsAwareFetch(customFetch ?? fetch, {
+    exemptOrigins: robotsExemptOrigins,
+    onBlocked: ({ url, rule, userAgent }) => {
+      logger?.info({
+        event: 'analysis.images.robots.blocked',
+        data: { url, rule, userAgent },
+      });
+    },
+  });
+}

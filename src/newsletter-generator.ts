@@ -32,6 +32,7 @@ import { createOpenAI } from '@ai-sdk/openai';
 import { GenerateNewsletter } from '@llm-newsletter-kit/core';
 
 import { createHeritageBidTriage } from '~/crawling/heritage-triage';
+import { createImageFetch } from '~/crawling/source-fetch';
 import { createDeadlineReminderSelector } from '~/deadlines/select';
 import { createJournalIssueLoader } from '~/journals/loader';
 import { createJournalPaperSelector } from '~/journals/select';
@@ -343,6 +344,10 @@ function createNewsletterGenerator(
             )
         : undefined,
       includeEvents: dependencies.extractDeadlineOptions?.includeEvents,
+      imageFetch: createImageFetch(
+        dependencies.customFetch,
+        dependencies.logger,
+      ),
     },
     dependencies.articleRepository,
     dependencies.tagRepository,
