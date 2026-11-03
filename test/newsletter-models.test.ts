@@ -525,3 +525,80 @@ test('a submitted paper source alone wires the journal section rendering', async
   assert.deepEqual(await rendering.load(), []);
   assert.deepEqual(await rendering.loadSubmittedPapers(), [paper]);
 });
+
+test("without an application fetch, image analysis keeps core's own download", async () => {
+  assert.equal(
+    await generateNewsletter({ ...dependencies, customFetch: undefined }),
+    'test-issue',
+  );
+  assert.equal(
+    captured.analysisProvider.analyzeImagesOptions.customFetch,
+    undefined,
+  );
+});
+
+test('the image robots.txt lookup never follows a redirect off its host', async () => {
+  const { createImageFetch } = await import('../src/crawling/source-fetch');
+  const requested: string[] = [];
+  const appFetch = (async (input: RequestInfo | URL) => {
+    const url = String(input);
+    requested.push(url);
+    if (url === 'https://evil.example.com/robots.txt') {
+      return new Response(null, {
+        status: 302,
+        headers: { location: 'http://169.254.169.254/latest/meta-data/' },
+      });
+    }
+    if (url === 'http://board.example.com/robots.txt') {
+      return new Response(null, {
+        status: 301,
+        headers: { location: 'https://board.example.com/robots.txt' },
+      });
+    }
+    if (url === 'https://board.example.com/robots.txt') {
+      return new Response('User-agent: *\nDisallow: /private/\n');
+    }
+    return new Response('image');
+  }) as typeof fetch;
+  const imageFetch = createImageFetch(appFetch);
+
+  // A cross-host redirect counts as no robots.txt: the image is fetched and
+  // the redirect target never is.
+  assert.equal(
+    await (await imageFetch('https://evil.example.com/a.png')).text(),
+    'image',
+  );
+  // A same-host http→https redirect is followed and its rules apply.
+  assert.match(
+    await (await imageFetch('http://board.example.com/private/b.png')).text(),
+    /^<!-- Blocked by robots\.txt/,
+  );
+
+  assert.deepEqual(requested, [
+    'https://evil.example.com/robots.txt',
+    'https://evil.example.com/a.png',
+    'http://board.example.com/robots.txt',
+    'https://board.example.com/robots.txt',
+  ]);
+});
+
+test('the image robots.txt lookup gives up after five same-host redirects', async () => {
+  const { createImageFetch } = await import('../src/crawling/source-fetch');
+  let robotsRequests = 0;
+  const appFetch = (async (input: RequestInfo | URL) => {
+    if (String(input).includes('robots')) {
+      robotsRequests += 1;
+      return new Response(null, {
+        status: 302,
+        headers: { location: `/robots-${robotsRequests}` },
+      });
+    }
+    return new Response('image');
+  }) as typeof fetch;
+
+  const response = await createImageFetch(appFetch)(
+    'https://loop.example.com/private/a.png',
+  );
+  assert.equal(await response.text(), 'image');
+  assert.equal(robotsRequests, 6);
+});

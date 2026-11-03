@@ -103,21 +103,31 @@ export function createResearchRadarFetch({
 }
 
 /**
- * Fetch for downloading article images during image analysis.
+ * Fetch for downloading article images during image analysis, built only
+ * when the application injects its own fetch.
  *
  * Images are requested from the boards and the CDNs they embed, so they go
- * through the same robots.txt gate and injected fetch as crawling — a proxy
- * or TLS workaround the application needs for a board applies to its images
- * too. A disallowed image is answered with an HTML placeholder, which core
- * skips as not an image. The board adapters are left out: they only rewrite
- * list and detail URLs, never image URLs.
+ * through the application's fetch — a proxy or TLS workaround a board needs
+ * applies to its images too — behind a robots.txt gate. A disallowed image is
+ * answered with an HTML placeholder, which core skips as not an image. The
+ * board adapters are left out: they only rewrite list and detail URLs, never
+ * image URLs.
+ *
+ * Core checks that each image URL and redirect hop points at a public
+ * address before calling this fetch, and robots.txt is looked up on the same
+ * host and may not redirect off it. Checking the address as the connection is
+ * made is up to the injected fetch: core does it only on its own default
+ * download, which is why this is not built without an injected fetch.
  */
 export function createImageFetch(
-  customFetch?: typeof fetch,
+  customFetch: typeof fetch,
   logger?: AppLogger,
 ): typeof fetch {
-  return createRobotsAwareFetch(customFetch ?? fetch, {
+  return createRobotsAwareFetch(customFetch, {
     exemptOrigins: robotsExemptOrigins,
+    // Image hosts come from article bodies, so robots.txt must not redirect
+    // the request to another host.
+    sameHostRedirectsOnly: true,
     onBlocked: ({ url, rule, userAgent }) => {
       logger?.info({
         event: 'analysis.images.robots.blocked',

@@ -361,10 +361,11 @@ function createNewsletterGenerator(
             )
         : undefined,
       includeEvents: dependencies.extractDeadlineOptions?.includeEvents,
-      imageFetch: createImageFetch(
-        dependencies.customFetch,
-        dependencies.logger,
-      ),
+      // Without an application fetch, core's own download is used: it checks
+      // each address as it connects, which no fetch built here can.
+      imageFetch:
+        dependencies.customFetch &&
+        createImageFetch(dependencies.customFetch, dependencies.logger),
     },
     dependencies.articleRepository,
     dependencies.tagRepository,

@@ -22,7 +22,8 @@ export interface AnalysisModels {
   /**
    * Fetch used to download article images for image analysis. Core sends the
    * image bytes rather than their URLs, so this should apply the same proxy
-   * and robots.txt policy as crawling.
+   * and robots.txt policy as crawling. Omitted, core's own download is used,
+   * which checks each address as it connects.
    */
   imageFetch?: typeof fetch;
 }
