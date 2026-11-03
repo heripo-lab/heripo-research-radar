@@ -430,3 +430,175 @@ test('event extraction opt-in reaches the core analysis provider', async () => {
     assert.ok(captured.analysisProvider.extractDeadlineOptions?.model);
   }
 });
+
+test('image analysis downloads through the crawl fetch behind the robots.txt gate', async () => {
+  const requested: string[] = [];
+  const crawlFetch = (async (input: RequestInfo | URL) => {
+    const url = String(input);
+    requested.push(url);
+    if (url.endsWith('/robots.txt')) {
+      return new Response('User-agent: *\nDisallow: /private/\n');
+    }
+    return new Response(new Uint8Array([0xff, 0xd8, 0xff]), {
+      headers: { 'content-type': 'image/jpeg' },
+    });
+  }) as typeof fetch;
+
+  assert.equal(
+    await generateNewsletter({ ...dependencies, customFetch: crawlFetch }),
+    'test-issue',
+  );
+  const imageFetch = captured.analysisProvider.analyzeImagesOptions.customFetch;
+  assert.ok(imageFetch);
+
+  const allowed = await imageFetch('https://board.example.com/upload/a.jpg');
+  assert.equal(allowed.headers.get('content-type'), 'image/jpeg');
+
+  const blocked = await imageFetch('https://board.example.com/private/b.jpg');
+  // An HTML placeholder, which core skips as not an image
+  assert.match(await blocked.text(), /^<!-- Blocked by robots\.txt/);
+
+  assert.deepEqual(requested, [
+    'https://board.example.com/robots.txt',
+    'https://board.example.com/upload/a.jpg',
+  ]);
+});
+
+test('image analysis prompt is registered and labels what the newsletter may cite', async () => {
+  const { researchRadarPromptProvider } = await import('../src/prompts');
+  const { IMAGE_CONTEXT_LABEL, IMAGE_TEXT_LABEL } =
+    await import('../src/prompts/analyze-images');
+  const analyzeImages = researchRadarPromptProvider.analysis?.analyzeImages;
+  assert.ok(analyzeImages?.system && analyzeImages.user);
+
+  const context = {
+    expertFields: ['문화유산'],
+    outputLanguage: '한국어',
+    targetArticle: { title: '학술대회 안내', detailContent: '첨부 참조' },
+  } as Parameters<NonNullable<typeof analyzeImages.system>>[0];
+  const system = analyzeImages.system(context);
+  assert.match(system, new RegExp(`\\*\\*${IMAGE_CONTEXT_LABEL}:\\*\\*`));
+  assert.match(system, new RegExp(`\\*\\*${IMAGE_TEXT_LABEL}:\\*\\*`));
+  assert.match(analyzeImages.user(context), /학술대회 안내[\s\S]*첨부 참조/);
+
+  const generate =
+    researchRadarPromptProvider.contentGenerate?.generateNewsletter;
+  assert.ok(generate?.system);
+  const generateSystem = generate.system({
+    expertFields: ['문화유산'],
+    outputLanguage: '한국어',
+    newsletterBrandName: 'test',
+    dateService: { getPublicationDisplayDateString: () => '2026년 11월 3일' },
+  } as unknown as Parameters<NonNullable<typeof generate.system>>[0]);
+  assert.ok(
+    generateSystem.includes(
+      `\`${IMAGE_TEXT_LABEL}\`은 첨부 이미지에서 읽은 사실이다`,
+    ),
+  );
+  assert.ok(!generateSystem.includes('세부 사실을 본문에 인용하지 않는다'));
+});
+
+test('a submitted paper source alone wires the journal section rendering', async () => {
+  const paper = {
+    id: 's1',
+    title: '논문',
+    authors: ['저자'],
+    venue: '고려대학교',
+    url: 'https://example.com/s1',
+  };
+  assert.equal(
+    await generateNewsletter({
+      ...dependencies,
+      submittedPaperSource: async () => [paper],
+    }),
+    'test-issue',
+  );
+  const rendering = (
+    captured.contentGenerateProvider as unknown as {
+      journalIssues?: {
+        load: () => Promise<unknown[]>;
+        loadSubmittedPapers?: () => Promise<unknown[]>;
+      };
+    }
+  ).journalIssues;
+  assert.ok(rendering?.loadSubmittedPapers);
+  assert.deepEqual(await rendering.load(), []);
+  assert.deepEqual(await rendering.loadSubmittedPapers(), [paper]);
+});
+
+test("without an application fetch, image analysis keeps core's own download", async () => {
+  assert.equal(
+    await generateNewsletter({ ...dependencies, customFetch: undefined }),
+    'test-issue',
+  );
+  assert.equal(
+    captured.analysisProvider.analyzeImagesOptions.customFetch,
+    undefined,
+  );
+});
+
+test('the image robots.txt lookup never follows a redirect off its host', async () => {
+  const { createImageFetch } = await import('../src/crawling/source-fetch');
+  const requested: string[] = [];
+  const appFetch = (async (input: RequestInfo | URL) => {
+    const url = String(input);
+    requested.push(url);
+    if (url === 'https://evil.example.com/robots.txt') {
+      return new Response(null, {
+        status: 302,
+        headers: { location: 'http://169.254.169.254/latest/meta-data/' },
+      });
+    }
+    if (url === 'http://board.example.com/robots.txt') {
+      return new Response(null, {
+        status: 301,
+        headers: { location: 'https://board.example.com/robots.txt' },
+      });
+    }
+    if (url === 'https://board.example.com/robots.txt') {
+      return new Response('User-agent: *\nDisallow: /private/\n');
+    }
+    return new Response('image');
+  }) as typeof fetch;
+  const imageFetch = createImageFetch(appFetch);
+
+  // A cross-host redirect counts as no robots.txt: the image is fetched and
+  // the redirect target never is.
+  assert.equal(
+    await (await imageFetch('https://evil.example.com/a.png')).text(),
+    'image',
+  );
+  // A same-host http→https redirect is followed and its rules apply.
+  assert.match(
+    await (await imageFetch('http://board.example.com/private/b.png')).text(),
+    /^<!-- Blocked by robots\.txt/,
+  );
+
+  assert.deepEqual(requested, [
+    'https://evil.example.com/robots.txt',
+    'https://evil.example.com/a.png',
+    'http://board.example.com/robots.txt',
+    'https://board.example.com/robots.txt',
+  ]);
+});
+
+test('the image robots.txt lookup gives up after five same-host redirects', async () => {
+  const { createImageFetch } = await import('../src/crawling/source-fetch');
+  let robotsRequests = 0;
+  const appFetch = (async (input: RequestInfo | URL) => {
+    if (String(input).includes('robots')) {
+      robotsRequests += 1;
+      return new Response(null, {
+        status: 302,
+        headers: { location: `/robots-${robotsRequests}` },
+      });
+    }
+    return new Response('image');
+  }) as typeof fetch;
+
+  const response = await createImageFetch(appFetch)(
+    'https://loop.example.com/private/a.png',
+  );
+  assert.equal(await response.text(), 'image');
+  assert.equal(robotsRequests, 6);
+});

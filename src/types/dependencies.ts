@@ -214,6 +214,51 @@ export interface JournalIssue {
 export type JournalIssueSource = () => Promise<JournalIssue[]>;
 
 /**
+ * A paper whose author applied to have it introduced, entered by an
+ * administrator after review — a thesis or a journal paper outside KCI.
+ *
+ * Submitted papers are not articles: they are not crawled, scored or shown to
+ * a model. When a newsletter is saved, every one the source supplied is
+ * rendered in the journal section after the KCI issues and handed back in
+ * `saveNewsletter`'s `submittedPapers`, so the application can mark it
+ * introduced. A run that saves no newsletter consumes none of them.
+ */
+export interface SubmittedPaper {
+  /**
+   * Stable identifier from the application. It comes back unchanged in
+   * `saveNewsletter`'s `submittedPapers`, which is how the application records
+   * that the paper was introduced.
+   */
+  id: string;
+
+  /** Paper title. */
+  title: string;
+
+  /** Author names in publication order. */
+  authors: string[];
+
+  /**
+   * Where the paper appeared: the journal for a journal paper, the university
+   * for a thesis.
+   * @example "고려대학교"
+   */
+  venue: string;
+
+  /**
+   * Page where readers can see the paper or its record. Only http(s) URLs are
+   * linked; anything else renders the title without a link.
+   */
+  url: string;
+}
+
+/**
+ * Supplies the submitted papers to introduce in this run. Called at most once,
+ * when the newsletter is saved. A failing or stalled source leaves them out of
+ * that newsletter rather than failing it.
+ */
+export type SubmittedPaperSource = () => Promise<SubmittedPaper[]>;
+
+/**
  * Repository interface for tag management
  */
 export interface TagRepository {
@@ -342,11 +387,14 @@ export interface NewsletterRepository {
    * @param input - Input parameters
    * @param input.newsletter - Newsletter data
    * @param input.usedArticles - List of used articles
+   * @param input.submittedPapers - Submitted papers rendered in this
+   *   newsletter; empty when none were supplied or the source failed
    * @returns Saved newsletter ID
    */
   saveNewsletter(input: {
     newsletter: Newsletter;
     usedArticles: ArticleForGenerateContent[];
+    submittedPapers: SubmittedPaper[];
   }): Promise<{ id: string | number }>;
 }
 

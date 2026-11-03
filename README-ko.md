@@ -66,10 +66,10 @@ Powered by LLM Newsletter Kit
 ## 설치
 
 ```bash
-npm install @heripo/research-radar '@llm-newsletter-kit/core@~3.1.1'
+npm install @heripo/research-radar '@llm-newsletter-kit/core@~3.2.0'
 ```
 
-**요구사항**: Node.js 24.x에서는 24.22.1 이상, 또는 Node.js 26.12.1 이상과 ESM 애플리케이션이 필요합니다. Node.js 25는 지원하지 않습니다. 패키지는 `dist/index.js`, TypeScript 선언 파일(`dist/index.d.ts`), JavaScript 소스맵을 제공합니다. Core 엔진은 peer dependency이며 현재 지원 범위는 `~3.1.1`입니다. 최근 제목 중복 방지와 원문 근거 기반 마감일 추출을 위해 core 3.1.1 이상이 필요합니다. 이 버전에는 Radar가 의존하는 크롤링 타임아웃 재시도 처리와 생성 자가검증 재시도 상한도 포함됩니다.
+**요구사항**: Node.js 24.x에서는 24.22.1 이상, 또는 Node.js 26.12.1 이상과 ESM 애플리케이션이 필요합니다. Node.js 25는 지원하지 않습니다. 패키지는 `dist/index.js`, TypeScript 선언 파일(`dist/index.d.ts`), JavaScript 소스맵을 제공합니다. Core 엔진은 peer dependency이며 현재 지원 범위는 `~3.2.0`입니다. `analyzeImagesOptions.customFetch`를 쓰는 바이트 기반 이미지 분석과 정수 중요도 점수를 위해 core 3.2.0이 필요합니다. Radar가 의존하는 최근 제목 중복 방지, 원문 근거 기반 마감일 추출, 크롤링 타임아웃 재시도 처리, 생성 자가검증 재시도 상한은 3.1.1부터 포함됐습니다.
 
 기사 분석에는 OpenAI API 키가 필요합니다. 콘텐츠 생성에는 선택한 프로바이더(OpenAI / Anthropic / Google)의 키가 필요하며, OpenAI를 선택하면 같은 키를 사용할 수 있습니다. 라이브러리에 키를 명시적으로 전달하므로 환경변수 로딩은 애플리케이션에서 처리하세요.
 
@@ -150,8 +150,8 @@ export async function runNewsletter(repositories: {
 
 ### 최근 제목과 원문 마감 추출
 
-이 API는 배포된 core 3.1.1 패키지를 사용합니다. 피어 의존성 범위는
-`~3.1.1`이며 `npm ci`로 로컬 core 연결 없이 잠금 파일의 패키지를 설치합니다.
+이 API는 배포된 core 3.2.0 패키지를 사용합니다. 피어 의존성 범위는
+`~3.2.0`이며 `npm ci`로 로컬 core 연결 없이 잠금 파일의 패키지를 설치합니다.
 
 - 선택적 `NewsletterRepository.findRecentPublishedTitles({ fromInclusive, toExclusive })`를
   구현하면 제목 중복 방지를 켭니다. Radar는 발행일 직전 7일의 날짜 범위를
@@ -250,6 +250,7 @@ publicationDate)`에 전달하고 결과를 `templateOptions.deadlineRemindersMa
 | `promptProvider`          | 패키지 자체 LLM 프롬프트를 통째로 대체하는 core `PromptProvider`. 생략하면 패키지 프롬프트를 쓰고, 정의되지 않은 단계는 core 기본값 사용 |
 | `excavationReportSource`  | 국가유산청 발굴조사 보고서를 애플리케이션이 주입. 주입하면 해당 게시판은 크롤링하지 않음. 생략하면 기존대로 크롤링                       |
 | `journalIssueSource`      | KCI 등 새로 발간된 학술지 권호를 애플리케이션이 주입. 권호 하나가 기사 하나가 됨. 생략하면 해당 타깃은 수집하지 않음                     |
+| `submittedPaperSource`    | 검토 후 입력한 저자 신청 논문(학위논문, KCI 밖 학술지 논문)을 주입. 저장 시 논문 섹션에 렌더링하며 채점하지 않음                         |
 | `heritageBidVerdictStore` | 나라장터 선별 판정을 실행 사이에 보관. 겹치는 절반을 다시 묻지 않음. 생략하면 매 실행이 윈도 전체를 판정                                 |
 | `previewNewsletter`       | 저장된 `Newsletter`를 조회하고 전달한 core `EmailService`로 미리보기 발송                                                                |
 
@@ -322,7 +323,9 @@ await generateNewsletter({
 
 Anthropic·Google로 뉴스레터를 생성하는 기존 `contentGeneration: { provider, apiKey, model? }` 경로도 호환성을 위해 유지합니다. 두 설정을 함께 전달하면 `models.generateNewsletter`가 우선합니다. `models.generateNewsletter`를 생략하거나 `undefined`로 전달하면 기존 `contentGeneration`의 프로바이더·모델 선택을 사용합니다. 두 설정 모두 없으면 `llmConfig.models.generateNewsletter`를 사용합니다. 모든 단계에 모델 객체를 전달해도 `openAIApiKey`는 계속 필수입니다.
 
-[src/config/index.ts](./src/config/index.ts)에는 한국어 출력(`outputLanguage: '한국어'`), 문화유산 분야(`expertField: ['문화유산']`), 브랜드명, `subscribePageUrl`, LLM `maxRetries: 5`, 체인 `stopAfterAttempt: 3`, 생성 `temperature: 0.3`이 정의되어 있습니다. 발행 설정은 `minimumArticleCountForIssue: 5`, `priorityArticleScoreThreshold: 8`이며 core 엔진에서 판정합니다. 잠금 파일의 core 3.1.1 구현은 중요도 8 이상 기사가 없을 때 후보가 **5개 이하이면 생략**합니다. 후보가 없으면 항상 생략합니다.
+core 3.2는 기사 이미지를 직접 내려받아 URL 대신 바이트로 보내며, 공개 주소가 아니면 요청하지 않습니다. 애플리케이션이 `customFetch`를 주면 이미지를 robots.txt 게이트를 씌운 그 fetch로 내려받으므로, 게시판에 필요한 프록시나 TLS 우회가 이미지에도 적용됩니다. 이 게이트의 robots.txt 조회는 다른 호스트로의 리다이렉트를 따라가지 않습니다. core가 그 fetch를 부르기 전에 이미지 URL과 리다이렉트마다 주소를 검사하지만, 연결 시점의 주소 검사(DNS 재바인딩 방어)는 애플리케이션 fetch의 몫입니다. `customFetch`가 없으면 연결 시점에 주소를 검사하는 core 자체 다운로드를 쓰며, 이때 이미지에는 robots.txt를 적용하지 않습니다. 분석 프롬프트는 레이블을 붙인 두 문단을 요구합니다. `시각 맥락`은 이미지에 보이는 것을 설명하고, `이미지 속 정보`는 이미지에서 또렷하게 읽은 글자 — 포스터만 올리고 본문은 비워 둔 공지에서 빠지는 행사명·일시·장소·주최·마감 — 를 담습니다. 생성 프롬프트는 이런 사실을 보충할 때 `이미지 속 정보`를 인용할 수 있고, 본문과 다르면 본문을 따르며, 이미지 분석의 나머지는 맥락으로만 씁니다. 마감 추출은 여전히 이미지 분석을 쓰지 않습니다.
+
+[src/config/index.ts](./src/config/index.ts)에는 한국어 출력(`outputLanguage: '한국어'`), 문화유산 분야(`expertField: ['문화유산']`), 브랜드명, `subscribePageUrl`, LLM `maxRetries: 5`, 체인 `stopAfterAttempt: 3`, 생성 `temperature: 0.3`이 정의되어 있습니다. 발행 설정은 `minimumArticleCountForIssue: 5`, `priorityArticleScoreThreshold: 8`이며 core 엔진에서 판정합니다. 잠금 파일의 core 3.2.0 구현은 중요도 8 이상 기사가 없을 때 후보가 **5개 이하이면 생략**합니다. 후보가 없으면 항상 생략합니다.
 
 ## 크롤링 대상과 파서
 
@@ -343,7 +346,7 @@ Anthropic·Google로 뉴스레터를 생성하는 기존 `contentGeneration: { p
 
 새로 발간된 학술지 권호는 크롤링하지 않습니다. 애플리케이션이 `journalIssueSource`로 주입하고(heripo-web은 KCI 논문 카탈로그에서 읽음) `KCI_학술지_신간` 타깃이 이를 그대로 제공하므로, 타깃 URL로는 요청하지 않습니다. 권호 하나가 기사 하나가 됩니다. `uniqId`는 권호의 `externalId`, URL은 권호의 `url`입니다. `usedArticles`에는 애플리케이션의 기사 ID와 URL만 실리므로, 저장된 뉴스레터가 소개한 권호는 `saveCrawledArticles`에서 저장해 둔 `uniqId`나 권호 URL로 기록합니다. 채점 단계가 읽는 기사 본문에는 여러 논문이 공유한 키워드와 함께 수록 논문 전체의 저자·키워드·300자로 자른 초록이 들어갑니다. 출처를 주지 않으면 빈 목록을 반환합니다. 기존 국립문화유산연구원 헤리티지:역사와 과학·보존과학연구 게시판 크롤링을 대체합니다.
 
-이 권호들은 생성 모델이 본문에 쓰지 않습니다. `ContentGenerateProvider`가 `📖 새로 나온 논문` 섹션을 직접 렌더링해 `🎓 학술대회·학술행사` 뒤, `📋 발굴조사보고서 (신규 제출)` 앞에 넣습니다. 그 섹션이 없으면 다음 고정 분류(`⛏️ 발굴현장 공개`, `💼 채용·공고`, `📑 사업·입찰 공고`, `📌 마무리` 순) 중 처음 나오는 섹션 앞에 넣습니다. 권호마다 KCI 권호 목차로 링크하고, 독자가 관심 가질 논문을 관심이 큰 순서대로 저자와 함께 표로 보여주며, 나머지는 편수와 주제로 줄입니다. 기준은 학문 분야가 아니라 독자(KRAS 모드에서는 한국고고학회 회원)의 관심입니다. 역사학 논문이라도 뺄 수 있고 고고학이 아니어도 실을 수 있습니다. 중요도 모델은 논문 번호를 고르고 순서를 정하며 뺀 논문의 주제만 붙이고, 제목·링크·저자는 주입 데이터 그대로 씁니다. 선별이 실패하거나 시간이 초과되면 모든 논문을 표에 싣고, 권호를 불러오지 못하면 해당 기사는 일반 후보로 모델에 넘깁니다. 권호 기사는 `자동 섹션: 📖 새로 나온 논문` 구분을 달고 모델 후보에 그대로 남습니다. 프롬프트는 이 기사를 본문 분류 섹션에 쓰지 않게 하되, 제목과 브리핑을 고를 때는 다른 소식과 똑같이 중요도로 견주게 합니다. 그래서 새 권호도 같은 기준으로 제목에 오를 수 있고, 발행 기준 건수에 포함되며, 다른 기사처럼 `usedArticles`로 돌아옵니다. 모델이 그래도 브리핑 밖 본문에 권호나 그 논문을 링크한 줄을 쓰면 저장 전에 결정적으로 지우고(`newsletter.journals.body.removed` 기록), 그 때문에 비게 된 표 머리와 섹션 제목도 함께 지웁니다.
+이 권호들은 생성 모델이 본문에 쓰지 않습니다. `ContentGenerateProvider`가 `📖 새로 나온 논문` 섹션을 직접 렌더링해 `🎓 학술대회·학술행사` 뒤, `📋 발굴조사보고서 (신규 제출)` 앞에 넣습니다. 그 섹션이 없으면 다음 고정 분류(`⛏️ 발굴현장 공개`, `💼 채용·공고`, `📑 사업·입찰 공고`, `📌 마무리` 순) 중 처음 나오는 섹션 앞에 넣습니다. 권호마다 KCI 권호 목차로 링크하고, 독자가 관심 가질 논문을 관심이 큰 순서대로 저자와 함께 표로 보여주며, 나머지는 편수와 주제로 줄입니다. 기준은 학문 분야가 아니라 독자(KRAS 모드에서는 한국고고학회 회원)의 관심입니다. 역사학 논문이라도 뺄 수 있고 고고학이 아니어도 실을 수 있습니다. 중요도 모델은 논문 번호를 고르고 순서를 정하며 뺀 논문의 주제만 붙이고, 제목·링크·저자는 주입 데이터 그대로 씁니다. 선별이 실패하거나 시간이 초과되면 모든 논문을 표에 싣고, 권호를 불러오지 못하면 해당 기사는 일반 후보로 모델에 넘깁니다. 권호 기사는 `자동 섹션: 📖 새로 나온 논문` 구분을 달고 모델 후보에 그대로 남습니다. 프롬프트는 이 기사를 본문 분류 섹션에 쓰지 않게 하되, 제목과 브리핑을 고를 때는 다른 소식과 똑같이 중요도로 견주게 합니다. 그래서 새 권호도 같은 기준으로 제목에 오를 수 있고, 발행 기준 건수에 포함되며, 다른 기사처럼 `usedArticles`로 돌아옵니다. 저자 신청 논문은 별도 경로입니다. `submittedPaperSource`는 저자가 신청하고 관리자가 검토 후 입력한 학위논문과 KCI 밖 학술지 논문을 주입합니다. 이 논문들은 기사가 아닙니다. 크롤링·채점하지 않고 발행 기준에 세지 않으며 어떤 모델에도 보여주지 않으므로 제목이나 브리핑에는 나오지 않습니다. 뉴스레터를 저장할 때 KCI 권호 뒤 `저자 신청 논문` 아래에 렌더링합니다. KCI 권호처럼 제목(http(s) URL일 때만 링크)·저자·학술지 또는 학교를 표로 모두 이스케이프해 싣고, 렌더링한 논문은 `saveNewsletter`의 `submittedPapers`로 돌려줘 애플리케이션이 소개 완료로 기록하게 합니다. 뉴스레터를 저장하지 않은 실행은 출처를 읽지 않으며, 출처가 실패하거나 멈추면(60초 제한) 그 호에서는 빼고 `newsletter.submitted_papers.load.failed`를 기록합니다. KRAS 모드에서는 섹션 끝에 KCI에 등재되지 않은 논문(학위논문 또는 KCI 수준에 준하는 학술지 논문, 게재 6개월 이내, 논문 1편당 1회)의 저자가 한국고고학회 뉴스레터 구글 폼(`PAPER_SUBMISSION_FORM_URL`)으로 소개를 신청하는 방법을 안내합니다. 마무리의 뉴스레터 출처 섹션은 두 모드 모두에서 KCI 권호를 출처 목록과 별개로 KCI Open API로 받는다고 밝히고, KRAS 모드에서는 저자 신청 논문을 검토를 거쳐 소개한다는 설명과 신청 폼 링크를 덧붙입니다. 모델이 그래도 브리핑 밖 본문에 권호나 그 논문을 링크한 줄을 쓰면 저장 전에 결정적으로 지우고(`newsletter.journals.body.removed` 기록), 그 때문에 비게 된 표 머리와 섹션 제목도 함께 지웁니다.
 
 크롤링 요청은 네트워크에 나가기 전에 robots.txt 검사(`src/crawling/robots.ts`)를 거칩니다. 금지된 요청은 전송하지 않고 거부하며, robots.txt가 없거나 조회에 실패하면 허용합니다. 검사에서 제외할 origin은 `src/config/index.ts`의 `robotsExemptOrigins`에 사유와 함께 명시합니다.
 

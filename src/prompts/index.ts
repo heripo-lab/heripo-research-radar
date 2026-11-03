@@ -1,5 +1,6 @@
 import type { PromptProvider } from '@llm-newsletter-kit/core';
 
+import { analyzeImagesPrompt } from './analyze-images';
 import { classifyTagsPrompt } from './classify-tags';
 import { determineImportancePrompt } from './determine-importance';
 import { extractDeadlinesPrompt } from './extract-deadlines';
@@ -39,6 +40,7 @@ import {
 export const researchRadarPromptProvider: PromptProvider = {
   analysis: {
     classifyTags: classifyTagsPrompt,
+    analyzeImages: analyzeImagesPrompt,
     determineImportance: determineImportancePrompt,
     extractDeadlines: extractDeadlinesPrompt,
   },

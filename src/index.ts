@@ -18,6 +18,8 @@ export type {
   JournalIssueSource,
   NewsletterRepository,
   NewsletterTemplateOptions,
+  SubmittedPaper,
+  SubmittedPaperSource,
   TagRepository,
   TaskRepository,
   WelcomeTemplateOptions,

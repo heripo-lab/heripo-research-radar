@@ -1,7 +1,10 @@
 import type { JournalIssue, JournalIssueSource } from '../types/dependencies';
 
+/** Memoized access to one run's injected items. */
+export type SourceLoader<T> = () => Promise<T[]>;
+
 /** Memoized access to one run's injected journal issues. */
-export type JournalIssueLoader = () => Promise<JournalIssue[]>;
+export type JournalIssueLoader = SourceLoader<JournalIssue>;
 
 /**
  * Shares one call of the application's source between the crawl, which turns
@@ -19,19 +22,31 @@ export function createJournalIssueLoader(
   source: JournalIssueSource,
   timeoutMs = 60_000,
 ): JournalIssueLoader {
-  let pending: Promise<JournalIssue[]> | null = null;
+  return createSourceLoader(source, 'journal issue source', timeoutMs);
+}
+
+/**
+ * The same memoized, time-limited access for any application source. Used for
+ * submitted papers, which are read while saving a generated issue.
+ *
+ * @param name - Names the source in the timeout error
+ * @param timeoutMs - Milliseconds before a source call is given up
+ */
+export function createSourceLoader<T>(
+  source: () => Promise<T[]>,
+  name: string,
+  timeoutMs = 60_000,
+): SourceLoader<T> {
+  let pending: Promise<T[]> | null = null;
 
   return () => {
     if (pending) return pending;
     let timer: ReturnType<typeof setTimeout> | undefined;
-    const call: Promise<JournalIssue[]> = Promise.race([
+    const call: Promise<T[]> = Promise.race([
       source(),
       new Promise<never>((_, reject) => {
         timer = setTimeout(
-          () =>
-            reject(
-              new Error(`journal issue source timed out after ${timeoutMs}ms`),
-            ),
+          () => reject(new Error(`${name} timed out after ${timeoutMs}ms`)),
           timeoutMs,
         );
       }),

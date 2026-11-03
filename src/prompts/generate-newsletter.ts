@@ -8,6 +8,7 @@ import {
   JOURNAL_ISSUE_CONTENT_TYPE,
   JOURNAL_ISSUE_SECTION_HEADING,
 } from '../journals/constants';
+import { IMAGE_CONTEXT_LABEL, IMAGE_TEXT_LABEL } from './analyze-images';
 
 /**
  * Category order. Categories listed here are emitted first, in this order;
@@ -127,7 +128,9 @@ const FACT_RULES = `## 사실성
 - 제공된 자료에 명시된 내용만 쓴다. 추론이나 추측으로 확장하지 않는다.
 - "~로 보인다", "~할 전망이다" 같은 추측 표현을 쓰지 않는다.
 - 자료에 없는 기관·정책·계획을 사실처럼 쓰지 않는다.
-- 이미지 분석 결과는 기사의 시각적 맥락을 파악하는 용도로만 쓴다. 거기 담긴 이름·수치·세부 사실을 본문에 인용하지 않는다.
+- 이미지 분석의 \`${IMAGE_TEXT_LABEL}\`은 첨부 이미지에서 읽은 사실이다. 본문에 없는 행사명·일시·장소·기관·기한을 보충하는 자료로 쓸 수 있다.
+- 이미지 분석의 \`${IMAGE_CONTEXT_LABEL}\`과 그 밖의 설명은 기사를 이해하는 데만 쓴다. 거기서 사실을 끌어내 본문에 쓰지 않는다.
+- 본문과 이미지 분석이 다르면 본문을 따른다.
 - 원문 표현을 그대로 옮기지 않는다. 사실만 추출해 새 문장으로 쓴다.`;
 
 function temporalRule(publicationDate: string): string {
@@ -275,7 +278,7 @@ ${titleRules(context)}
             .join(', ');
 
           const image = article.imageContextByLlm
-            ? `\n**이미지 분석(맥락 파악용, 세부 사실 인용 금지):** ${article.imageContextByLlm}`
+            ? `\n**이미지 분석:** ${article.imageContextByLlm}`
             : '';
 
           const published = article.publishedDate

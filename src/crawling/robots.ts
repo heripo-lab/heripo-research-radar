@@ -42,7 +42,19 @@ export type RobotsAwareFetchOptions = {
    * consulting robots.txt.
    */
   exemptOrigins?: readonly string[];
+  /**
+   * Follow robots.txt redirects only within its own host (an http→https
+   * upgrade, say) and treat any other redirect as no robots.txt. For gates
+   * whose origins come from untrusted content, such as article images, so a
+   * robots.txt cannot send the request to another host — an internal address
+   * included. Crawl targets are configured, so their gate follows freely.
+   * @default false
+   */
+  sameHostRedirectsOnly?: boolean;
 };
+
+/** Redirects a same-host robots.txt lookup follows before giving up. */
+const MAX_ROBOTS_REDIRECTS = 5;
 
 /**
  * Parses robots.txt into user-agent groups.
@@ -238,6 +250,42 @@ export type RobotsGate = {
 };
 
 /**
+ * Fetches `url`, following redirects only while they stay on its hostname.
+ * Resolves to null for a redirect elsewhere or past the hop limit, which the
+ * caller treats like a missing robots.txt.
+ */
+async function fetchWithinHost(
+  baseFetch: typeof fetch,
+  url: string,
+  signal: AbortSignal,
+): Promise<Response | null> {
+  let target = new URL(url);
+
+  for (let hops = 0; hops <= MAX_ROBOTS_REDIRECTS; hops++) {
+    const response = await baseFetch(target.href, {
+      redirect: 'manual',
+      signal,
+    });
+    const location = response.headers.get('location');
+
+    if (response.status < 300 || response.status >= 400 || !location) {
+      return response;
+    }
+
+    await response.body?.cancel();
+    const next = new URL(location, target);
+
+    if (next.hostname !== target.hostname) {
+      return null;
+    }
+
+    target = next;
+  }
+
+  return null;
+}
+
+/**
  * Builds a robots.txt gate: a verdict function and a fetch that enforces it,
  * sharing one per-origin cache.
  *
@@ -254,7 +302,12 @@ export function createRobotsGate(
   baseFetch: typeof fetch = fetch,
   options: RobotsAwareFetchOptions = {},
 ): RobotsGate {
-  const { onBlocked, timeoutMs = 10_000, exemptOrigins = [] } = options;
+  const {
+    onBlocked,
+    timeoutMs = 10_000,
+    exemptOrigins = [],
+    sameHostRedirectsOnly = false,
+  } = options;
   const cache = new Map<string, Promise<RobotsGroup[]>>();
 
   const exempt = new Set(
@@ -276,12 +329,15 @@ export function createRobotsGate(
 
     const pending = (async (): Promise<RobotsGroup[]> => {
       try {
-        const response = await baseFetch(`${origin}/robots.txt`, {
-          redirect: 'follow',
-          signal: AbortSignal.timeout(timeoutMs),
-        });
+        const signal = AbortSignal.timeout(timeoutMs);
+        const response = sameHostRedirectsOnly
+          ? await fetchWithinHost(baseFetch, `${origin}/robots.txt`, signal)
+          : await baseFetch(`${origin}/robots.txt`, {
+              redirect: 'follow',
+              signal,
+            });
 
-        if (!response.ok) {
+        if (!response?.ok) {
           return [];
         }
 

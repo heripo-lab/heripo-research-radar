@@ -9,13 +9,14 @@ import type {
 import type { LanguageModel } from 'ai';
 
 import type { DeadlineReminderSelector } from '../deadlines/select';
-import type { JournalIssueLoader } from '../journals/loader';
+import type { JournalIssueLoader, SourceLoader } from '../journals/loader';
 import type { JournalPaperSelector } from '../journals/select';
 import type {
   ArticleRepository,
   JournalIssue,
   NewsletterRepository,
   NewsletterTemplateOptions,
+  SubmittedPaper,
 } from '../types/dependencies';
 
 import { JSDOM } from 'jsdom';
@@ -56,6 +57,13 @@ export type JournalIssueRendering = {
   onUnavailable?: (reason: string) => void;
   /** Reports body lines about the issues removed despite the prompt. */
   onBodyMentionsRemoved?: (removed: number) => void;
+  /**
+   * The run's submitted papers, rendered after the issues when the newsletter
+   * is saved. They are not candidates and never reach the model.
+   */
+  loadSubmittedPapers?: SourceLoader<SubmittedPaper>;
+  /** Reports that the submitted papers could not be loaded and were left out. */
+  onSubmittedPapersUnavailable?: (reason: string) => void;
 };
 
 /**
@@ -224,7 +232,8 @@ export class ContentGenerateProvider implements CoreContentGenerateProvider {
         ? await this.renderDeadlineReminders(reminders, newsletter.date)
         : this.deadlineRemindersMarkdown ||
           (await this.renderDeadlineReminders(reminders, newsletter.date));
-    const journalMarkdown = await this.renderJournalIssues();
+    const { markdown: journalMarkdown, submittedPapers } =
+      await this.renderJournalIssues();
     const share =
       this.templateOptions?.shareNoticeMarkdown ??
       `이 소식이 도움이 되셨다면 동료 연구자에게도 소개해주시면 좋겠습니다. [${escapeLabel(this.newsletterBrandName)} 구독하기](${this.subscribePageUrl})`;
@@ -261,6 +270,7 @@ export class ContentGenerateProvider implements CoreContentGenerateProvider {
     // hands them back with the rest.
     return this.newsletterRepository.saveNewsletter({
       usedArticles,
+      submittedPapers,
       newsletter: {
         ...newsletter,
         content: `${insertJournalIssueMarkdown(newsletter.content, journalMarkdown)}${markdown ? `\n\n<!-- research-radar-deadline-reminders -->\n${markdown}` : ''}${share ? `\n\n<!-- research-radar-share-notice -->\n${share}` : ''}`,
@@ -296,16 +306,45 @@ export class ContentGenerateProvider implements CoreContentGenerateProvider {
     };
   }
 
-  private async renderJournalIssues(): Promise<string> {
-    if (this.heldJournalIssues.length === 0) return '';
+  /**
+   * Renders the held issues and the submitted papers. `submittedPapers` are the
+   * ones actually rendered, so the repository marks exactly those introduced.
+   */
+  private async renderJournalIssues(): Promise<{
+    markdown: string;
+    submittedPapers: SubmittedPaper[];
+  }> {
     const select = this.journalIssues?.select;
-    const entries = await Promise.all(
-      this.heldJournalIssues.map(async ({ issue }) => ({
-        issue,
-        selection: select ? await select(issue) : null,
-      })),
-    );
-    return renderJournalIssueSection(entries);
+    const [entries, submittedPapers] = await Promise.all([
+      Promise.all(
+        this.heldJournalIssues.map(async ({ issue }) => ({
+          issue,
+          selection: select ? await select(issue) : null,
+        })),
+      ),
+      this.loadSubmittedPapers(),
+    ]);
+    return {
+      markdown: renderJournalIssueSection(entries, {
+        submissionNotice: this.templateOptions?.isKrasNewsletter === true,
+        submittedPapers,
+      }),
+      submittedPapers,
+    };
+  }
+
+  /** A failed source leaves the papers out of this newsletter, never fails it. */
+  private async loadSubmittedPapers(): Promise<SubmittedPaper[]> {
+    const load = this.journalIssues?.loadSubmittedPapers;
+    if (!load) return [];
+    try {
+      return await load();
+    } catch (error) {
+      this.journalIssues?.onSubmittedPapersUnavailable?.(
+        error instanceof Error ? error.message : String(error),
+      );
+      return [];
+    }
   }
 
   private async renderDeadlineReminders(
