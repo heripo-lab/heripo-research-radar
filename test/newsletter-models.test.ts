@@ -468,3 +468,37 @@ test('image analysis downloads through the crawl fetch behind the robots.txt gat
     'https://board.example.com/upload/a.jpg',
   ]);
 });
+
+test('image analysis prompt is registered and labels what the newsletter may cite', async () => {
+  const { researchRadarPromptProvider } = await import('../src/prompts');
+  const { IMAGE_CONTEXT_LABEL, IMAGE_TEXT_LABEL } =
+    await import('../src/prompts/analyze-images');
+  const analyzeImages = researchRadarPromptProvider.analysis?.analyzeImages;
+  assert.ok(analyzeImages?.system && analyzeImages.user);
+
+  const context = {
+    expertFields: ['문화유산'],
+    outputLanguage: '한국어',
+    targetArticle: { title: '학술대회 안내', detailContent: '첨부 참조' },
+  } as Parameters<NonNullable<typeof analyzeImages.system>>[0];
+  const system = analyzeImages.system(context);
+  assert.match(system, new RegExp(`\\*\\*${IMAGE_CONTEXT_LABEL}:\\*\\*`));
+  assert.match(system, new RegExp(`\\*\\*${IMAGE_TEXT_LABEL}:\\*\\*`));
+  assert.match(analyzeImages.user(context), /학술대회 안내[\s\S]*첨부 참조/);
+
+  const generate =
+    researchRadarPromptProvider.contentGenerate?.generateNewsletter;
+  assert.ok(generate?.system);
+  const generateSystem = generate.system({
+    expertFields: ['문화유산'],
+    outputLanguage: '한국어',
+    newsletterBrandName: 'test',
+    dateService: { getPublicationDisplayDateString: () => '2026년 11월 3일' },
+  } as unknown as Parameters<NonNullable<typeof generate.system>>[0]);
+  assert.ok(
+    generateSystem.includes(
+      `\`${IMAGE_TEXT_LABEL}\`은 첨부 이미지에서 읽은 사실이다`,
+    ),
+  );
+  assert.ok(!generateSystem.includes('세부 사실을 본문에 인용하지 않는다'));
+});

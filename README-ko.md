@@ -322,6 +322,8 @@ await generateNewsletter({
 
 Anthropic·Google로 뉴스레터를 생성하는 기존 `contentGeneration: { provider, apiKey, model? }` 경로도 호환성을 위해 유지합니다. 두 설정을 함께 전달하면 `models.generateNewsletter`가 우선합니다. `models.generateNewsletter`를 생략하거나 `undefined`로 전달하면 기존 `contentGeneration`의 프로바이더·모델 선택을 사용합니다. 두 설정 모두 없으면 `llmConfig.models.generateNewsletter`를 사용합니다. 모든 단계에 모델 객체를 전달해도 `openAIApiKey`는 계속 필수입니다.
 
+이미지 분석은 기사 이미지를 크롤링과 같은 `customFetch`와 robots.txt 게이트로 내려받습니다. 그래서 애플리케이션이 게시판에 필요로 하는 프록시나 TLS 우회가 그 게시판의 이미지에도 똑같이 적용됩니다. 이미지 URL 대신 바이트를 보내는 `@llm-newsletter-kit/core` 3.2 이상이 필요하며, 이전 core는 이 fetch를 무시합니다. 분석 프롬프트는 레이블을 붙인 두 문단을 요구합니다. `시각 맥락`은 이미지에 보이는 것을 설명하고, `이미지 속 정보`는 이미지에서 또렷하게 읽은 글자 — 포스터만 올리고 본문은 비워 둔 공지에서 빠지는 행사명·일시·장소·주최·마감 — 를 담습니다. 생성 프롬프트는 이런 사실을 보충할 때 `이미지 속 정보`를 인용할 수 있고, 본문과 다르면 본문을 따르며, 이미지 분석의 나머지는 맥락으로만 씁니다. 마감 추출은 여전히 이미지 분석을 쓰지 않습니다.
+
 [src/config/index.ts](./src/config/index.ts)에는 한국어 출력(`outputLanguage: '한국어'`), 문화유산 분야(`expertField: ['문화유산']`), 브랜드명, `subscribePageUrl`, LLM `maxRetries: 5`, 체인 `stopAfterAttempt: 3`, 생성 `temperature: 0.3`이 정의되어 있습니다. 발행 설정은 `minimumArticleCountForIssue: 5`, `priorityArticleScoreThreshold: 8`이며 core 엔진에서 판정합니다. 잠금 파일의 core 3.1.1 구현은 중요도 8 이상 기사가 없을 때 후보가 **5개 이하이면 생략**합니다. 후보가 없으면 항상 생략합니다.
 
 ## 크롤링 대상과 파서
