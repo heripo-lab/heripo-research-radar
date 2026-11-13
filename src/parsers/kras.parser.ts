@@ -21,6 +21,7 @@ type KrasApiPost = {
   created_at?: string | null;
   body?: string | null;
   attachments?: unknown[] | null;
+  is_secret?: number | string | boolean | null;
 };
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -30,6 +31,27 @@ const isKrasApiPost = (value: unknown): value is KrasApiPost =>
   isRecord(value) &&
   (typeof value.id === 'string' || typeof value.id === 'number') &&
   typeof value.board_slug === 'string';
+
+/**
+ * 회원이 쓴 비밀글은 목록에는 `is_secret: 1`과 가려진 제목(`🔒 비밀글입니다.`)
+ * 으로 나오지만, 상세 API는 401과 `비밀글입니다. 작성자 본인만 열람할 수
+ * 있습니다.`를 돌려준다. 게시판의 `allow_secret`은 이를 막지 못한다 —
+ * `alert` 게시판은 `allow_secret: 0`인데도 비밀글이 올라와 있다.
+ *
+ * 코어는 4xx를 재시도 불가 오류로 보고 `crawl.detail.fetch.failed`를 error로
+ * 남기므로, 상세를 요청하기 전에 목록에서 걸러 파서 장애처럼 보이지 않게 한다.
+ * 비밀글이 나중에 공개되면 저장된 적이 없으므로 그날 정상적으로 수집된다.
+ */
+const isSecretKrasPost = (post: KrasApiPost): boolean => {
+  const value = post.is_secret;
+
+  if (value == null) return false;
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'number') return value !== 0;
+
+  const normalized = value.trim().toLowerCase();
+  return normalized !== '' && normalized !== '0' && normalized !== 'false';
+};
 
 const parseJson = (html: string): unknown => {
   try {
@@ -64,7 +86,10 @@ const parseKrasApiList = (html: string): ParsedTargetListItem[] | undefined => {
     return undefined;
   }
 
-  return data.items.filter(isKrasApiPost).map(toKrasListItem);
+  return data.items
+    .filter(isKrasApiPost)
+    .filter((post) => !isSecretKrasPost(post))
+    .map(toKrasListItem);
 };
 
 const parseKrasApiDetail = (html: string): ParsedTargetDetail | undefined => {

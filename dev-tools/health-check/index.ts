@@ -321,9 +321,11 @@ async function checkTarget(
       // Step 2: Fetch and parse a detail item.
       //
       // Normally the first one, but a board's newest post can be unreadable for
-      // reasons that say nothing about the parser — KRAS answers 401 for a
-      // members-only post (`🔒 비밀글입니다.`). Fall through to the next few items
-      // so one such post at the top does not fail the target every day.
+      // reasons that say nothing about the parser — a members-only post answers
+      // 401. KRAS marks those `is_secret` in its list API and `parseKrasList`
+      // drops them, but other boards give no such signal. Fall through to the
+      // next few items so one such post at the top does not fail the target
+      // every day.
       const candidates = items
         .filter((item) => item.detailUrl?.startsWith('http'))
         .slice(0, DETAIL_CHECK_ATTEMPTS);
