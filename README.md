@@ -426,7 +426,7 @@ npm ci
 
 # build
 npm run clean              # remove dist/
-npm run build              # clean dist/ and build with Rollup (ESM + types)
+npm run build              # clean dist/, type-check, and build with tsdown (ESM + types)
 
 # type-check & lint
 npm run lint               # lint source files
