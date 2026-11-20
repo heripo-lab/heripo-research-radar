@@ -412,7 +412,7 @@ npm ci
 
 # 빌드
 npm run clean              # dist/ 삭제
-npm run build              # dist/ 정리 및 Rollup으로 빌드 (ESM + types)
+npm run build              # dist/ 정리, 타입 체크, tsdown으로 빌드 (ESM + types)
 
 # 타입 체크 & 린트
 npm run lint               # 소스 파일 린트
