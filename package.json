@@ -34,15 +34,15 @@
     "lint:fix": "eslint --fix ./src",
     "lint:ci": "eslint --quiet ./src",
     "typecheck": "tsc --noEmit",
-    "test": "node --experimental-test-module-mocks --import tsx --test test/*.test.ts",
+    "test": "node --experimental-test-module-mocks --import @oxc-node/core/register --test test/*.test.ts",
     "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,css,md,mdx}\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx,json,css,md,mdx}\"",
-    "dev:crawler": "tsx watch --env-file-if-exists=dev-tools/crawler-debugger/.env dev-tools/crawler-debugger/server.ts",
-    "dev:crawler:proxy": "tsx watch --env-file=dev-tools/crawler-debugger/.env dev-tools/crawler-debugger/server.ts",
-    "dev:newsletter-preview": "tsx watch dev-tools/newsletter-preview/server.ts",
-    "dev:welcome-preview": "tsx watch dev-tools/welcome-preview/server.ts",
-    "health-check": "tsx --env-file-if-exists=dev-tools/crawler-debugger/.env dev-tools/health-check/index.ts",
-    "health-check:proxy": "tsx --env-file-if-exists=dev-tools/crawler-debugger/.env dev-tools/health-check/index.ts --proxy",
+    "dev:crawler": "node --import @oxc-node/core/register --watch --env-file-if-exists=dev-tools/crawler-debugger/.env dev-tools/crawler-debugger/server.ts",
+    "dev:crawler:proxy": "node --import @oxc-node/core/register --watch --env-file=dev-tools/crawler-debugger/.env dev-tools/crawler-debugger/server.ts",
+    "dev:newsletter-preview": "node --import @oxc-node/core/register --watch dev-tools/newsletter-preview/server.ts",
+    "dev:welcome-preview": "node --import @oxc-node/core/register --watch dev-tools/welcome-preview/server.ts",
+    "health-check": "node --import @oxc-node/core/register --env-file-if-exists=dev-tools/crawler-debugger/.env dev-tools/health-check/index.ts",
+    "health-check:proxy": "node --import @oxc-node/core/register --env-file-if-exists=dev-tools/crawler-debugger/.env dev-tools/health-check/index.ts --proxy",
     "dev:link-core": "npm --prefix ../llm-newsletter-kit-core run build && npm link ../llm-newsletter-kit-core",
     "dev:unlink-core": "npm unlink --no-save @llm-newsletter-kit/core && npm install"
   },
@@ -66,6 +66,7 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@llm-newsletter-kit/core": "^3.2.0",
+    "@oxc-node/core": "^1.0.2",
     "@trivago/prettier-plugin-sort-imports": "^6.0.2",
     "@types/express": "^5.0.6",
     "@types/jsdom": "^30.0.0",
@@ -77,7 +78,6 @@
     "prettier": "^3.9.10",
     "rimraf": "^6.1.3",
     "tsdown": "~0.23.7",
-    "tsx": "^4.23.15",
     "typescript": "^6.0.3",
     "typescript-eslint": "8.71.2"
   },
@@ -113,10 +113,7 @@
   "publishConfig": {
     "access": "public"
   },
-  "allowScripts": {
-    "esbuild@0.28.1": true,
-    "fsevents@2.3.3": true
-  },
+  "allowScripts": {},
   "overrides": {
     "body-parser": "^2.4.0",
     "postcss": "^8.5.23",
