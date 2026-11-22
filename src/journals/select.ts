@@ -139,7 +139,7 @@ export const createJournalPaperSelector = (
         generateText({
           model: options.model,
           output: Output.object({ schema: SELECT_SCHEMA }),
-          system: systemPrompt(options.audience),
+          instructions: systemPrompt(options.audience),
           prompt: buildUserPrompt(issue),
           abortSignal: controller.signal,
         }),

@@ -286,7 +286,7 @@ async function triageBatch(
     const result = await generateText({
       model,
       output: Output.object({ schema: KEEP_SCHEMA }),
-      system: SYSTEM_PROMPT,
+      instructions: SYSTEM_PROMPT,
       prompt: buildUserPrompt(candidates),
       abortSignal: signal,
       // The mode core settled on after Anthropic truncated structured output

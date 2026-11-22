@@ -75,7 +75,7 @@ npm install @heripo/research-radar '@llm-newsletter-kit/core@~3.2.0'
 
 ### 전이 의존성 보안
 
-이 저장소의 `package-lock.json`은 개발과 CI에서 audit한 의존성 버전을 고정합니다. 소비자는 자신의 잠금 파일을 사용하므로 이 라이브러리 업데이트만으로 기존의 취약한 전이 의존성이 교체된다고 보장할 수 없습니다. 현재 AI SDK와 Cheerio의 의존성 범위는 여전히 `undici` 7.29.0을 허용합니다.
+이 저장소의 `package-lock.json`은 개발과 CI에서 audit한 의존성 버전을 고정합니다. 소비자는 자신의 잠금 파일을 사용하므로 이 라이브러리 업데이트만으로 기존의 취약한 전이 의존성이 교체된다고 보장할 수 없습니다. 현재 Cheerio의 의존성 범위는 여전히 `undici` 7.29.0을 허용합니다.
 
 npm 애플리케이션에서는 다음 설정을 **애플리케이션 루트의 `package.json`**에 병합해 수정된 undici 7.x를 요구하세요. 설치된 라이브러리의 overrides는 npm이 무시합니다([npm overrides 문서](https://docs.npmjs.com/cli/v11/configuring-npm/package-json/#overrides)). 이 선택자는 jsdom이 사용하는 undici 8.x에는 적용되지 않습니다.
 
@@ -150,7 +150,7 @@ export async function runNewsletter(repositories: {
 
 ### 최근 제목과 원문 마감 추출
 
-이 API는 배포된 core 3.2.0 패키지를 사용합니다. 피어 의존성 범위는
+이 API는 배포된 core 3.2.1 패키지를 사용합니다. 피어 의존성 범위는
 `~3.2.0`이며 `npm ci`로 로컬 core 연결 없이 잠금 파일의 패키지를 설치합니다.
 
 - 선택적 `NewsletterRepository.findRecentPublishedTitles({ fromInclusive, toExclusive })`를
@@ -325,7 +325,7 @@ Anthropic·Google로 뉴스레터를 생성하는 기존 `contentGeneration: { p
 
 core 3.2는 기사 이미지를 직접 내려받아 URL 대신 바이트로 보내며, 공개 주소가 아니면 요청하지 않습니다. 애플리케이션이 `customFetch`를 주면 이미지를 robots.txt 게이트를 씌운 그 fetch로 내려받으므로, 게시판에 필요한 프록시나 TLS 우회가 이미지에도 적용됩니다. 이 게이트의 robots.txt 조회는 다른 호스트로의 리다이렉트를 따라가지 않습니다. core가 그 fetch를 부르기 전에 이미지 URL과 리다이렉트마다 주소를 검사하지만, 연결 시점의 주소 검사(DNS 재바인딩 방어)는 애플리케이션 fetch의 몫입니다. `customFetch`가 없으면 연결 시점에 주소를 검사하는 core 자체 다운로드를 쓰며, 이때 이미지에는 robots.txt를 적용하지 않습니다. 분석 프롬프트는 레이블을 붙인 두 문단을 요구합니다. `시각 맥락`은 이미지에 보이는 것을 설명하고, `이미지 속 정보`는 이미지에서 또렷하게 읽은 글자 — 포스터만 올리고 본문은 비워 둔 공지에서 빠지는 행사명·일시·장소·주최·마감 — 를 담습니다. 생성 프롬프트는 이런 사실을 보충할 때 `이미지 속 정보`를 인용할 수 있고, 본문과 다르면 본문을 따르며, 이미지 분석의 나머지는 맥락으로만 씁니다. 마감 추출은 여전히 이미지 분석을 쓰지 않습니다.
 
-[src/config/index.ts](./src/config/index.ts)에는 한국어 출력(`outputLanguage: '한국어'`), 문화유산 분야(`expertField: ['문화유산']`), 브랜드명, `subscribePageUrl`, LLM `maxRetries: 5`, 체인 `stopAfterAttempt: 3`, 생성 `temperature: 0.3`이 정의되어 있습니다. 발행 설정은 `minimumArticleCountForIssue: 5`, `priorityArticleScoreThreshold: 8`이며 core 엔진에서 판정합니다. 잠금 파일의 core 3.2.0 구현은 중요도 8 이상 기사가 없을 때 후보가 **5개 이하이면 생략**합니다. 후보가 없으면 항상 생략합니다.
+[src/config/index.ts](./src/config/index.ts)에는 한국어 출력(`outputLanguage: '한국어'`), 문화유산 분야(`expertField: ['문화유산']`), 브랜드명, `subscribePageUrl`, LLM `maxRetries: 5`, 체인 `stopAfterAttempt: 3`, 생성 `temperature: 0.3`이 정의되어 있습니다. 발행 설정은 `minimumArticleCountForIssue: 5`, `priorityArticleScoreThreshold: 8`이며 core 엔진에서 판정합니다. 잠금 파일의 core 3.2.1 구현은 중요도 8 이상 기사가 없을 때 후보가 **5개 이하이면 생략**합니다. 후보가 없으면 항상 생략합니다.
 
 ## 크롤링 대상과 파서
 
