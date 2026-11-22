@@ -76,7 +76,7 @@ An OpenAI API key is always required and supplies all default models. The option
 
 ### Transitive dependency security
 
-This repository's `package-lock.json` resolves the audited dependencies for development and CI. Consumers use their own lockfiles, so upgrading this library alone does not guarantee that an existing vulnerable transitive dependency is replaced. The current AI SDK and Cheerio dependency ranges still allow `undici` 7.29.0.
+This repository's `package-lock.json` resolves the audited dependencies for development and CI. Consumers use their own lockfiles, so upgrading this library alone does not guarantee that an existing vulnerable transitive dependency is replaced. The current Cheerio dependency range still allows `undici` 7.29.0.
 
 For npm applications, merge the following into the **application's root `package.json`** to require a patched undici 7.x version. Overrides declared by an installed library are ignored by npm ([npm overrides documentation](https://docs.npmjs.com/cli/v11/configuring-npm/package-json/#overrides)). The selector leaves undici 8.x, used by jsdom, unchanged.
 
@@ -151,7 +151,7 @@ Candidate selection belongs to your repository. Persist `usedArticles` associati
 
 ### Recent titles and source deadlines
 
-These APIs use the published core 3.2.0 package. The peer dependency requires
+These APIs use the published core 3.2.1 package. The peer dependency requires
 `~3.2.0`, and `npm ci` installs the locked package without a local core link.
 
 - Implement optional `NewsletterRepository.findRecentPublishedTitles({ fromInclusive, toExclusive })`
@@ -339,7 +339,7 @@ The optional `contentGeneration: { provider, apiKey, model? }` compatibility pat
 
 Core 3.2 downloads each article's images and sends their bytes instead of URLs, refusing non-public addresses. When the application supplies `customFetch`, images are downloaded through it behind a robots.txt gate, so a proxy or TLS workaround a board needs applies to its images too; that gate's robots.txt lookup never follows a redirect to another host. Core checks every image URL and redirect hop before calling that fetch, but checking the address at connect time, against DNS rebinding, is then up to the application's fetch. Without `customFetch`, core's own download is used, which checks addresses as it connects but skips robots.txt for images. The analysis prompt asks for two labelled paragraphs: `시각 맥락` describes what the images show, and `이미지 속 정보` carries legible text read from them — event names, dates, venues, organisers and deadlines that a poster-only notice leaves out of its body. The generation prompt may cite `이미지 속 정보` to fill in such facts, prefers the body when the two disagree, and treats everything else in the image analysis as context only. Deadline extraction still ignores image analysis.
 
-[src/config/index.ts](./src/config/index.ts) defines Korean output (`outputLanguage: '한국어'`), the cultural heritage domain (`expertField: ['문화유산']`), brand name, `subscribePageUrl`, LLM `maxRetries: 5`, chain `stopAfterAttempt: 3`, and generation `temperature: 0.3`. Publication settings are `minimumArticleCountForIssue: 5` and `priorityArticleScoreThreshold: 8`; the core engine evaluates them. In the locked core 3.2.0 implementation, the count check skips **5 or fewer** candidates unless at least one has importance score >= 8. An empty candidate list is always skipped.
+[src/config/index.ts](./src/config/index.ts) defines Korean output (`outputLanguage: '한국어'`), the cultural heritage domain (`expertField: ['문화유산']`), brand name, `subscribePageUrl`, LLM `maxRetries: 5`, chain `stopAfterAttempt: 3`, and generation `temperature: 0.3`. Publication settings are `minimumArticleCountForIssue: 5` and `priorityArticleScoreThreshold: 8`; the core engine evaluates them. In the locked core 3.2.1 implementation, the count check skips **5 or fewer** candidates unless at least one has importance score >= 8. An empty candidate list is always skipped.
 
 ## Crawling targets and parsers
 

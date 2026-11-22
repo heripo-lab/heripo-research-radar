@@ -155,7 +155,7 @@ export const createDeadlineReminderSelector = (
         generateText({
           model: options.model,
           output: Output.object({ schema: SELECT_SCHEMA }),
-          system: systemPrompt(limit),
+          instructions: systemPrompt(limit),
           prompt: buildUserPrompt(rows, publicationDate, limit),
           abortSignal: controller.signal,
         }),
