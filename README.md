@@ -442,7 +442,7 @@ npm run format:check       # check src/ formatting
 
 The build emits ESM, declarations, and a JavaScript sourcemap; runtime dependencies remain external. CI runs `npm ci`, `format:check`, `lint:ci`, `typecheck`, `npm test`, and `build` on the minimum supported versions for Node.js 24 and 26 (24.22.1 and 26.12.1), the latest 24.x, and the latest 26.x for pull requests and manual dispatch. Formatting scripts cover `src/`; to check the READMEs explicitly, run `npx prettier --check README.md README-ko.md`. `npm test` uses Node's experimental module mocking and the installed AI SDK test utilities; it makes no LLM, crawling, or email requests.
 
-For maintainers, `release` publishes to npm, while `release:patch`, `release:minor`, and `release:major` bump the version and publish. The version hooks build first and push commits/tags; `prepublishOnly` builds before publishing.
+For maintainers, releases run on GitHub Actions. `release`, `release:patch`, `release:minor`, and `release:major` only push a `radar-release-<level>-<timestamp>` trigger tag from a clean working tree whose `HEAD` matches `origin/main`; `.github/workflows/release.yml` then bumps the version, builds, pushes the release commit and `vX.Y.Z` tag to `main` atomically, and publishes to npm with Trusted Publishing (OIDC, no npm token). Level `none` republishes the current version and is the recovery path for a failed publish.
 
 ### Crawler Debugger
 
