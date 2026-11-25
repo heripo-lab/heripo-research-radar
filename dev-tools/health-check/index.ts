@@ -8,7 +8,7 @@ import { robotsExemptOrigins } from '~/config';
 import { createCrawlingTargetGroups } from '~/config/crawling-targets';
 import { createRobotsGate } from '~/crawling/robots';
 import { JOURNAL_ISSUE_LIST_URL } from '~/parsers/journal-issue.parser';
-import { createKrasFetch } from '~/parsers/kras.parser';
+import { createSocietyBoardFetch } from '~/parsers/society-board.parser';
 
 /**
  * How many list items to try before giving up on the detail check. A board's
@@ -114,7 +114,7 @@ const robotsGate = createRobotsGate(proxyFetch ?? unsafeFetch, {
 // Same composition as CrawlingProvider: robots.txt outermost, then the KRAS
 // detail adapter. Without the adapter, KRAS detail pages parse to an empty
 // body and the checks fail for a reason production never hits.
-const checkFetch = createKrasFetch(robotsGate.fetch);
+const checkFetch = createSocietyBoardFetch(robotsGate.fetch);
 
 // Probe the open APIs directly: adapters parse/filter/paginate responses and
 // can turn HTTP 200 into 502. Health checks only care about upstream HTTP 200.
