@@ -428,7 +428,7 @@ npm run format:check       # src/ 포맷 검사
 
 빌드는 ESM·타입 선언·JavaScript 소스맵을 생성하며 런타임 의존성은 외부 의존성으로 유지합니다. CI는 PR과 수동 실행 시 Node.js 24와 26의 최소 지원 버전(24.22.1과 26.12.1), 최신 24.x, 최신 26.x에서 `npm ci`, `format:check`, `lint:ci`, `typecheck`, `npm test`, `build`를 수행합니다. 포맷 스크립트 범위는 `src/`이며 README는 `npx prettier --check README.md README-ko.md`로 별도 검사합니다. `npm test`는 Node의 실험적 모듈 모킹과 설치된 AI SDK 테스트 도구를 사용하며 LLM 호출·크롤링·이메일 발송을 하지 않습니다.
 
-유지보수용 릴리즈는 GitHub Actions에서 수행됩니다. `release`, `release:patch`, `release:minor`, `release:major`는 작업 트리가 깨끗하고 `HEAD`가 `origin/main`과 같을 때 `radar-release-<level>-<timestamp>` 트리거 태그만 push합니다. 이후 `.github/workflows/release.yml`이 버전을 올리고 빌드한 뒤 릴리즈 커밋과 `vX.Y.Z` 태그를 `main`에 atomic으로 push하고, Trusted Publishing(OIDC, npm 토큰 없음)으로 npm에 스테이징합니다. trusted publisher는 stage-only로 설정되어 있어, 실제 배포는 유지보수자가 2FA로 승인해야 완료됩니다(`npm stage list` 후 `npm stage approve <stage-id>`, 또는 npmjs.com의 Staged Packages 탭). 이 승인은 의도적으로 수동입니다. 레벨 `none`은 현재 버전을 다시 스테이징하는 복구 경로입니다.
+유지보수용 릴리즈는 GitHub Actions에서 수행됩니다. `release`, `release:patch`, `release:minor`, `release:major`는 작업 트리가 깨끗하고 `HEAD`가 `origin/main`과 같을 때 `radar-release-<level>-<timestamp>` 트리거 태그만 push합니다. 이후 `.github/workflows/release.yml`이 버전을 올리고 빌드한 뒤 릴리즈 커밋과 `vX.Y.Z` 태그를 `main`에 atomic으로 push하고, Trusted Publishing(OIDC, npm 토큰 없음)으로 npm에 스테이징합니다. trusted publisher는 stage-only로 설정되어 있어, 실제 배포는 유지보수자가 2FA로 승인해야 완료됩니다(`npm stage list` 후 `npm stage approve <stage-id>`, 또는 npmjs.com의 Staged Packages 탭). 이 승인은 의도적으로 수동입니다. 레벨 `none`은 현재 버전을 다시 스테이징하는 복구 경로입니다. 워크플로우는 릴리즈 노트를 자동 생성해 저장소 Releases 페이지에도 등록합니다.
 
 ### 크롤러 디버거
 
