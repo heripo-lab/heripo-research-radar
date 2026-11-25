@@ -43,7 +43,11 @@ import {
   parseHeritageAgencyDetail,
   parseHeritageAgencyList,
 } from '~/parsers/heritage-agency.parser';
-import { parseHsasDetail, parseHsasList } from '~/parsers/hsas.parser';
+import {
+  HSAS_SITE_BASE_URL,
+  parseHsasDetail,
+  parseHsasListFromApi,
+} from '~/parsers/hsas.parser';
 import {
   parseIksanMuseumDetail,
   parseIksanMuseumList,
@@ -417,15 +421,17 @@ export function createCrawlingTargetGroups(
         {
           id: '호서고고학회_공지사항',
           name: '호서고고학회 공지사항',
-          url: 'http://www.hsas.or.kr/flow/?ref=board/board.emt&menu_table=m2_00&bbs_table=notice&menu_idx=010000',
-          parseList: parseHsasList,
+          url: `${HSAS_SITE_BASE_URL}/sub/notice`,
+          parseList: (html) =>
+            parseHsasListFromApi(html, 'notice', customFetch),
           parseDetail: parseHsasDetail,
         },
         {
           id: '호서고고학회_학회소식',
           name: '호서고고학회 학회소식',
-          url: 'http://www.hsas.or.kr/flow/?ref=board/board.emt&menu_table=m2_00&bbs_table=m2_01&menu_idx=020000',
-          parseList: parseHsasList,
+          url: `${HSAS_SITE_BASE_URL}/sub/society_news`,
+          parseList: (html) =>
+            parseHsasListFromApi(html, 'society_news', customFetch),
           parseDetail: parseHsasDetail,
         },
         {
