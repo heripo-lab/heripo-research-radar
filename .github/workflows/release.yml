@@ -14,11 +14,75 @@ concurrency:
 
 permissions:
   contents: read
-  id-token: write # npm Trusted Publishing (OIDC)
 
 jobs:
-  release:
+  # Dependency and build-tool code runs in this job and nowhere else, so this
+  # job holds no release credentials: no GitHub App token, no `id-token`, and
+  # the checkout credentials are not persisted. Deferring the token to a later
+  # step of a single job would not have been a boundary — every step of a job
+  # shares one machine and one user, so a background process left behind by
+  # `npm ci` or the build outlives the step that started it and can read a later
+  # step's environment or `.git/config`. Two jobs are two machines.
+  #
+  # What a compromised build can still do is corrupt `dist`. That reaches the
+  # registry only as a staged version a maintainer approves with 2FA, and never
+  # reaches a token that can push to `main`.
+  build:
     runs-on: ubuntu-latest
+    steps:
+      # Re-checked in `release`, which trusts nothing from this job. Here it
+      # only rejects a malformed tag before paying for an install and a build.
+      - name: Parse release level
+        run: |
+          if [[ ! "$GITHUB_REF_NAME" =~ ^radar-release-(none|patch|minor|major)-[0-9]{14}$ ]]; then
+            echo "ERROR: Invalid release tag: $GITHUB_REF_NAME" >&2
+            exit 1
+          fi
+
+      # The trigger tag's own commit, which `release` separately requires to be
+      # the latest main.
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24.x
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      # `dist` is the only thing that crosses into `release`, and it is used
+      # there for the npm tarball alone — never for a commit, since the release
+      # commit is produced by `release` from its own checkout and stages only
+      # `package.json` and `package-lock.json`. `release` deliberately takes no
+      # job output from here either: an output interpolated into a `run:` block
+      # would be a way back in.
+      - name: Upload build output
+        uses: actions/upload-artifact@v7
+        with:
+          name: dist
+          path: dist
+          if-no-files-found: error
+          retention-days: 1
+
+  # Holds the release credentials and runs no project dependency or build-tool
+  # code: no `npm ci`, no build. `scripts/publish.mjs` needs no `node_modules` —
+  # git, `npm version`, `npm pack` and `npm stage publish` only. npm itself
+  # necessarily runs here, which is why the one step that may fetch an unpinned
+  # `npm@latest` is ordered ahead of the app token and the checkout.
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # npm Trusted Publishing (OIDC)
     steps:
       - name: Parse release level
         id: level
@@ -28,6 +92,26 @@ jobs:
             exit 1
           fi
           echo "level=${BASH_REMATCH[1]}" >> "$GITHUB_OUTPUT"
+
+      # Ahead of the app token and the checkout on purpose: no `cache: npm`, so
+      # neither step needs the repository, and the npm gate below may install an
+      # unpinned `npm@latest`. Running that before any credential exists in the
+      # job keeps the ordering honest about what the split is for.
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24.x
+
+      # Staged publishing needs npm >= 11.15.0; Trusted Publishing alone needs
+      # only 11.5.1, so this gate is the higher of the two on purpose.
+      - name: Ensure npm supports staged publishing
+        run: |
+          npm_version="$(npm -v)"
+          echo "npm $npm_version"
+          if ! node -e 'const [a,b]=process.argv[1].split(".").map(Number); process.exit(a>11||(a===11&&b>=15)?0:1)' "$npm_version"; then
+            npm install -g npm@latest
+            npm -v
+          fi
 
       - name: Create release bot token
         id: app-token
@@ -53,6 +137,14 @@ jobs:
             exit 1
           fi
 
+      # After the checkout, which cleans the workspace. publish.mjs checks that
+      # the expected files actually arrived before it bumps anything.
+      - name: Download build output
+        uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist
+
       - name: Configure git identity
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
@@ -62,27 +154,7 @@ jobs:
           git config user.name "${APP_SLUG}[bot]"
           git config user.email "${user_id}+${APP_SLUG}[bot]@users.noreply.github.com"
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version: 24.x
-          cache: npm
-
-      # Staged publishing needs npm >= 11.15.0; Trusted Publishing alone needs
-      # only 11.5.1, so this gate is the higher of the two on purpose.
-      - name: Ensure npm supports staged publishing
-        run: |
-          npm_version="$(npm -v)"
-          echo "npm $npm_version"
-          if ! node -e 'const [a,b]=process.argv[1].split(".").map(Number); process.exit(a>11||(a===11&&b>=15)?0:1)' "$npm_version"; then
-            npm install -g npm@latest
-            npm -v
-          fi
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Bump, build and stage
+      - name: Bump, pack and stage
         run: node scripts/publish.mjs "${{ steps.level.outputs.level }}"
 
       # The version tag is pushed by publish.mjs; this turns it into an entry on
