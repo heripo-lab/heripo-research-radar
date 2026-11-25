@@ -68,7 +68,7 @@ function jsonResponse(payload: unknown): Response {
  *
  * Core's crawling chain always fetches a target's list URL and then each detail
  * URL, so the substitution happens at the fetch layer — the same seam
- * `createKrasFetch` uses. `source` is called once and its result reused for the
+ * `createSocietyBoardFetch` uses. `source` is called once and its result reused for the
  * detail requests that follow.
  *
  * @param baseFetch - Fetch to delegate every other request to

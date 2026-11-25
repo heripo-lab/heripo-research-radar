@@ -8,7 +8,7 @@ import { createAlioFetch } from '../../src/parsers/alio.parser';
 import { createG2bFetch } from '../../src/parsers/g2b.parser';
 import { createGojobsFetch } from '../../src/parsers/gojobs.parser';
 import { createJournalIssueFetch } from '../../src/parsers/journal-issue.parser';
-import { createKrasFetch } from '../../src/parsers/kras.parser';
+import { createSocietyBoardFetch } from '../../src/parsers/society-board.parser';
 
 // Create proxy fetch if PROXY_URL is set
 const PROXY_URL = process.env.PROXY_URL;
@@ -27,7 +27,7 @@ const PUBLIC_DATA_API_KEY = process.env.PUBLIC_DATA_API_KEY ?? '';
 const crawlingFetch = createJournalIssueFetch(
   createG2bFetch(
     createAlioFetch(
-      createGojobsFetch(createKrasFetch(proxyFetch ?? fetch), {
+      createGojobsFetch(createSocietyBoardFetch(proxyFetch ?? fetch), {
         apiKey: PUBLIC_DATA_API_KEY,
       }),
       { apiKey: PUBLIC_DATA_API_KEY },

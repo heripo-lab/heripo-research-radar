@@ -12,7 +12,7 @@ import { createExcavationReportFetch } from '../parsers/excavation.parser';
 import { createG2bFetch } from '../parsers/g2b.parser';
 import { createGojobsFetch } from '../parsers/gojobs.parser';
 import { createJournalIssueFetch } from '../parsers/journal-issue.parser';
-import { createKrasFetch } from '../parsers/kras.parser';
+import { createSocietyBoardFetch } from '../parsers/society-board.parser';
 import { createRobotsAwareFetch } from './robots';
 
 export interface ResearchRadarFetchOptions {
@@ -37,9 +37,9 @@ export function createResearchRadarFetch({
   refreshG2bDetails,
 }: ResearchRadarFetchOptions = {}): typeof fetch {
   // robots.txt is checked first, so a disallowed request is never sent — not
-  // even through a proxy. The injected and KRAS adapters sit inside it: their
-  // requests either bypass the network entirely or are rewritten to a URL
-  // that still gets checked.
+  // even through a proxy. The injected and society-board adapters sit inside
+  // it: their requests either bypass the network entirely or are rewritten to
+  // a URL that still gets checked.
   const withRobots = createRobotsAwareFetch(customFetch ?? fetch, {
     exemptOrigins: robotsExemptOrigins,
     onBlocked: ({ url, rule, userAgent }) => {
@@ -50,14 +50,14 @@ export function createResearchRadarFetch({
     },
   });
 
-  const withKras = createKrasFetch(withRobots);
+  const withSocietyBoards = createSocietyBoardFetch(withRobots);
 
   // The two public job boards are read from data.go.kr open APIs. Without a
   // key they answer with an empty list and make no request, so the targets
   // stay configured and simply collect nothing.
   const withPublicJobs = createG2bFetch(
     createAlioFetch(
-      createGojobsFetch(withKras, {
+      createGojobsFetch(withSocietyBoards, {
         apiKey: publicDataApiKey ?? '',
         onError: (reason) => {
           logger?.error({
